@@ -34,7 +34,7 @@
       display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;
       box-shadow: 0 8px 24px rgba(11,92,255,0.08);
     }
-    
+
     p.lead{color:var(--muted);margin:6px 0 0;font-size:14px}
 
     .card{
@@ -48,10 +48,17 @@
     .col{flex:1}
 
     label{display:block;font-size:13px;margin-bottom:6px;color:#111827}
-    input[type="text"], input[type="email"], input[type="tel"], select {
+    input[type="text"], input[type="email"], input[type="tel"], input[type="password"], select {
       width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;background:white;
       box-sizing:border-box;
     }
+
+    .password-wrap{position:relative;display:flex;align-items:center}
+    .toggle-eye{
+      position:absolute;right:10px;cursor:pointer;font-weight:700;color:var(--muted);user-select:none;
+      display:flex;align-items:center;gap:6px;
+    }
+    .toggle-eye svg{width:20px;height:20px;display:block}
 
     .radio-group{display:flex;;gap:8px;margin-bottom:12px}
     .radio{
@@ -79,7 +86,7 @@
     }
     .loader-card{
       background:white;border-radius:12px;padding:22px 26px;display:flex;flex-direction:column;align-items:center;gap:12px;
-      box-shadow:0 12px 40px rgba(2,6,23,0.25);min-width:280px;text-align:center;
+      box-shadow:0 12px 40px rgba(2,6,23,0.25);min-width:300px;text-align:center;
     }
     .spinner{
       width:48px;height:48px;border-radius:50%;border:5px solid #eef3ff;border-top-color:var(--accent);animation:spin 1s linear infinite;
@@ -89,14 +96,14 @@
     .result-emoji{font-size:36px}
     .result-title{font-weight:700;margin-top:6px}
     .result-msg{color:#334155;margin-top:6px;font-size:14px}
-    .result-close{margin-top:12px;padding:8px 14px;border-radius:8px;border:0;background:#f1f5f9;cursor:pointer; background-color:blue}
-
+    .result-close{margin-top:12px;padding:8px 14px;border-radius:8px;border:0;cursor:pointer;background:#0b5cff;color:white}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div class="logo">
+        <!-- exact logo you provided -->
         <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="site logo" width="100%" height="90px">
       </div>
     </header>
@@ -160,10 +167,29 @@
 
           <div class="col" id="specializationWrap" style="display:none">
             <label>Choose up to <strong>2</strong> specializations</label>
-            <div class="checkbox-grid" id="specializations" aria-label="Specializations">
-              <!-- injected by JS -->
-            </div>
+            <div class="checkbox-grid" id="specializations" aria-label="Specializations"></div>
             <div class="small muted" id="specNote">Select up to two areas you work in (e.g., Solar, CCTV, AC).</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div class="col">
+            <label for="password">Password</label>
+            <div class="password-wrap">
+              <input id="password" name="password" type="password" placeholder="Create a secure password" required />
+              <div id="togglePassword" class="toggle-eye" aria-hidden="true" title="Show / hide password">
+                <!-- eye open -->
+                <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <!-- eye closed (hidden by default) -->
+                <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="display:none">
+                  <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6 0-10-7-10-7"/>
+                  <path d="M1 1l22 22"/>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -178,11 +204,7 @@
         <div class="actions">
           <button type="button" id="submitBtn">Create account</button>
         </div>
-
-     
       </form>
-
-    
     </main>
   </div>
 
@@ -265,7 +287,6 @@
     // validation helpers
     function validEmail(email){ return /\S+@\S+\.\S+/.test(email); }
     function validPhone(ph){
-      // Accepts formats: 08012345678, +2348012345678, 8012345678
       const cleaned = ph.replace(/\s+/g,'');
       return /^(?:\+234|0)?\d{10}$/.test(cleaned);
     }
@@ -284,31 +305,22 @@
       }
     }
 
-    // localStorage helpers
-    const STORAGE_KEY = 'wireconnect_users';
-    function loadUsers(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    }
-    function saveUser(obj){
-      const arr = loadUsers();
-      arr.push(obj);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-    }
-    function clearUsers(){
-      localStorage.removeItem(STORAGE_KEY);
-      showMessage('Demo users cleared from localStorage.');
-    }
-
-    // check duplicates: email, username, phone
-    function isDuplicate({email, username, phone}) {
-      const users = loadUsers();
-      return users.some(u =>
-        u.email.toLowerCase() === email.toLowerCase() ||
-        u.username.toLowerCase() === username.toLowerCase() ||
-        (u.phone && u.phone.replace(/\s+/g,'') === phone.replace(/\s+/g,''))
-      );
-    }
+    // password toggle (eye)
+    const togglePassword = document.getElementById('togglePassword');
+    const eyeOpen = document.getElementById('eyeOpen');
+    const eyeClosed = document.getElementById('eyeClosed');
+    togglePassword.addEventListener('click', () => {
+      const pw = document.getElementById('password');
+      if (pw.type === 'password') {
+        pw.type = 'text';
+        eyeOpen.style.display = 'none';
+        eyeClosed.style.display = 'block';
+      } else {
+        pw.type = 'password';
+        eyeOpen.style.display = 'block';
+        eyeClosed.style.display = 'none';
+      }
+    });
 
     // overlay controls
     function showLoading(){
@@ -330,7 +342,7 @@
     }
 
     // main submit
-    document.getElementById('submitBtn').addEventListener('click', ()=> {
+    document.getElementById('submitBtn').addEventListener('click', async ()=> {
       const role = getRole();
       const email = document.getElementById('email').value.trim();
       const phone = document.getElementById('phone').value.trim();
@@ -341,20 +353,17 @@
       const city = document.getElementById('city').value.trim();
       const gender = document.getElementById('gender').value;
       const terms = document.getElementById('terms').checked;
+      const password = document.getElementById('password').value;
 
       // quick client-side validation
       if(!validEmail(email)) {
-        showLoading(); // brief loading then fail so user sees modal flow
-        setTimeout(()=> {
-          showResult(false, 'Registration failed', 'Invalid email address.');
-        }, 400);
+        showLoading();
+        setTimeout(()=> { showResult(false, 'Registration failed', 'Invalid email address.'); }, 400);
         return overlaySequenceFailure();
       }
       if(!validPhone(phone)) {
         showLoading();
-        setTimeout(()=> {
-          showResult(false, 'Registration failed', 'Invalid phone number. Use format 08012345678 or +234...');
-        }, 400);
+        setTimeout(()=> { showResult(false, 'Registration failed', 'Invalid phone number. Use format 08012345678 or +234...'); }, 400);
         return overlaySequenceFailure();
       }
       if(fullname.length < 3) {
@@ -365,6 +374,11 @@
       if(username.length < 3) {
         showLoading();
         setTimeout(()=> showResult(false,'Registration failed','Please choose a username (min 3 characters).'),400);
+        return overlaySequenceFailure();
+      }
+      if(password.length < 6) {
+        showLoading();
+        setTimeout(()=> showResult(false,'Registration failed','Password must be at least 6 characters.'),400);
         return overlaySequenceFailure();
       }
       if(!state || !city || !lga) {
@@ -390,56 +404,57 @@
         specializations = Array.from(checked).map(n=>n.dataset.spec);
       }
 
-      // duplicates check
-      if(isDuplicate({email, username, phone})){
-        showLoading();
-        setTimeout(()=> showResult(false,'Registration failed','Email, phone, or username already used.'),400);
-        return overlaySequenceFailure();
-      }
-
-      // passed validation -> show loading and simulate server processing
+      // passed validation -> show loading
       showLoading();
 
-      // simulate server delay (e.g., verifying uniqueness/kyc)
-      setTimeout(()=>{
-        const user = {
-          id: uid(),
-          role,
-          email,
-          phone,
-          fullname,
-          username,
-          state,
-          lga,
-          city,
-          gender,
-          specializations,
-          kyc_status: role === 'worker' ? 'pending' : 'not_required',
-          created_at: new Date().toISOString()
-        };
+      // Build payload to send to backend (include all fields)
+      const payload = {
+        role,
+        email,
+        phone,
+        fullname,
+        username,
+        state,
+        lga,
+        city,
+        gender,
+        specializations,
+        password // plaintext; backend will hash before storing
+      };
 
-        // save to localStorage
-        saveUser(user);
+      try {
+        // If your front and backend are separate, change this to full backend URL, e.g. http://localhost:3000/api/register
+        const resp = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include'
+        });
 
-        // success result
-        showResult(true, 'Registration successful', `Your ID is ${user.id}. Redirecting to login...`);
+        const data = await resp.json().catch(()=>({ success:false, message:'Invalid server response' }));
 
-        // after 2 seconds redirect to login.html (if exists)
-        setTimeout(()=>{
-          hideOverlay();
-          // redirect — in demo replace with actual login in production
-          window.location.href = 'login.html';
-        }, 2000);
+        if(resp.ok && data && data.success){
+          showResult(true, 'Registration successful', data.message || `Account created. Redirecting to login...`);
+          setTimeout(()=>{
+            hideOverlay();
+            window.location.href = 'login.html';
+          }, 1600);
 
-      }, 1400); // simulated server time
+        } else {
+          showResult(false, 'Registration failed', data.message || 'Server rejected registration.');
+        }
+
+      } catch(err){
+        console.error('Network error', err);
+        showResult(false,'Registration failed','Network error. Please try again later.');
+      }
+
     });
 
     // helper to show modal failure path then focus overlay
     function overlaySequenceFailure(){
-      // ensure overlay visible if not already
       if(overlay.style.display !== 'flex') overlay.style.display = 'flex';
       overlay.setAttribute('aria-hidden','false');
-      // allow user to close result by clicking OK
     }
 
     // close button for result view
@@ -450,7 +465,7 @@
     // init
     (function init(){
       specWrap.style.display = 'none';
-      showMessage('Fill the form and press Create account. (Demo only)');
+      showMessage('Fill the form and press Create account.');
 
       // keyboard accessibility for role radios
       radioEls.forEach(el=>{
@@ -459,7 +474,6 @@
         });
       });
     })();
-
   </script>
 </body>
 </html>
