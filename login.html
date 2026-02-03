@@ -105,7 +105,7 @@ color:blue;text-decoration:none;}
       <form id="loginForm" autocomplete="off" onsubmit="return false;">
         <div style="margin-bottom:12px">
           <label class="small">Login</label>
-          
+
         </div>
 
         <div style="margin-top:12px">
@@ -136,7 +136,7 @@ color:blue;text-decoration:none;}
           <input id="remember" type="checkbox" />
           <label for="remember" class="muted">Remember me</label>
         </div>
-<div><p>Don't have an account? <a class="bend" href="index.html"</a>Register here</p></div>
+<div><p>Don't have an account? <a class="bend" href="index.html">Register here</a></p></div>
         <div class="actions" style="margin-top:16px;">
           <button type="button" id="submitBtn">Sign in</button>
         </div>
@@ -195,11 +195,11 @@ color:blue;text-decoration:none;}
 
     function showMessage(text, type){
       if(type === 'success'){
-        msgEl.innerHTML = `<div class="success">${text}</div>`;
+        msgEl && (msgEl.innerHTML = `<div class="success">${text}</div>`);
       } else if(type === 'error'){
-        msgEl.innerHTML = `<div class="help">${text}</div>`;
+        msgEl && (msgEl.innerHTML = `<div class="help">${text}</div>`);
       } else {
-        msgEl.innerHTML = `<div class="small muted">${text}</div>`;
+        msgEl && (msgEl.innerHTML = `<div class="small muted">${text}</div>`);
       }
     }
 
@@ -247,8 +247,8 @@ color:blue;text-decoration:none;}
 
       showLoading();
 
-      // build payload: backend should accept { identifier, password }
-      const payload = { identifier, password, remember };
+      // build payload: backend expects { login, password }
+      const payload = { login: identifier, password, remember };
 
       try {
         const resp = await fetch('https://wireconnet-1.onrender.com/api/login', {
