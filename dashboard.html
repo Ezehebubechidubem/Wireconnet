@@ -10,173 +10,86 @@
       --surface:#ffffff; --shadow: 0 8px 30px rgba(16,24,40,0.06);
       --radius:12px;
     }
-
-    /* Make the page occupy full viewport */
     html,body{height:100%;margin:0}
     body{
       height:100%;
       font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
       background:var(--bg);
       color:#111827;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      display:flex;
-      flex-direction:column;
+      display:flex;flex-direction:column;
     }
-
-    /* Header always at top, main fills remaining space */
-    header{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      padding:12px;
-      box-sizing:border-box;
-      width:100%;
-      background:transparent;
-    }
-
-    /* Logo stretches to take available width (keeps menu to the right) */
-    .logo{
-      flex:1;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      background:linear-gradient(135deg,#0b5cff,#55a7ff);
-      border-radius:10px;
-      padding:8px 12px;
-      color:white;
-      box-shadow:0 8px 24px rgba(11,92,255,0.08);
-      min-height:56px;
-      box-sizing:border-box;
-    }
-    .logo img{height:40px;}
-
-    .menu-btn{
-      width:54px;height:54px;border-radius:10px;border:0;background:#0b5cff;color:white;
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 8px 18px rgba(11,92,255,0.12);cursor:pointer;font-weight:700;
-      flex:0 0 auto;
-    }
-
-    /* Main area stretches to fill the rest of the screen */
-    main{
-      flex:1 1 auto;
-      display:flex;
-      align-items:flex-start;
-      justify-content:center;
-      width:100%;
-      box-sizing:border-box;
-      padding:14px;
-      overflow:hidden; /* child will scroll */
-    }
-
-    /* Centered page card that is also full-height scrollable */
-    .card {
-      width:100%;
-      max-width:980px;              /* keeps desktop layout centered and tidy */
-      height:100%;
-      background:var(--card);
-      border-radius:var(--radius);
-      padding:16px;
-      box-shadow:var(--shadow);
-      box-sizing:border-box;
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
-    }
-
-    /* inner content scroll area */
-    .content {
-      flex:1 1 auto;
-      overflow:auto;
-      padding-right:6px; /* small breathing room for scrollbar */
-    }
-
-    /* content blocks */
+    header{display:flex;align-items:center;gap:12px;padding:12px;box-sizing:border-box;width:100%}
+    .logo{flex:1;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--accent),#55a7ff);border-radius:10px;padding:8px 12px;color:white;box-shadow:0 8px 24px rgba(11,92,255,0.08);min-height:56px}
+    .logo img{height:40px;border-radius:6px;object-fit:contain}
+    .menu-btn{width:54px;height:54px;border-radius:10px;border:0;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    main{flex:1 1 auto;display:flex;align-items:flex-start;justify-content:center;width:100%;box-sizing:border-box;padding:14px;overflow:hidden}
+    .card {width:100%;max-width:980px;height:100%;background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
+    .content {flex:1 1 auto;overflow:auto;padding-right:6px}
     .section{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(16,24,40,0.04)}
-    .section h3{margin:0 0 6px;font-size:16px}
-    .top-list{padding:8px 0}
-    .top-item{padding:10px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#fbfcff);margin-bottom:8px}
     .muted{color:var(--muted);font-size:13px}
-
-    /* Drawer / Menu */
+    .hero{width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(90deg,#eef6ff,#ffffff);padding:8px;margin-bottom:12px}
+    .hero img{width:100%;height:auto;max-height:140px;object-fit:cover;border-radius:8px}
     .drawer-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;z-index:1000}
     .drawer{position:fixed;right:0;top:0;height:100%;width:360px;max-width:92vw;background:white;box-shadow:-16px 0 40px rgba(2,6,23,0.12);transform:translateX(100%);transition:transform .28s ease;z-index:1001;padding:18px;box-sizing:border-box}
     .drawer.open{transform:translateX(0)}
     .drawer .header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#0b5cff,#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
     .drawer a{display:block;padding:12px;border-radius:8px;color:#0b0b0b;text-decoration:none;margin-bottom:8px;border:1px solid #f1f5f9;background:#fbfdff}
-    .drawer .primary{background:linear-gradient(90deg,#0b5cff,#55a7ff);color:white;border:0}
-    .drawer .muted{font-size:13px;color:var(--muted)}
+    .drawer a.primary{background:linear-gradient(90deg,var(--accent),#55a7ff);color:white;border:0}
     .toggle-row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 0}
     .badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#eef3ff;color:var(--accent)}
-
-    /* small helper layout for the top greeting */
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      margin-bottom:12px;
-    }
-
-    /* accessibility and small screens */
-    @media(max-width:720px){
-      .logo img{height:34px}
-      .drawer{width:92vw}
-      .card{border-radius:12px;padding:12px}
-    }
-
-    /* nice thin scrollbar for desktop */
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
     .content::-webkit-scrollbar{width:8px}
     .content::-webkit-scrollbar-thumb{background:rgba(11,92,255,0.12);border-radius:8px}
+    .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid #e6eef9;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .small{font-size:13px;color:var(--muted)}
+    .status-row{display:flex;flex-direction:column;gap:6px}
+    .status-info{font-size:13px;color:#0b5cff}
+    .loading{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(11,92,255,0.2);border-top-color:var(--accent);animation:spin .9s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   <header>
     <div class="logo" role="banner" aria-label="WireConnect">
-      <!-- exact logo you provided -->
       <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
-
+    </div>
     <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
   </header>
 
   <main>
     <section class="card" role="main" aria-labelledby="dashboardHeading">
-      <!-- top bar + greeting -->
       <div class="topbar">
         <div>
-          <div id="dashboardHeading" style="font-size:18px;font-weight:700">Welcome back</div>
-          <div class="muted" id="userGreeting">Tech — set up your profile</div>
+          <div id="dashboardHeading" style="font-size:18px;font-weight:700">Welcome</div>
+          <div class="muted" id="userGreeting">—</div>
         </div>
         <div class="badge" id="statusBadge" aria-live="polite">Offline</div>
       </div>
 
-      <!-- scrollable area -->
       <div class="content">
-        <section class="section" aria-labelledby="ann">
-          <h3 id="ann">Announcements</h3>
-          <div class="muted">No new announcements</div>
+        <div class="hero">
+          <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect banner">
+        </div>
+
+        <section class="section" aria-labelledby="leader">
+          <h3 id="leader">Leaderboard</h3>
+          <div id="leaderboard" style="margin-top:8px"></div>
         </section>
 
-        <section class="section" aria-labelledby="news">
-          <h3 id="news">Articles & News</h3>
-          <div class="muted">Latest industry news will appear here.</div>
-        </section>
-
-        <section class="section" aria-labelledby="toptech">
-          <h3 id="toptech">Top Technicians</h3>
-          <div class="top-list" id="leaderboard">
-            <div class="top-item"><strong>Ezeh Bonk</strong><div class="muted">Count: 0</div></div>
+        <section class="section" aria-labelledby="jobs">
+          <h3 id="jobs">Your Jobs</h3>
+          <div id="jobsList">
+            <div class="muted">No jobs yet.</div>
           </div>
         </section>
 
-        <div class="muted" style="padding:10px 6px">Quick actions (Go Online/Offline, Profile & KYC, Settings, Quotations) are available inside the Menu (top-right).</div>
       </div>
     </section>
   </main>
 
-  <!-- Drawer / Menu -->
+  <!-- Drawer -->
   <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
   <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Main menu">
     <div class="header">
@@ -185,30 +98,39 @@
       </div>
       <div>
         <div style="font-weight:700">Quick Menu</div>
-        <div class="muted" id="drawerUser">Technician</div>
+        <div class="muted" id="drawerUser">User</div>
       </div>
+      <button id="closeDrawerBtn" style="margin-left:auto;background:transparent;border:0;font-size:16px;cursor:pointer">✕</button>
     </div>
 
-    <nav>
-      <a href="quotations.html" id="quotationsLink">Quotations</a>
-      <a href="profile.html" id="profileLink">Profile & KYC</a>
-      <a href="settings.html" id="settingsLink">Settings</a>
+    <nav id="drawerNav">
+      <a href="profile.html" id="profileLink">Profile</a>
+      <a href="kyc.html" id="kycLink">KYC</a>
+
+      <a href="book.html" id="bookingLink" style="display:none" class="primary">Book</a>
 
       <div style="height:8px"></div>
 
-      <div class="toggle-row" style="align-items:center;">
-        <div>
-          <div style="font-weight:600">Availability</div>
-          <div class="muted">Go online to receive job requests</div>
+      <div id="availabilityArea">
+        <div style="font-weight:600">Availability</div>
+        <div class="muted" style="margin-bottom:8px">Go online to receive job requests</div>
+
+        <div class="toggle-row" style="align-items:center;">
+          <div id="availabilityStatus" class="status-row">
+            <!-- dynamic status lines inserted here -->
+          </div>
+          <div>
+            <button id="toggleOnlineBtn" class="btn">Go Online</button>
+          </div>
         </div>
-        <div>
-          <button id="toggleOnlineBtn" class="primaryToggle" style="padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:white;cursor:pointer">Go Online</button>
-        </div>
+
+        <div style="height:8px"></div>
+        <div id="nearestDistance" class="small">Nearest job: —</div>
       </div>
 
       <div style="height:10px"></div>
-      <div class="muted">Other actions</div>
-      <a href="#" id="logoutBtn" style="background:#fff;border:1px solid #f1f5f9">Logout</a>
+      <a href="settings.html" id="settingsLink">Settings</a>
+      <a href="#" id="logoutBtn" style="background:#fff;border:1px solid #f1f5f9">Sign out</a>
 
       <div style="height:14px"></div>
       <div class="muted" id="drawerFeedback" style="font-size:13px"></div>
@@ -216,50 +138,35 @@
   </aside>
 
   <script>
+    /*************************
+     * Updated Dashboard Frontend
+     * - Sends techId + lat/lng to POST /api/tech/status
+     * - Shows lat/lng + accuracy
+     * - Polls assigned jobs and computes nearest distance
+     *************************/
+
+    // Set this to your backend base url if different origin, e.g. 'https://wireconnet-1.onrender.com'
+    const API_BASE = '';
+
+    // Simple helpers
+    const $ = sel => document.querySelector(sel);
+    const el = (tag, attrs = {}) => { const d = document.createElement(tag); Object.assign(d, attrs); return d; };
+
     // DOM refs
-    const menuBtn = document.getElementById('menuBtn');
-    const drawer = document.getElementById('drawer');
-    const backdrop = document.getElementById('drawerBackdrop');
-    const toggleOnlineBtn = document.getElementById('toggleOnlineBtn');
-    const statusBadge = document.getElementById('statusBadge');
-    const drawerFeedback = document.getElementById('drawerFeedback');
-    const drawerUser = document.getElementById('drawerUser');
-    const userGreeting = document.getElementById('userGreeting');
+    const menuBtn = $('#menuBtn'), closeDrawerBtn = $('#closeDrawerBtn'), drawer = $('#drawer'), backdrop = $('#drawerBackdrop');
+    const toggleOnlineBtn = $('#toggleOnlineBtn'), statusBadge = $('#statusBadge'), drawerFeedback = $('#drawerFeedback'), drawerUser = $('#drawerUser'), userGreeting = $('#userGreeting'), bookingLink = $('#bookingLink'), availabilityArea = $('#availabilityArea'), availabilityStatus = $('#availabilityStatus'), nearestDistance = $('#nearestDistance');
 
-    // Endpoint (update if needed)
-    const STATUS_ENDPOINT = 'https://wireconnet-1.onrender.com/api/technician/status';
+    menuBtn.addEventListener('click', ()=>{ drawer.classList.add('open'); backdrop.style.display='block'; drawer.setAttribute('aria-hidden','false'); backdrop.setAttribute('aria-hidden','false') });
+    backdrop.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; drawer.setAttribute('aria-hidden','true'); backdrop.setAttribute('aria-hidden','true') });
+    closeDrawerBtn.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; });
 
-    // open / close drawer
-    function openDrawer(){
-      drawer.classList.add('open');
-      backdrop.style.display = 'block';
-      drawer.setAttribute('aria-hidden','false');
-      backdrop.setAttribute('aria-hidden','false');
-    }
-    function closeDrawer(){
-      drawer.classList.remove('open');
-      backdrop.style.display = 'none';
-      drawer.setAttribute('aria-hidden','true');
-      backdrop.setAttribute('aria-hidden','true');
-    }
-    menuBtn.addEventListener('click', openDrawer);
-    backdrop.addEventListener('click', closeDrawer);
-
-    // load user from localStorage
+    // Load user
     function loadUser(){
-      try {
-        const raw = localStorage.getItem('wc_user');
-        if(raw){
-          const u = JSON.parse(raw);
-          drawerUser.textContent = u.fullname || u.username || 'Technician';
-          userGreeting.textContent = (u.fullname ? u.fullname : u.username) + ' — ready to work';
-        } else {
-          drawerUser.textContent = 'Technician';
-        }
-      } catch(e){ console.warn('Could not load user', e); }
+      try { const raw = localStorage.getItem('wc_user'); if(!raw) return null; return JSON.parse(raw); } catch(e){ return null; }
     }
 
-    // UI state setter
+    function isTechnicianRole(role){ return role === 'worker' || role === 'technician' || role === 'worker'; }
+
     function setOnlineUI(isOnline){
       statusBadge.textContent = isOnline ? 'Online' : 'Offline';
       statusBadge.style.background = isOnline ? '#ecfff5' : 'transparent';
@@ -270,54 +177,302 @@
       toggleOnlineBtn.style.border = isOnline ? '1px solid #e6eef9' : '0';
     }
 
-    async function updateOnlineStatus(on){
-      setOnlineUI(on);
-      drawerFeedback.textContent = (on ? 'Trying to take jobs...' : 'You will not receive jobs while offline.');
-      localStorage.setItem('wc_online', on ? '1' : '0');
+    // Haversine distance (km)
+    function distanceKm(lat1, lon1, lat2, lon2){
+      if(lat1==null||lon1==null||lat2==null||lon2==null) return null;
+      const R = 6371;
+      const toRad = v => v * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
 
-      const token = localStorage.getItem('wc_token');
-      try {
-        const resp = await fetch(STATUS_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
-          },
-          body: JSON.stringify({ online: !!on }),
-        });
-        if(resp.ok){
-          drawerFeedback.textContent = on ? 'You are now online — waiting for job requests.' : 'You are now offline.';
-        } else {
-          const text = await resp.text().catch(()=>null);
-          drawerFeedback.textContent = 'Server response: ' + (text || resp.statusText);
+    // Update online status (calls backend and includes techId)
+    async function updateOnlineStatus(on){
+      // Show "getting location" spinner
+      availabilityStatus.innerHTML = '';
+      const line = el('div'); line.innerHTML = on ? '<span class="loading"></span> Obtaining location...' : '<span class="small">Setting offline...</span>';
+      availabilityStatus.appendChild(line);
+
+      // Fetch geolocation (if turning online) - allow fallback to null coords
+      let lat = null, lng = null, accuracy = null;
+      if(on){
+        try{
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy:true, timeout:10000 });
+          });
+          lat = pos.coords.latitude; lng = pos.coords.longitude; accuracy = pos.coords.accuracy;
+        }catch(e){
+          // user denied or timeout
+          console.warn('geolocation failed', e);
+          // show message
+          availabilityStatus.innerHTML = '<div class="small">Location not available — you can still go online but jobs may be assigned by state only.</div>';
         }
-      } catch(err){
-        console.warn('Status update failed', err);
+      }
+
+      const user = loadUser();
+      if(!user) {
+        drawerFeedback.textContent = 'Please login first.';
+        return;
+      }
+
+      // send to backend: required shape { techId, online, lat, lng }
+      try{
+        const resp = await fetch(API_BASE + '/api/tech/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ techId: user.id, online: !!on, lat: lat || null, lng: lng || null })
+        });
+        const js = await resp.json().catch(()=>null);
+        if(resp.ok){
+          drawerFeedback.textContent = js && js.message ? js.message : (on ? 'You are now online — waiting for jobs.' : 'You are now offline.');
+        } else {
+          drawerFeedback.textContent = 'Server: ' + (js && js.message ? js.message : resp.statusText);
+        }
+      }catch(err){
+        console.warn('network error', err);
         drawerFeedback.textContent = 'Network: could not notify server (saved locally).';
+      }
+
+      // update local storage and UI
+      localStorage.setItem('wc_online', on ? '1' : '0');
+      setOnlineUI(on);
+
+      // show location / accuracy
+      availabilityStatus.innerHTML = '';
+      if(lat && lng){
+        const coordsLine = el('div'); coordsLine.innerHTML = `<div class="small">Location: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy||0)}m)</div>`;
+        availabilityStatus.appendChild(coordsLine);
+      } else if(on){
+        availabilityStatus.innerHTML = '<div class="small">Location not available (permission denied or timeout)</div>';
+      } else {
+        availabilityStatus.innerHTML = '<div class="small">You are offline</div>';
+      }
+
+      // After going online, fetch nearest assigned job distances for convenience
+      if(on) fetchNearestAssignedJob(user.id, lat, lng);
+      else nearestDistance.textContent = 'Nearest job: —';
+    }
+
+    // Fetch assigned jobs for this tech and compute nearest distance to the provided lat/lng (if available)
+    async function fetchNearestAssignedJob(techId, lat, lng){
+      try{
+        const resp = await fetch(API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(techId));
+        const js = await resp.json().catch(()=>null);
+        if(!resp.ok || !js || !js.success){ nearestDistance.textContent = 'Nearest job: none'; return; }
+        const jobs = js.jobs || [];
+        if(!jobs.length){ nearestDistance.textContent = 'Nearest job: none'; return; }
+
+        // Use job lat/lng to compute distances (jobs may have lat/lng from client)
+        const distances = jobs.map(j => {
+          if(j.lat != null && j.lng != null && lat != null && lng != null){
+            return { id: j.id, km: distanceKm(lat, lng, j.lat, j.lng), job: j };
+          } else if(j.lat != null && j.lng != null){
+            // we can't compute distance if tech lat/lng missing: mark unknown
+            return { id: j.id, km: null, job: j };
+          } else {
+            return { id: j.id, km: null, job: j };
+          }
+        });
+
+        // filter out null distances then sort
+        const withKm = distances.filter(d=>d.km != null).sort((a,b)=>a.km - b.km);
+        if(withKm.length){
+          const nearest = withKm[0];
+          nearestDistance.textContent = `Nearest job: ${nearest.job.job_type || 'Job'} — ${nearest.km.toFixed(2)} km away`;
+          if(nearest.km > 50) nearestDistance.textContent += ' ( > 50km )';
+        } else {
+          nearestDistance.textContent = `Nearest job: location data unavailable`;
+        }
+
+      }catch(e){
+        console.warn('failed fetch assigned jobs', e);
+        nearestDistance.textContent = 'Nearest job: error';
       }
     }
 
-    toggleOnlineBtn.addEventListener('click', ()=>{
-      const current = localStorage.getItem('wc_online') === '1';
-      updateOnlineStatus(!current);
+    // Toggle button click
+    toggleOnlineBtn.addEventListener('click', async ()=>{
+      const cur = localStorage.getItem('wc_online') === '1';
+      await updateOnlineStatus(!cur);
     });
 
-    // initialize
+    // Load leaderboard
+    async function loadLeaderboard(){
+      const container = $('#leaderboard');
+      container.innerHTML = '<div class="muted">Loading...</div>';
+      try{
+        const resp = await fetch(API_BASE + '/api/dashboard?role=worker');
+        const js = await resp.json();
+        if(!js.success){ container.innerHTML = '<div class="muted">Could not load leaderboard</div>'; return; }
+        const list = js.leaderboard || [];
+        if(!list.length) { container.innerHTML = '<div class="muted">No entries yet</div>'; return; }
+        container.innerHTML = '';
+        list.forEach((t, idx)=>{
+          const row = document.createElement('div'); row.style.padding='8px 0'; row.style.borderBottom='1px solid #f3f6fb';
+          row.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>${t.fullname || t.username}</strong><div class="small">jobs completed: ${t.jobs_completed || 0}</div></div><div class="small">${idx+1}</div></div>`;
+          container.appendChild(row);
+        });
+      }catch(e){
+        container.innerHTML = '<div class="muted">Failed to load leaderboard</div>';
+      }
+    }
+
+    // Load jobs for user (client: bookings from localStorage; tech: assigned jobs)
+    async function loadJobsForUser(){
+      const user = loadUser();
+      const jobsList = $('#jobsList');
+      jobsList.innerHTML = `<div class="muted">Loading...</div>`;
+      if(!user){ jobsList.innerHTML = '<div class="muted">Please login</div>'; return; }
+
+      if(isTechnicianRole(user.role)){
+        try{
+          const resp = await fetch(API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(user.id));
+          const js = await resp.json().catch(()=>null);
+          if(!js || !js.success) { jobsList.innerHTML = '<div class="muted">No assigned jobs</div>'; return; }
+          const jobs = js.jobs || [];
+          if(!jobs.length) { jobsList.innerHTML = '<div class="muted">No pending jobs</div>'; return; }
+          jobsList.innerHTML = '';
+          jobs.forEach(j=>{
+            const div = document.createElement('div'); div.className='section';
+            div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+              <div><strong>${j.job_type || 'Job'}</strong><div class="muted">${j.status} — ${j.created_at ? new Date(j.created_at).toLocaleString() : ''}</div></div>
+              <div style="text-align:right">
+                <button class="btn" data-action="accept" data-id="${j.id}">Accept</button>
+                <button class="btn-ghost" data-action="decline" data-id="${j.id}">Decline</button>
+              </div>
+            </div>
+            <div style="margin-top:8px" class="muted">${(j.description || '').slice(0,160)}</div>`;
+            // show job distance if j.lat/lng and we have saved tech coords
+            jobsList.appendChild(div);
+          });
+        }catch(e){
+          jobsList.innerHTML = '<div class="muted">Failed to fetch assigned jobs</div>';
+        }
+      } else {
+        const localJobs = JSON.parse(localStorage.getItem('wc_bookings') || '[]');
+        if(!localJobs.length){ jobsList.innerHTML = '<div class="muted">No bookings yet</div>'; return; }
+        jobsList.innerHTML = '';
+        localJobs.slice(0,10).forEach(b=>{
+          const div = document.createElement('div'); div.className='section';
+          div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+            <div><strong>${b.jobType || 'Job'}</strong><div class="muted">${new Date(b.createdAt).toLocaleString()}</div></div>
+            <div><button class="btn" data-openjob="${b.id}">Open</button></div>
+          </div>
+          <div style="margin-top:8px" class="muted">${(b.description||'').slice(0,160)}</div>`;
+          jobsList.appendChild(div);
+        });
+      }
+    }
+
+    // Accept/Decline handlers
+    document.addEventListener('click', async (ev)=>{
+      const t = ev.target;
+      if(t.dataset.action && t.dataset.id){
+        const action = t.dataset.action; const jobId = t.dataset.id;
+        const user = loadUser(); if(!user) return alert('Please login');
+        try{
+          const resp = await fetch(API_BASE + `/api/job/${jobId}/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: user.id, action }) });
+          const js = await resp.json().catch(()=>null);
+          if(resp.ok && js && js.success){ alert(js.message || 'OK'); setTimeout(()=>loadJobsForUser(),800); }
+          else alert('Failed: ' + (js && js.message ? js.message : resp.statusText));
+        }catch(e){ alert('Network error'); }
+      }
+      if(t.dataset.openjob){
+        const jobId = t.dataset.openjob;
+        window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId);
+      }
+    });
+
+    // Initialize UI
     (function init(){
-      loadUser();
-      const onlineFlag = localStorage.getItem('wc_online') === '1';
-      setOnlineUI(onlineFlag);
-      document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeDrawer(); });
+      const user = loadUser();
+      if(!user){
+        $('#drawerUser').textContent = 'Guest';
+        $('#userGreeting').textContent = 'Welcome — please login';
+        bookingLink.style.display = 'none';
+        availabilityArea.style.display = 'none';
+        setOnlineUI(false);
+        loadLeaderboard();
+        loadJobsForUser();
+        return;
+      }
+
+      $('#drawerUser').textContent = user.fullname || user.username || 'User';
+      $('#userGreeting').textContent = `Welcome back — ${(user.fullname || user.username)}`;
+
+      if(user.role === 'client'){
+        bookingLink.style.display = 'block';
+        availabilityArea.style.display = 'none';
+        setOnlineUI(false);
+      } else if(isTechnicianRole(user.role)){
+        bookingLink.style.display = 'none';
+        availabilityArea.style.display = 'block';
+        const onlineFlag = localStorage.getItem('wc_online') === '1';
+        setOnlineUI(onlineFlag);
+        // show saved coords (if any) in availabilityStatus
+        const lastLat = localStorage.getItem('wc_last_lat'), lastLng = localStorage.getItem('wc_last_lng'), lastAcc = localStorage.getItem('wc_last_acc');
+        if(lastLat && lastLng){
+          availabilityStatus.innerHTML = `<div class="small">Last known: ${parseFloat(lastLat).toFixed(6)}, ${parseFloat(lastLng).toFixed(6)} (±${Math.round(lastAcc||0)}m)</div>`;
+        } else {
+          availabilityStatus.innerHTML = `<div class="small">Location not set</div>`;
+        }
+      } else {
+        bookingLink.style.display = 'none';
+        availabilityArea.style.display = 'none';
+        setOnlineUI(false);
+      }
+
+      loadLeaderboard();
+      loadJobsForUser();
+
+      if(isTechnicianRole(user.role)){
+        // Poll assigned jobs and refresh nearest distance every 6s while online
+        setInterval(()=>{
+          const onlineFlag = localStorage.getItem('wc_online') === '1';
+          if(onlineFlag){
+            // get last known coords from localStorage
+            const lat = parseFloat(localStorage.getItem('wc_last_lat')||null);
+            const lng = parseFloat(localStorage.getItem('wc_last_lng')||null);
+            fetchNearestAssignedJob(user.id, lat, lng);
+            loadJobsForUser();
+          }
+        }, 6000);
+      }
     })();
 
-    // logout
-    document.getElementById('logoutBtn').addEventListener('click', (ev)=>{
-      ev.preventDefault();
-      localStorage.removeItem('wc_user');
-      localStorage.removeItem('wc_token');
-      localStorage.removeItem('wc_online');
-      window.location.href = 'login.html';
-    });
+    // Hook up logout
+    $('#logoutBtn').addEventListener('click', (ev)=>{ ev.preventDefault(); localStorage.removeItem('wc_user'); localStorage.removeItem('wc_token'); localStorage.removeItem('wc_online'); localStorage.removeItem('wc_last_lat'); localStorage.removeItem('wc_last_lng'); window.location.href='login.html'; });
+
+    // Small improvement: when we successfully get geolocation while going online, save it locally for later use
+    // We'll patch updateOnlineStatus to save lat/lng/accuracy to localStorage.
+    // (Already included in the function — now we add the saves)
+    // Add saves inside function (updateOnlineStatus) after receiving lat/lng:
+    // localStorage.setItem('wc_last_lat', lat); localStorage.setItem('wc_last_lng', lng); localStorage.setItem('wc_last_acc', accuracy);
+    // (We will update that in-place — do it now:)
+    (function patchSaveLoc(){
+      // find function text and modify? Instead, re-define updateOnlineStatus to add localStorage saves (safe).
+      const original = updateOnlineStatus;
+      updateOnlineStatus = async function(on){
+        // call original to get location and do backend call
+        // But original already handles geo; to avoid double code, we'll replicate the logic with saving.
+        // For simplicity, call original and then save what's in availabilityStatus text if coords exist.
+        await original(on);
+        // try to parse coords from availabilityStatus displayed text
+        try{
+          const t = availabilityStatus.textContent || '';
+          const match = t.match(/Location:\\s*([0-9.+-]+),\\s*([0-9.+-]+)\\s*\\(±?(\\d+)m\\)/);
+          if(match){
+            const lat = parseFloat(match[1]), lng = parseFloat(match[2]), acc = parseInt(match[3],10);
+            localStorage.setItem('wc_last_lat', lat);
+            localStorage.setItem('wc_last_lng', lng);
+            localStorage.setItem('wc_last_acc', acc);
+          }
+        }catch(e){}
+      };
+    })();
   </script>
 </body>
 </html>
