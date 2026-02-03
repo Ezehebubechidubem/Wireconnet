@@ -150,3 +150,64 @@ app.get('/', (req,res)=> res.send('WireConnect backend (Postgres) running'));
 app.listen(PORT, ()=> {
   console.log(`WireConnect backend listening on http://localhost:${PORT}`);
 });
+// POST /api/login
+app.post('/api/login', async (req,res) => {
+  try {
+    const { login, password } = req.body;
+
+    if(!login || !password){
+      return res.status(400).json({ success:false, message:'Login and password required' });
+    }
+
+    const client = await pool.connect();
+    try {
+      // find user by email OR username OR phone
+      const query = `
+        SELECT * FROM users 
+        WHERE email=$1 OR username=$1 OR phone=$1
+        LIMIT 1
+      `;
+      const result = await client.query(query, [login]);
+
+      if(!result.rows.length){
+        return res.status(404).json({ success:false, message:'User not found' });
+      }
+
+      const user = result.rows[0];
+
+      // check password
+      const match = await bcrypt.compare(password, user.password_hash);
+      if(!match){
+        return res.status(401).json({ success:false, message:'Incorrect password' });
+      }
+
+      // Success — remove sensitive fields before sending
+      const safeUser = {
+        id: user.id,
+        role: user.role,
+        email: user.email,
+        phone: user.phone,
+        fullname: user.fullname,
+        username: user.username,
+        state: user.state,
+        lga: user.lga,
+        city: user.city,
+        gender: user.gender,
+        specializations: user.specializations,
+        kyc_status: user.kyc_status,
+        created_at: user.created_at
+      };
+
+      console.log(`✅ User logged in: ${user.username}`);
+
+      return res.json({ success:true, message:'Login successful', user: safeUser });
+
+    } finally {
+      client.release();
+    }
+
+  } catch(err){
+    console.error('Server error /api/login', err);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
