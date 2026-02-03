@@ -5,108 +5,84 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — Profile</title>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280}
-    body{font-family:Inter,Segoe UI,Roboto,Arial;background:var(--bg);margin:0;color:#111}
-    .wrap{max-width:720px;margin:28px auto;padding:18px}
-    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
-    label{display:block;margin-top:10px;font-weight:600}
-    input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef}
-    .row{display:flex;gap:10px}
-    .col{flex:1}
-    .btn{background:var(--accent);color:white;padding:10px;border-radius:8px;border:0;cursor:pointer;margin-top:12px}
-    .muted{color:var(--muted);font-size:13px}
-    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1200}
-    .modal{background:white;padding:18px;border-radius:12px;width:320px;text-align:center}
+    :root{--bg:#f6f8fb;--accent:#0b5cff;--muted:#6b7280}
+    html,body{height:100%;margin:0}
+    body{font-family:Inter, "Segoe UI", Roboto, Arial;background:var(--bg);color:#111827}
+    .banner{width:100%;height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 24px rgba(11,92,255,0.08)}
+    .banner img{width:100%;height:70%;}
+    .wrap{max-width:920px;margin:18px auto;padding:16px}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 8px 30px rgba(16,24,40,0.06)}
+    label{display:block;margin-bottom:6px;font-weight:600}
+    input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;margin-bottom:10px}
+    button{background:var(--accent);color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer}
+    .small{color:var(--muted);font-size:13px}
   </style>
 </head>
 <body>
+  <div class="banner" aria-hidden="true">
+    <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect banner">
+  </div>
+
   <div class="wrap">
     <div class="card">
-      <h2>Profile</h2>
-      <div class="muted">Update your display & payment details (used to pay you).</div>
+      <h3>Profile — Account details</h3>
 
-      <label>Avatar URL</label>
-      <input id="avatarUrl" placeholder="https://... (image URL)" />
+      <form id="profileForm" onsubmit="return false" enctype="multipart/form-data">
+        <label for="avatar">Profile picture (optional)</label>
+        <input id="avatar" name="avatar" type="file" accept="image/*" capture="environment">
 
-      <label>Full name</label>
-      <input id="fullname" placeholder="Your full name" />
+        <label for="displayName">Display name</label>
+        <input id="displayName" name="displayName" type="text" placeholder="John Doe">
 
-      <h3 style="margin-top:12px">Account details (for payouts)</h3>
-      <label>Bank</label>
-      <input id="bankName" placeholder="Bank name" />
-      <label>Account number</label>
-      <input id="accountNumber" placeholder="0123456789" />
-      <label>Account name</label>
-      <input id="accountName" placeholder="Account holder name" />
+        <label for="bank">Account details (bank / Paystack ID)</label>
+        <input id="bank" name="bank" type="text" placeholder="Account number or Paystack identifier">
 
-      <button id="saveBtn" class="btn">Save profile</button>
-      <div id="status" class="muted" style="margin-top:10px"></div>
+        <label for="bio">Short bio (optional)</label>
+        <textarea id="bio" name="bio" rows="3" placeholder="Tell clients about yourself"></textarea>
+
+        <div style="display:flex;gap:8px">
+          <button id="saveProfile">Save profile</button>
+          <button id="backDashboard" style="background:#eef2ff;color:var(--accent);border:0;padding:10px;border-radius:8px;cursor:pointer">Back</button>
+        </div>
+
+        <div id="msg" class="small" style="margin-top:10px"></div>
+      </form>
     </div>
   </div>
 
-  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal" id="modalCard">
-      <div id="modalText">Processing...</div>
-      <div style="margin-top:10px"><button id="modalClose" class="btn" style="background:#eef3ff;color:var(--accent)">OK</button></div>
-    </div>
-  </div>
-
-<script>
-const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
-const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
-if(!me){ window.location.href = 'login.html'; }
-
-document.getElementById('fullname').value = me.fullname || '';
-document.getElementById('avatarUrl').value = me.avatar_url || '';
-if(me.account_details){ try {
-  const a = typeof me.account_details === 'string' ? JSON.parse(me.account_details) : me.account_details;
-  document.getElementById('bankName').value = a.bank || '';
-  document.getElementById('accountNumber').value = a.account_number || '';
-  document.getElementById('accountName').value = a.account_name || '';
-} catch(e){} }
-
-function showModal(msg){
-  document.getElementById('modalText').textContent = msg;
-  document.getElementById('overlay').style.display = 'flex';
-}
-document.getElementById('modalClose').addEventListener('click', ()=> {
-  document.getElementById('overlay').style.display = 'none';
-});
-
-document.getElementById('saveBtn').addEventListener('click', async ()=>{
-  const avatarUrl = document.getElementById('avatarUrl').value.trim();
-  const fullname = document.getElementById('fullname').value.trim();
-  const account = {
-    bank: document.getElementById('bankName').value.trim(),
-    account_number: document.getElementById('accountNumber').value.trim(),
-    account_name: document.getElementById('accountName').value.trim()
-  };
-
-  if(!fullname) return document.getElementById('status').textContent = 'Please enter your full name';
-  if(!account.bank || !account.account_number || !account.account_name) return document.getElementById('status').textContent = 'Please fill account details';
-
-  showModal('Saving profile...');
-  try{
-    const resp = await fetch(`${API_BASE}/api/profile/update`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ userId: me.id, avatarUrl, fullname, account })
-    });
-    const data = await resp.json();
-    if(resp.ok && data.success){
-      // update localStorage user fragment
-      const updatedUser = Object.assign({}, me, { fullname: data.user.fullname, avatar_url: data.user.avatar_url, account_details: data.user.account_details, profile_complete: data.user.profile_complete });
-      localStorage.setItem('wc_user', JSON.stringify(updatedUser));
-      document.getElementById('status').textContent = 'Profile saved ✓';
-      showModal('Profile saved. Redirecting to dashboard...');
-      setTimeout(()=> { document.getElementById('overlay').style.display='none'; window.location.href = 'dashboard.html'; }, 1200);
-    } else {
-      showModal('Save failed: ' + (data.message || 'server error'));
+  <script>
+    const BACKEND = 'https://wireconnet-1.onrender.com';
+    function postFormData(url, fd){
+      return fetch(url, { method:'POST', body: fd, credentials:'include' }).then(r=>r.json()).catch(()=>({ success:false, message:'Network error' }));
     }
-  }catch(e){
-    console.error('profile update error', e);
-    showModal('Network error, try again later');
-  }
-});
-</script>
+
+    document.getElementById('saveProfile').addEventListener('click', async () => {
+      const avatar = document.getElementById('avatar').files[0];
+      const displayName = document.getElementById('displayName').value.trim();
+      const bank = document.getElementById('bank').value.trim();
+      const bio = document.getElementById('bio').value.trim();
+      const msg = document.getElementById('msg');
+
+      const fd = new FormData();
+      if(avatar) fd.append('avatar', avatar);
+      fd.append('displayName', displayName);
+      fd.append('accountDetails', bank);
+      fd.append('bio', bio);
+
+      msg.textContent = 'Saving...';
+      const res = await postFormData(BACKEND + '/api/profile', fd);
+      if(res && res.success){
+        msg.textContent = 'Profile saved.';
+        if(res.user) localStorage.setItem('wc_user', JSON.stringify(res.user));
+      } else {
+        msg.textContent = res.message || 'Failed to save profile.';
+      }
+    });
+
+    document.getElementById('backDashboard').addEventListener('click', (e)=>{
+      e.preventDefault();
+      window.location.href = 'dashboard.html';
+    });
+  </script>
 </body>
 </html>
