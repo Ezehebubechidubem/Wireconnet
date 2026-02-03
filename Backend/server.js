@@ -1,5 +1,6 @@
-// server.js
-// WireConnect backend (extended): register, login, dashboard, booking + job acceptance
+// server.js (WireConnect backend — extended with Profile & KYC)
+// Requirements:
+// npm i express cors bcryptjs pg dotenv
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -15,11 +16,11 @@ const pool = new Pool({
   ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized:false } : false
 });
 
-// OPEN CORS for your workflow
+// open CORS
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // allow some room for base64 if demo
 
-// --- DB setup / migrations (idempotent) ---
+// DB init & migrations (idempotent)
 const initSql = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -35,6 +36,14 @@ CREATE TABLE IF NOT EXISTS users (
   specializations TEXT[],
   password_hash TEXT NOT NULL,
   kyc_status TEXT DEFAULT 'not_required',
+  avatar_url TEXT,
+  profile_complete boolean DEFAULT false,
+  account_details JSONB,
+  kyc_documents TEXT[],
+  kyc_submitted_at TIMESTAMP WITH TIME ZONE,
+  online boolean DEFAULT false,
+  lat double precision,
+  lng double precision,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -65,35 +74,42 @@ CREATE TABLE IF NOT EXISTS jobs (
   job_type TEXT,
   description TEXT,
   price NUMERIC,
-  status TEXT NOT NULL DEFAULT 'created', -- created, pending_assignment, pending_accept, accepted, declined, in_progress, completed, cancelled
+  status TEXT NOT NULL DEFAULT 'created',
   assigned_tech_id TEXT REFERENCES users(id),
   assigned_at TIMESTAMP WITH TIME ZONE,
   expires_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS kyc_requests (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  id_type TEXT,
+  id_number TEXT,
+  id_images TEXT[],      -- array of image URLs or base64 (demo)
+  work_video TEXT,       -- URL or reference (demo)
+  notes TEXT,
+  status TEXT DEFAULT 'pending', -- pending, approved, declined
+  admin_note TEXT,
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  decided_at TIMESTAMP WITH TIME ZONE
+);
 `;
 
-// run initialization
-(async ()=>{
+(async ()=> {
   try{
     await pool.query(initSql);
-    // ensure online/lat/lng columns exist in users (for tech location & availability)
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS online boolean DEFAULT false;`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lat double precision;`);
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lng double precision;`);
-    console.log('DB initialized/migrated.');
+    console.log('DB ready.');
   } catch(err){
     console.error('DB init error', err);
     process.exit(1);
   }
 })();
 
-// --- Helpers ---
+// Helpers
 function validEmail(email){ return /\S+@\S+\.\S+/.test(email || ''); }
 function validPhone(ph){ if(!ph) return false; const cleaned = ph.replace(/\s+/g,''); return /^(?:\+234|0)?\d{10}$/.test(cleaned); }
 function uid(){ return Math.floor(1000000000 + Math.random()*9000000000).toString(); }
-
-// Haversine distance (meters)
 function distanceMeters(lat1, lon1, lat2, lon2){
   if(lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Number.POSITIVE_INFINITY;
   const R = 6371000;
@@ -105,11 +121,9 @@ function distanceMeters(lat1, lon1, lat2, lon2){
   return R * c;
 }
 
-// attemptAssign will try technicians in order (techs array = rows with id, lat, lng)
+// attemptAssign helper (same as earlier, tries techs list)
 async function attemptAssign(jobId, techs, attemptIndex = 0){
   if(attemptIndex >= techs.length){
-    // no available techs
-    console.log('No more techs to assign for job', jobId);
     await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
     return false;
   }
@@ -117,40 +131,28 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
   const tech = techs[attemptIndex];
   const client = await pool.connect();
   try {
-    // Try to set assigned_tech_id only if job still in assignable state
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 60*1000); // 60s acceptance window
+    const expiresAt = new Date(now.getTime() + 60*1000);
     const res = await client.query(`
       UPDATE jobs
       SET assigned_tech_id=$1, status='pending_accept', assigned_at=now(), expires_at=$2
       WHERE id=$3 AND status IN ('created','pending_assignment')
       RETURNING *`, [tech.id, expiresAt.toISOString(), jobId]);
 
-    if(!res.rows.length){
-      // job changed meanwhile; skip
-      console.log('Job not assignable now', jobId);
-      return false;
-    }
+    if(!res.rows.length) return false;
 
-    console.log('Assigned job', jobId, 'to tech', tech.id, 'expires at', expiresAt.toISOString());
-
-    // Setup server-side timeout: if technician doesn't accept in 60s, mark as declined and try next
     setTimeout(async ()=>{
       try{
         const check = await pool.query(`SELECT status, assigned_tech_id FROM jobs WHERE id=$1`, [jobId]);
         if(!check.rows.length) return;
         const js = check.rows[0];
         if(js.status === 'pending_accept' && js.assigned_tech_id === tech.id){
-          // timed out -> treat as decline and try next
-          console.log('Tech timed out; auto-declining', tech.id, 'for job', jobId);
           await pool.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
-          // try next
           await attemptAssign(jobId, techs, attemptIndex + 1);
         }
       }catch(e){ console.error('timeout handler error', e); }
     }, 60*1000);
 
-    // success for now (waiting for technician action)
     return true;
 
   } finally {
@@ -158,9 +160,8 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
   }
 }
 
-// --- ROUTES ---
-
-// Registration (unchanged)
+// --- Existing endpoints: register/login/dashboard/book/tech status/assigned-jobs/respond/job status ...
+// Registration
 app.post('/api/register', async (req, res) => {
   try {
     const {
@@ -194,7 +195,7 @@ app.post('/api/register', async (req, res) => {
         gender: gender || 'other',
         specializations: Array.isArray(specializations) ? specializations : [],
         password_hash: hash,
-        kyc_status: (role === 'worker') ? 'pending' : 'not_required'
+        kyc_status: (role === 'worker') ? 'not_required' : 'not_required'
       };
 
       const insertSql = `
@@ -219,7 +220,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Login (unchanged)
+// Login
 app.post('/api/login', async (req,res) =>{
   try{
     const { login, password } = req.body;
@@ -234,16 +235,15 @@ app.post('/api/login', async (req,res) =>{
       const ok = await bcrypt.compare(password, user.password_hash);
       if(!ok) return res.status(401).json({ success:false, message:'Incorrect password' });
 
-      // mask sensitive
       const safeUser = {
         id: user.id, role: user.role, email: user.email, phone: user.phone,
         fullname: user.fullname, username: user.username, state: user.state, lga: user.lga,
         city: user.city, gender: user.gender, specializations: user.specializations, kyc_status: user.kyc_status,
-        online: user.online || false, lat: user.lat, lng: user.lng, created_at: user.created_at
+        avatar_url: user.avatar_url, profile_complete: user.profile_complete,
+        account_details: user.account_details, online: user.online, lat: user.lat, lng: user.lng, created_at: user.created_at
       };
 
       return res.json({ success:true, message:'Login successful', user: safeUser });
-
     } finally { client.release(); }
   }catch(e){
     console.error('Server error /api/login', e);
@@ -251,18 +251,14 @@ app.post('/api/login', async (req,res) =>{
   }
 });
 
-// Dashboard data (announcements + articles + leaderboard)
+// Dashboard
 app.get('/api/dashboard', async (req,res)=>{
   try{
-    // optional: accept ?role=technician|client
     const role = (req.query.role || 'client');
-
     const client = await pool.connect();
     try{
       const ann = (await client.query(`SELECT id,title,body,created_at FROM announcements ORDER BY created_at DESC LIMIT 10`)).rows;
       const art = (await client.query(`SELECT id,title,excerpt,created_at FROM articles ORDER BY created_at DESC LIMIT 10`)).rows;
-
-      // leaderboard: top technicians by number of accepted jobs
       const techLeaderboard = (await client.query(`
         SELECT u.id,u.username,u.fullname, COUNT(j.*) as jobs_completed
         FROM users u
@@ -272,7 +268,6 @@ app.get('/api/dashboard', async (req,res)=>{
         ORDER BY jobs_completed DESC
         LIMIT 10
       `)).rows;
-
       const clientLeaderboard = (await client.query(`
         SELECT u.id,u.username,u.fullname, COUNT(j.*) as jobs_posted
         FROM users u
@@ -283,17 +278,12 @@ app.get('/api/dashboard', async (req,res)=>{
         LIMIT 10
       `)).rows;
 
-      return res.json({
-        success:true,
-        announcements: ann,
-        articles: art,
-        leaderboard: role === 'worker' ? techLeaderboard : clientLeaderboard
-      });
+      return res.json({ success:true, announcements: ann, articles: art, leaderboard: role === 'worker' ? techLeaderboard : clientLeaderboard });
     } finally { client.release(); }
   }catch(e){ console.error('err /api/dashboard', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
-// Technician updates status + location
+// Tech status update
 app.post('/api/tech/status', async (req,res) => {
   try{
     const { techId, online, lat, lng } = req.body;
@@ -303,113 +293,73 @@ app.post('/api/tech/status', async (req,res) => {
   }catch(e){ console.error('/api/tech/status', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
-// Client books a job -> server attempts to assign nearest online technicians in same state
+// Book job (client)
 app.post('/api/book', async (req,res)=>{
   try{
-    const {
-      clientId, state, city, address, lat, lng, job_type, description, price
-    } = req.body || {};
-
+    const { clientId, state, city, address, lat, lng, job_type, description, price } = req.body || {};
     if(!clientId || !state) return res.status(400).json({ success:false, message:'clientId and state required' });
 
     const jobId = uid();
-    await pool.query(`INSERT INTO jobs (id, client_id, state, city, address, lat, lng, job_type, description, price, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [jobId, clientId, state, city || null, address || null, lat || null, lng || null, job_type || null, description || null, price || null, 'created']);
+    await pool.query(`INSERT INTO jobs (id, client_id, state, city, address, lat, lng, job_type, description, price, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [jobId, clientId, state, city||null, address||null, lat||null, lng||null, job_type||null, description||null, price||null, 'created']);
 
-    // find candidate technicians: online, same state, not assigned currently busy.
-    const techRows = (await pool.query(`
-      SELECT id, lat, lng FROM users
-      WHERE role = 'worker' AND online = true AND state = $1 AND id IS NOT NULL
-    `, [state])).rows;
-
-    // if no lat/lng provided for client, just order by null distance (server-side)
-    // compute distances (closest first)
-    let techsWithDist = techRows.map(t => {
-      const d = distanceMeters(lat, lng, t.lat, t.lng);
-      return { id: t.id, lat: t.lat, lng: t.lng, distance: d };
-    });
+    const techRows = (await pool.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [state])).rows;
+    let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(lat, lng, t.lat, t.lng) }));
     techsWithDist.sort((a,b)=>a.distance - b.distance);
 
-    // attempt assign sequence
     if(techsWithDist.length === 0){
-      // no techs; leave job pending assignment
       await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
-      return res.json({ success:true, message:'Job created but no technicians currently available', jobId });
+      return res.json({ success:true, message:'Job created but no technicians available', jobId });
     } else {
-      // try assign to first tech (attemptAssign will set expiration + fallback)
       const ok = await attemptAssign(jobId, techsWithDist);
-      if(ok){
-        return res.json({ success:true, message:'Job created and assigned (pending acceptance)', jobId });
-      } else {
-        return res.json({ success:true, message:'Job created, could not assign immediately', jobId });
-      }
+      if(ok) return res.json({ success:true, message:'Job created and assigned (pending acceptance)', jobId });
+      else return res.json({ success:true, message:'Job created, no immediate assignment', jobId });
     }
   }catch(e){ console.error('/api/book', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
-// Technician polls assigned pending jobs for them (pending_accept)
+// Poll assigned jobs for technician
 app.get('/api/assigned-jobs', async (req,res)=>{
   try{
     const techId = req.query.techId;
     if(!techId) return res.status(400).json({ success:false, message:'techId required' });
-
-    const rows = (await pool.query(`
-      SELECT j.* FROM jobs j
-      WHERE j.assigned_tech_id = $1 AND j.status = 'pending_accept'
-      ORDER BY j.assigned_at DESC
-    `, [techId])).rows;
-
+    const rows = (await pool.query(`SELECT j.* FROM jobs j WHERE j.assigned_tech_id = $1 AND j.status = 'pending_accept' ORDER BY j.assigned_at DESC`, [techId])).rows;
     return res.json({ success:true, jobs: rows });
   }catch(e){ console.error('/api/assigned-jobs', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
-// Technician responds to assigned job: accept or decline
+// Respond to job (accept/decline)
 app.post('/api/job/:id/respond', async (req,res)=>{
   try{
     const jobId = req.params.id;
-    const { techId, action } = req.body; // action = 'accept'|'decline'
+    const { techId, action } = req.body;
     if(!techId || !action) return res.status(400).json({ success:false, message:'techId and action required' });
     if(!['accept','decline'].includes(action)) return res.status(400).json({ success:false, message:'invalid action' });
 
     const client = await pool.connect();
     try{
-      // fetch job
       const q = await client.query(`SELECT * FROM jobs WHERE id=$1`, [jobId]);
       if(!q.rows.length) return res.status(404).json({ success:false, message:'Job not found' });
       const job = q.rows[0];
-
       if(job.assigned_tech_id !== techId) return res.status(403).json({ success:false, message:'Not assigned to this technician' });
 
       if(action === 'accept'){
-        // set job accepted
         await client.query(`UPDATE jobs SET status='accepted', expires_at=NULL WHERE id=$1`, [jobId]);
         return res.json({ success:true, message:'Job accepted' });
       } else {
-        // decline -> reset assignment and attempt next tech
         await client.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
-
-        // find the next technicians (same algorithm as earlier)
-        const techRows = (await client.query(`
-          SELECT id, lat, lng FROM users
-          WHERE role = 'worker' AND online = true AND state = $1 AND id IS NOT NULL
-        `, [job.state])).rows;
-
-        // compute distances and sort
+        const techRows = (await client.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [job.state])).rows;
         let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(job.lat, job.lng, t.lat, t.lng) }));
-        // filter out the just-declined tech
         techsWithDist = techsWithDist.filter(t => t.id !== techId);
         techsWithDist.sort((a,b)=>a.distance - b.distance);
-
-        // attempt assign to next
         await attemptAssign(jobId, techsWithDist);
         return res.json({ success:true, message:'Job declined; assigning next technician' });
       }
-
     } finally { client.release(); }
   }catch(e){ console.error('/api/job/:id/respond', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
-// get job status (client)
+// Job status (client)
 app.get('/api/job/:id/status', async (req,res)=>{
   try{
     const jobId = req.params.id;
@@ -419,8 +369,99 @@ app.get('/api/job/:id/status', async (req,res)=>{
   }catch(e){ console.error('/api/job/:id/status', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
+// ----------------- NEW: Profile & KYC endpoints -----------------
+
+// Profile update: avatar_url, fullname (optional), account_details { bank, account_number, account_name }
+app.post('/api/profile/update', async (req,res)=>{
+  try{
+    const { userId, avatarUrl, fullname, account } = req.body || {};
+    if(!userId) return res.status(400).json({ success:false, message:'userId required' });
+
+    const client = await pool.connect();
+    try{
+      // update fields provided
+      const row = (await client.query(`SELECT * FROM users WHERE id=$1`, [userId])).rows[0];
+      if(!row) return res.status(404).json({ success:false, message:'User not found' });
+
+      const newFull = fullname || row.fullname;
+      const newAvatar = avatarUrl || row.avatar_url;
+      const newAccount = account ? account : row.account_details;
+
+      // determine profile_complete: simple rule -> avatar + account_details present
+      const profileComplete = !!(newAvatar && newAccount && newAccount.bank && newAccount.account_number);
+
+      await client.query(`UPDATE users SET fullname=$1, avatar_url=$2, account_details=$3, profile_complete=$4 WHERE id=$5`,
+        [newFull, newAvatar, newAccount ? JSON.stringify(newAccount) : null, profileComplete, userId]);
+
+      const updated = (await client.query(`SELECT id,fullname,avatar_url,account_details,profile_complete FROM users WHERE id=$1`, [userId])).rows[0];
+      return res.json({ success:true, message:'Profile updated', user: updated });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/profile/update', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Submit KYC
+app.post('/api/kyc/submit', async (req,res)=>{
+  try{
+    const { userId, id_type, id_number, id_images, work_video, notes } = req.body || {};
+    if(!userId || !id_type || !id_number || !Array.isArray(id_images) || id_images.length === 0){
+      return res.status(400).json({ success:false, message:'userId, id_type, id_number and at least one id_images required' });
+    }
+    const client = await pool.connect();
+    try{
+      const usr = (await client.query(`SELECT id FROM users WHERE id=$1`, [userId])).rows[0];
+      if(!usr) return res.status(404).json({ success:false, message:'User not found' });
+
+      const ins = await client.query(`INSERT INTO kyc_requests (user_id, id_type, id_number, id_images, work_video, notes, status) VALUES ($1,$2,$3,$4,$5,$6,'pending') RETURNING id, submitted_at`, [userId, id_type, id_number, id_images, work_video||null, notes||null]);
+      const reqId = ins.rows[0].id;
+
+      await client.query(`UPDATE users SET kyc_status='pending', kyc_documents=$1, kyc_submitted_at=now() WHERE id=$2`, [id_images, userId]);
+
+      return res.json({ success:true, message:'KYC submitted and pending review', requestId: reqId });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/kyc/submit', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Get user's KYC status
+app.get('/api/kyc/status/:userId', async (req,res)=>{
+  try{
+    const userId = req.params.userId;
+    const r = await pool.query(`SELECT kyc_status, kyc_documents, kyc_submitted_at FROM users WHERE id=$1`, [userId]);
+    if(!r.rows.length) return res.status(404).json({ success:false, message:'User not found' });
+    return res.json({ success:true, status: r.rows[0] });
+  }catch(e){ console.error('/api/kyc/status/:userId', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Admin: list pending KYC requests
+app.get('/api/kyc/pending', async (req,res)=>{
+  try{
+    const rows = (await pool.query(`SELECT k.*, u.username, u.fullname, u.email FROM kyc_requests k JOIN users u ON u.id = k.user_id WHERE k.status = 'pending' ORDER BY k.submitted_at ASC`)).rows;
+    return res.json({ success:true, requests: rows });
+  }catch(e){ console.error('/api/kyc/pending', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Admin: approve/decline a KYC request
+app.post('/api/kyc/:reqId/decision', async (req,res)=>{
+  try{
+    const reqId = req.params.reqId;
+    const { adminId, decision, adminNote } = req.body || {};
+    if(!adminId || !decision || !['approve','decline'].includes(decision)) return res.status(400).json({ success:false, message:'adminId and decision (approve|decline) required' });
+    const client = await pool.connect();
+    try{
+      const r = await client.query(`SELECT * FROM kyc_requests WHERE id=$1`, [reqId]);
+      if(!r.rows.length) return res.status(404).json({ success:false, message:'KYC request not found' });
+      const reqRow = r.rows[0];
+
+      const newStatus = decision === 'approve' ? 'approved' : 'declined';
+      await client.query(`UPDATE kyc_requests SET status=$1, admin_note=$2, decided_at=now() WHERE id=$3`, [newStatus, adminNote || null, reqId]);
+      await client.query(`UPDATE users SET kyc_status=$1 WHERE id=$2`, [decision === 'approve' ? 'approved' : 'declined', reqRow.user_id]);
+
+      return res.json({ success:true, message:`KYC ${newStatus}` });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/kyc/:reqId/decision', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
 // root
-app.get('/', (req,res)=> res.send('WireConnect backend (extended) running'));
+app.get('/', (req,res)=> res.send('WireConnect backend (with Profile & KYC) running'));
 
 // start
 app.listen(PORT, ()=> console.log(`WireConnect backend listening on port ${PORT}`));
