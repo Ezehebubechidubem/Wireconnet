@@ -35,8 +35,6 @@
       box-shadow: 0 8px 24px rgba(11,92,255,0.08);
     }
 
-    p.lead{color:var(--muted);margin:6px 0 0;font-size:14px}
-
     .card{
       background:var(--card);
       border-radius:12px;
@@ -52,8 +50,7 @@
       width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;background:white;
       box-sizing:border-box;
     }
-     .bend{
-color:blue;text-decoration:none;}
+    .bend{color:blue;text-decoration:none;}
     .password-wrap{position:relative;display:flex;align-items:center}
     .toggle-eye{
       position:absolute;right:10px;cursor:pointer;font-weight:700;color:var(--muted);user-select:none;
@@ -90,7 +87,6 @@ color:blue;text-decoration:none;}
     .result-title{font-weight:700;margin-top:6px}
     .result-msg{color:#334155;margin-top:6px;font-size:14px}
     .result-close{margin-top:12px;padding:8px 14px;border-radius:8px;border:0;cursor:pointer;background:#0b5cff;color:white}
-    .debug{font-family:monospace;font-size:12px;color:#444;margin-top:8px;white-space:pre-wrap}
   </style>
 </head>
 <body>
@@ -143,13 +139,11 @@ color:blue;text-decoration:none;}
           <button type="button" id="submitBtn">Sign in</button>
         </div>
 
-        <div id="debugBox" class="debug" aria-live="polite" style="display:none"></div>
-
       </form>
     </main>
   </div>
 
-  <!-- Overlay for loading / result (same as registration) -->
+  <!-- Overlay for loading / result -->
   <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
     <div id="overlayCard" class="loader-card" role="document" aria-live="polite">
       <!-- Loading view -->
@@ -171,7 +165,6 @@ color:blue;text-decoration:none;}
 
   <script>
     // ---------- CONFIG ----------
-    // change if your backend URL differs
     const BACKEND_URL = 'https://wireconnet-1.onrender.com';
     const LOGIN_ENDPOINT = BACKEND_URL + '/api/login';
 
@@ -183,7 +176,6 @@ color:blue;text-decoration:none;}
     const resultTitle = document.getElementById('resultTitle');
     const resultText = document.getElementById('resultText');
     const resultClose = document.getElementById('resultClose');
-    const debugBox = document.getElementById('debugBox');
 
     // password toggle (eye)
     const togglePassword = document.getElementById('togglePassword');
@@ -220,17 +212,9 @@ color:blue;text-decoration:none;}
 
     function overlaySequenceFailure(){ if(overlay.style.display !== 'flex') overlay.style.display = 'flex'; overlay.setAttribute('aria-hidden','false'); }
 
-    function logDebug(msg){
-      console.info(msg);
-      debugBox.style.display = 'block';
-      const time = new Date().toLocaleTimeString();
-      debugBox.textContent = `[${time}] ${msg}\n` + debugBox.textContent;
-    }
-
-    // build absolute dashboard URL (same folder)
+    // build dashboard URL and redirect
     function redirectToDashboard(){
       const dashUrl = new URL('dashboard.html', window.location.href).toString();
-      console.info('Redirecting to:', dashUrl);
       window.location.href = dashUrl;
     }
 
@@ -238,7 +222,6 @@ color:blue;text-decoration:none;}
     document.getElementById('submitBtn').addEventListener('click', async () => {
       const identifier = document.getElementById('identifier').value.trim();
       const password = document.getElementById('password').value;
-      // const remember = document.getElementById('remember').checked;
 
       // client-side checks
       if(!identifier){
@@ -253,14 +236,10 @@ color:blue;text-decoration:none;}
       }
 
       showLoading();
-      logDebug('Sending login request to ' + LOGIN_ENDPOINT);
 
       const payload = { login: identifier, password };
 
       try {
-        console.info('Login payload:', payload);
-        logDebug('Payload: ' + JSON.stringify(payload));
-
         const resp = await fetch(LOGIN_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -268,67 +247,41 @@ color:blue;text-decoration:none;}
           credentials: 'include'
         });
 
-        console.info('Login response status:', resp.status, resp.statusText);
-        logDebug('HTTP status: ' + resp.status);
-
-        // parse JSON safely
         let data;
         try {
           data = await resp.json();
-        } catch (parseErr) {
-          console.error('Failed to parse JSON response:', parseErr);
-          logDebug('Failed to parse JSON response: ' + parseErr.message);
-          showResult(false, 'Login failed', 'Invalid server response (not JSON). Check console for details.');
+        } catch (err) {
+          showResult(false, 'Login failed', 'Invalid server response.');
           return;
         }
 
-        console.info('Login response body:', data);
-        logDebug('Response body: ' + JSON.stringify(data));
-
         if(!resp.ok){
           const serverMsg = data && data.message ? data.message : `HTTP ${resp.status}`;
-          console.warn('Login failed:', serverMsg);
           showResult(false, 'Login failed', serverMsg);
           return;
         }
 
-        // success: server responded ok
-        if(data && data.success){
-          if(data.user){
-            // store user object for other pages
-            try {
-              localStorage.setItem('wc_user', JSON.stringify(data.user));
-              logDebug('Saved wc_user in localStorage (user.id=' + (data.user.id || '??') + ')');
-            } catch(e){
-              console.warn('Could not save user to localStorage:', e);
-              logDebug('LocalStorage save failed: ' + e.message);
-            }
-
-            // also store token if provided
-            if(data.token){
-              try { localStorage.setItem('wc_token', data.token); logDebug('Saved wc_token'); } catch(e){}
-            }
-
-            showResult(true, 'Login successful', data.message || 'Redirecting to dashboard...');
-            // short delay so user sees success
-            setTimeout(()=>{
-              hideOverlay();
-              redirectToDashboard();
-            }, 900);
-          } else {
-            console.warn('Login success but server did not return user object:', data);
-            logDebug('Server success but no user returned');
-            showResult(false, 'Login failed', 'Server success but no user returned. Check backend.');
+        if(data && data.success && data.user){
+          try {
+            localStorage.setItem('wc_user', JSON.stringify(data.user));
+          } catch (e) {
+            // ignore storage failure
           }
+          if(data.token){
+            try { localStorage.setItem('wc_token', data.token); } catch(e){}
+          }
+
+          showResult(true, 'Login successful', data.message || 'Redirecting to dashboard...');
+          setTimeout(()=>{
+            hideOverlay();
+            redirectToDashboard();
+          }, 900);
         } else {
-          const msg = (data && data.message) ? data.message : 'Invalid credentials';
-          console.warn('Login not successful:', msg);
+          const msg = (data && data.message) ? data.message : 'Invalid credentials.';
           showResult(false, 'Login failed', msg);
         }
 
-      } catch(err){
-        console.error('Network/login error', err);
-        logDebug('Network error: ' + (err && err.message ? err.message : String(err)));
+      } catch (err){
         showResult(false, 'Login failed', 'Network error. Try again later.');
       }
     });
@@ -336,8 +289,6 @@ color:blue;text-decoration:none;}
     // result modal close
     resultClose.addEventListener('click', () => { hideOverlay(); });
 
-    // small init log
-    (function init(){ console.info('Login page ready'); logDebug('Login page loaded'); })();
   </script>
 </body>
 </html>
