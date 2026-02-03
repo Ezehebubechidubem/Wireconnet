@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — KYC Submission</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280}
+    body{font-family:Inter,Segoe UI,Roboto,Arial;background:var(--bg);margin:0;color:#111}
+    .wrap{max-width:720px;margin:28px auto;padding:18px}
+    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
+    label{display:block;margin-top:10px;font-weight:600}
+    input,textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef}
+    .btn{background:var(--accent);color:white;padding:10px;border-radius:8px;border:0;cursor:pointer;margin-top:12px}
+    .muted{color:var(--muted);font-size:13px}
+    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1200}
+    .modal{background:white;padding:18px;border-radius:12px;width:320px;text-align:center}
+    .small{font-size:13px;color:#666}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>KYC Submission</h2>
+      <div class="muted">Submit an ID and a short proof-of-work (video or link). Admin will review.</div>
+
+      <label>ID Type</label>
+      <select id="id_type">
+        <option value="national_id">National ID</option>
+        <option value="driver_license">Driver's License</option>
+        <option value="passport">Passport</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label>ID Number</label>
+      <input id="id_number" placeholder="ID number" />
+
+      <label>ID images (URLs or paste base64, one per line)</label>
+      <textarea id="id_images" placeholder="one image URL or base64 per line"></textarea>
+      <div class="small">For demo, paste image URLs. In production, you will upload images to storage and send URLs.</div>
+
+      <label>Work video URL (optional)</label>
+      <input id="work_video" placeholder="https://youtube.com/... or file URL" />
+
+      <label>Notes (optional)</label>
+      <textarea id="notes" placeholder="Any extra info"></textarea>
+
+      <button id="submitBtn" class="btn">Submit KYC</button>
+      <div id="status" class="muted" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" id="modalCard">
+      <div id="modalText">Processing...</div>
+      <div style="margin-top:10px"><button id="modalClose" class="btn" style="background:#eef3ff;color:var(--accent)">OK</button></div>
+    </div>
+  </div>
+
+<script>
+const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
+const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
+if(!me){ window.location.href = 'login.html'; }
+
+function showModal(msg){ document.getElementById('modalText').textContent = msg; document.getElementById('overlay').style.display = 'flex'; }
+document.getElementById('modalClose').addEventListener('click', ()=> { document.getElementById('overlay').style.display='none'; });
+
+document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  const id_type = document.getElementById('id_type').value;
+  const id_number = document.getElementById('id_number').value.trim();
+  const id_images_raw = document.getElementById('id_images').value.trim();
+  const work_video = document.getElementById('work_video').value.trim();
+  const notes = document.getElementById('notes').value.trim();
+
+  if(!id_number) return document.getElementById('status').textContent = 'Enter ID number';
+  if(!id_images_raw) return document.getElementById('status').textContent = 'Provide at least one ID image (URL or base64)';
+
+  const id_images = id_images_raw.split('\n').map(s=>s.trim()).filter(s=>s.length>0);
+  showModal('Submitting KYC...');
+
+  try{
+    const resp = await fetch(`${API_BASE}/api/kyc/submit`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ userId: me.id, id_type, id_number, id_images, work_video, notes })
+    });
+    const data = await resp.json();
+    if(resp.ok && data.success){
+      showModal('KYC submitted. Awaiting admin review.');
+      // update local user kyc_status
+      me.kyc_status = 'pending';
+      localStorage.setItem('wc_user', JSON.stringify(me));
+      setTimeout(()=> { document.getElementById('overlay').style.display='none'; window.location.href='dashboard.html'; }, 1200);
+    } else {
+      showModal('Submission failed: ' + (data.message || 'server error'));
+    }
+  }catch(e){
+    console.error('kyc submit error', e);
+    showModal('Network error, try again');
+  }
+
+});
+</script>
+</body>
+</html>
