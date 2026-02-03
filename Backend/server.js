@@ -466,6 +466,117 @@ app.post('/api/kyc/:reqId/decision', async (req,res)=>{
     } finally { client.release(); }
   }catch(e){ console.error('/api/kyc/:reqId/decision', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
+// ----------------- ADD: messages table (safe idempotent migration) -----------------
+(async ()=>{
+  try{
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        sender_id TEXT NOT NULL REFERENCES users(id),
+        text TEXT NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+      );
+    `);
+    console.log('messages table checked/created.');
+  }catch(err){
+    console.error('messages table init error', err);
+  }
+})();
+
+// ----------------- Chat endpoints (messages) -----------------
+
+// Get messages for a job
+app.get('/api/job/:id/messages', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    if(!jobId) return res.status(400).json({ success:false, message:'job id required' });
+
+    const rows = (await pool.query(
+      `SELECT id, job_id, sender_id, text, metadata, created_at
+       FROM messages
+       WHERE job_id = $1
+       ORDER BY created_at ASC`, [jobId]
+    )).rows;
+
+    return res.json({ success:true, messages: rows });
+  } catch(err) {
+    console.error('/api/job/:id/messages', err);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
+// Post a message to a job chat
+app.post('/api/job/:id/message', async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const { senderId, text, metadata } = req.body || {};
+    if(!jobId) return res.status(400).json({ success:false, message:'job id required' });
+    if(!senderId || !text) return res.status(400).json({ success:false, message:'senderId and text required' });
+
+    // verify job exists
+    const j = await pool.query(`SELECT id FROM jobs WHERE id=$1`, [jobId]);
+    if(!j.rows.length) return res.status(404).json({ success:false, message:'Job not found' });
+
+    const ins = await pool.query(
+      `INSERT INTO messages (job_id, sender_id, text, metadata) VALUES ($1,$2,$3,$4) RETURNING id, job_id, sender_id, text, metadata, created_at`,
+      [jobId, senderId, text, metadata || null]
+    );
+
+    // Return created message object
+    return res.json({ success:true, message: ins.rows[0] });
+  } catch(err) {
+    console.error('POST /api/job/:id/message', err);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
+// ----------------- Optional: Enhanced book endpoint that returns assigned technician info when assignment happens -----------------
+// This is additive and won't remove or change your existing /api/book route.
+// Clients can call /api/book-assign instead of /api/book if they want an immediate assignment result.
+
+app.post('/api/book-assign', async (req, res) => {
+  try {
+    const { clientId, state, city, address, lat, lng, job_type, description, price } = req.body || {};
+    if(!clientId || !state) return res.status(400).json({ success:false, message:'clientId and state required' });
+
+    const jobId = uid();
+    await pool.query(`INSERT INTO jobs (id, client_id, state, city, address, lat, lng, job_type, description, price, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [jobId, clientId, state, city||null, address||null, lat||null, lng||null, job_type||null, description||null, price||null, 'created']);
+
+    const techRows = (await pool.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [state])).rows;
+    let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(lat, lng, t.lat, t.lng) }));
+    techsWithDist.sort((a,b) => (a.distance || Number.POSITIVE_INFINITY) - (b.distance || Number.POSITIVE_INFINITY));
+
+    if(techsWithDist.length === 0){
+      await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
+      return res.json({ success:true, message:'Job created but no technicians available', jobId });
+    } else {
+      const ok = await attemptAssign(jobId, techsWithDist);
+      // If attemptAssign returned true - it set assigned_tech_id and status = 'pending_accept' in the DB.
+      if(ok){
+        // fetch current job row (to read assigned_tech_id)
+        const jr = (await pool.query(`SELECT assigned_tech_id, status FROM jobs WHERE id=$1`, [jobId])).rows[0];
+        const assignedTechId = jr ? jr.assigned_tech_id : null;
+        if(assignedTechId){
+          // fetch tech profile to return to client
+          const techProfileRes = await pool.query(`SELECT id, fullname, username, avatar_url, lat, lng FROM users WHERE id=$1`, [assignedTechId]);
+          const techProfile = techProfileRes.rows[0] || null;
+          return res.json({ success:true, message:'Job created and assigned (pending acceptance)', jobId, assigned: true, technician: techProfile });
+        } else {
+          return res.json({ success:true, message:'Job created and assigned (pending acceptance)', jobId, assigned:true });
+        }
+      } else {
+        // not immediately assigned, moved to pending_assignment by attemptAssign when no more techs
+        return res.json({ success:true, message:'Job created, no immediate assignment', jobId });
+      }
+    }
+  } catch (e) {
+    console.error('/api/book-assign', e);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
 
 // root
 app.get('/', (req,res)=> res.send('WireConnect backend (with Profile & KYC) running'));
