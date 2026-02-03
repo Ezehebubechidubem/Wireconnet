@@ -10,91 +10,173 @@
       --surface:#ffffff; --shadow: 0 8px 30px rgba(16,24,40,0.06);
       --radius:12px;
     }
-    html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:var(--bg);color:#111827;-webkit-font-smoothing:antialiased}
-    .wrap{max-width:980px;margin:18px auto;padding:14px}
-    /* HEADER - logo full width, menu button to the right */
-    header{display:flex;align-items:center;gap:12px}
+
+    /* Make the page occupy full viewport */
+    html,body{height:100%;margin:0}
+    body{
+      height:100%;
+      font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:#111827;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Header always at top, main fills remaining space */
+    header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:12px;
+      box-sizing:border-box;
+      width:100%;
+      background:transparent;
+    }
+
+    /* Logo stretches to take available width (keeps menu to the right) */
     .logo{
-      flex:1; display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0b5cff,#55a7ff);
-      border-radius:10px;padding:8px 12px;color:white;box-shadow:0 8px 24px rgba(11,92,255,0.08);
-      height:56px;box-sizing:border-box;
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      background:linear-gradient(135deg,#0b5cff,#55a7ff);
+      border-radius:10px;
+      padding:8px 12px;
+      color:white;
+      box-shadow:0 8px 24px rgba(11,92,255,0.08);
+      min-height:56px;
+      box-sizing:border-box;
     }
     .logo img{height:40px; object-fit:contain}
+
     .menu-btn{
-      width:54px;height:54px;border-radius:10px;border:0;background:#0b5cff;color:white;display:flex;align-items:center;justify-content:center;
+      width:54px;height:54px;border-radius:10px;border:0;background:#0b5cff;color:white;
+      display:flex;align-items:center;justify-content:center;
       box-shadow:0 8px 18px rgba(11,92,255,0.12);cursor:pointer;font-weight:700;
+      flex:0 0 auto;
     }
-    main.card{background:var(--card);border-radius:var(--radius);padding:14px;margin-top:12px;box-shadow:var(--shadow)}
+
+    /* Main area stretches to fill the rest of the screen */
+    main{
+      flex:1 1 auto;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      width:100%;
+      box-sizing:border-box;
+      padding:14px;
+      overflow:hidden; /* child will scroll */
+    }
+
+    /* Centered page card that is also full-height scrollable */
+    .card {
+      width:100%;
+      max-width:980px;              /* keeps desktop layout centered and tidy */
+      height:100%;
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:16px;
+      box-shadow:var(--shadow);
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+
+    /* inner content scroll area */
+    .content {
+      flex:1 1 auto;
+      overflow:auto;
+      padding-right:6px; /* small breathing room for scrollbar */
+    }
+
     /* content blocks */
     .section{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(16,24,40,0.04)}
     .section h3{margin:0 0 6px;font-size:16px}
     .top-list{padding:8px 0}
     .top-item{padding:10px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#fbfcff);margin-bottom:8px}
     .muted{color:var(--muted);font-size:13px}
-    /* off-canvas menu */
+
+    /* Drawer / Menu */
     .drawer-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;z-index:1000}
-    .drawer{position:fixed;right:0;top:0;height:100%;width:320px;max-width:86vw;background:white;box-shadow:-16px 0 40px rgba(2,6,23,0.12);transform:translateX(100%);transition:transform .28s ease;z-index:1001;padding:18px;box-sizing:border-box}
+    .drawer{position:fixed;right:0;top:0;height:100%;width:360px;max-width:92vw;background:white;box-shadow:-16px 0 40px rgba(2,6,23,0.12);transform:translateX(100%);transition:transform .28s ease;z-index:1001;padding:18px;box-sizing:border-box}
     .drawer.open{transform:translateX(0)}
     .drawer .header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    .drawer .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#0b5cff,#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#0b5cff,#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
     .drawer a{display:block;padding:12px;border-radius:8px;color:#0b0b0b;text-decoration:none;margin-bottom:8px;border:1px solid #f1f5f9;background:#fbfdff}
     .drawer .primary{background:linear-gradient(90deg,#0b5cff,#55a7ff);color:white;border:0}
     .drawer .muted{font-size:13px;color:var(--muted)}
     .toggle-row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 0}
     .badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#eef3ff;color:var(--accent)}
-    /* responsive */
-    @media(max-width:720px){
-      .drawer{width:92vw}
-      .logo img{height:34px}
+
+    /* small helper layout for the top greeting */
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
     }
+
+    /* accessibility and small screens */
+    @media(max-width:720px){
+      .logo img{height:34px}
+      .drawer{width:92vw}
+      .card{border-radius:12px;padding:12px}
+    }
+
+    /* nice thin scrollbar for desktop */
+    .content::-webkit-scrollbar{width:8px}
+    .content::-webkit-scrollbar-thumb{background:rgba(11,92,255,0.12);border-radius:8px}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="logo" role="banner" aria-label="WireConnect">
-        <!-- exact logo you provided -->
-        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
-        <div style="font-weight:700;font-size:15px">WireConnect — Technician Dashboard</div>
-      </div>
+  <header>
+    <div class="logo" role="banner" aria-label="WireConnect">
+      <!-- exact logo you provided -->
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+      <div style="font-weight:700;font-size:15px">WireConnect — Technician Dashboard</div>
+    </div>
 
-      <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
-    </header>
+    <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
+  </header>
 
-    <main class="card" role="main">
-      <!-- optional greeting below logo (visible inside page) -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <main>
+    <section class="card" role="main" aria-labelledby="dashboardHeading">
+      <!-- top bar + greeting -->
+      <div class="topbar">
         <div>
-          <div style="font-size:16px;font-weight:700">Welcome back</div>
+          <div id="dashboardHeading" style="font-size:18px;font-weight:700">Welcome back</div>
           <div class="muted" id="userGreeting">Tech — set up your profile</div>
         </div>
-        <div class="badge" id="statusBadge">Offline</div>
+        <div class="badge" id="statusBadge" aria-live="polite">Offline</div>
       </div>
 
-      <!-- Announcements -->
-      <section class="section" aria-labelledby="ann">
-        <h3 id="ann">Announcements</h3>
-        <div class="muted">No new announcements</div>
-      </section>
+      <!-- scrollable area -->
+      <div class="content">
+        <section class="section" aria-labelledby="ann">
+          <h3 id="ann">Announcements</h3>
+          <div class="muted">No new announcements</div>
+        </section>
 
-      <!-- Articles -->
-      <section class="section" aria-labelledby="news">
-        <h3 id="news">Articles & News</h3>
-        <div class="muted">Latest industry news will appear here.</div>
-      </section>
+        <section class="section" aria-labelledby="news">
+          <h3 id="news">Articles & News</h3>
+          <div class="muted">Latest industry news will appear here.</div>
+        </section>
 
-      <!-- Top Technicians (example) -->
-      <section class="section" aria-labelledby="toptech">
-        <h3 id="toptech">Top Technicians</h3>
-        <div class="top-list" id="leaderboard">
-          <div class="top-item"><strong>Ezeh Bonk</strong><div class="muted">Count: 0</div></div>
-        </div>
-      </section>
+        <section class="section" aria-labelledby="toptech">
+          <h3 id="toptech">Top Technicians</h3>
+          <div class="top-list" id="leaderboard">
+            <div class="top-item"><strong>Ezeh Bonk</strong><div class="muted">Count: 0</div></div>
+          </div>
+        </section>
 
-      <!-- the Quick Actions were removed from the page body and moved into the Menu as requested -->
-      <div class="muted">Quick actions (Go Online/Offline, Profile & KYC, Settings, Quotations) are available inside the Menu (top-right).</div>
-    </main>
-  </div>
+        <div class="muted" style="padding:10px 6px">Quick actions (Go Online/Offline, Profile & KYC, Settings, Quotations) are available inside the Menu (top-right).</div>
+      </div>
+    </section>
+  </main>
 
   <!-- Drawer / Menu -->
   <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
@@ -136,7 +218,7 @@
   </aside>
 
   <script>
-    // UI elements
+    // DOM refs
     const menuBtn = document.getElementById('menuBtn');
     const drawer = document.getElementById('drawer');
     const backdrop = document.getElementById('drawerBackdrop');
@@ -146,15 +228,10 @@
     const drawerUser = document.getElementById('drawerUser');
     const userGreeting = document.getElementById('userGreeting');
 
-    // backend endpoint to POST online status (optional). Update to your real backend path if different.
-    const STATUS_ENDPOINT = (function(){ 
-      // try to guess base URL from current host, or replace with your render URL 
-      const orig = window.location.origin;
-      // if your API is hosted elsewhere, set it explicitly here:
-      return (typeof BACKEND_BASE !== 'undefined') ? BACKEND_BASE + '/api/technician/status' : 'https://wireconnet-1.onrender.com/api/technician/status';
-    })();
+    // Endpoint (update if needed)
+    const STATUS_ENDPOINT = 'https://wireconnet-1.onrender.com/api/technician/status';
 
-    // open/close drawer
+    // open / close drawer
     function openDrawer(){
       drawer.classList.add('open');
       backdrop.style.display = 'block';
@@ -170,7 +247,7 @@
     menuBtn.addEventListener('click', openDrawer);
     backdrop.addEventListener('click', closeDrawer);
 
-    // read user info from localStorage (if available)
+    // load user from localStorage
     function loadUser(){
       try {
         const raw = localStorage.getItem('wc_user');
@@ -181,12 +258,10 @@
         } else {
           drawerUser.textContent = 'Technician';
         }
-      } catch(e){
-        console.warn('Could not load user info', e);
-      }
+      } catch(e){ console.warn('Could not load user', e); }
     }
 
-    // online toggle handling
+    // UI state setter
     function setOnlineUI(isOnline){
       statusBadge.textContent = isOnline ? 'Online' : 'Offline';
       statusBadge.style.background = isOnline ? '#ecfff5' : 'transparent';
@@ -198,12 +273,10 @@
     }
 
     async function updateOnlineStatus(on){
-      // local quick UI
       setOnlineUI(on);
       drawerFeedback.textContent = (on ? 'Trying to take jobs...' : 'You will not receive jobs while offline.');
       localStorage.setItem('wc_online', on ? '1' : '0');
 
-      // try to notify backend (best-effort)
       const token = localStorage.getItem('wc_token');
       try {
         const resp = await fetch(STATUS_ENDPOINT, {
@@ -221,35 +294,30 @@
           drawerFeedback.textContent = 'Server response: ' + (text || resp.statusText);
         }
       } catch(err){
-        console.warn('Status update failed (server not reachable?)', err);
+        console.warn('Status update failed', err);
         drawerFeedback.textContent = 'Network: could not notify server (saved locally).';
       }
     }
 
-    // wire toggle button
     toggleOnlineBtn.addEventListener('click', ()=>{
       const current = localStorage.getItem('wc_online') === '1';
-      const want = !current;
-      updateOnlineStatus(want);
+      updateOnlineStatus(!current);
     });
 
-    // pre-fill UI from stored state
+    // initialize
     (function init(){
       loadUser();
       const onlineFlag = localStorage.getItem('wc_online') === '1';
       setOnlineUI(onlineFlag);
-      // hide menu if clicked outside or esc
       document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeDrawer(); });
     })();
 
-    // Logout behavior (simple)
+    // logout
     document.getElementById('logoutBtn').addEventListener('click', (ev)=>{
       ev.preventDefault();
       localStorage.removeItem('wc_user');
       localStorage.removeItem('wc_token');
-      // optionally clear online flag
       localStorage.removeItem('wc_online');
-      // redirect to login
       window.location.href = 'login.html';
     });
   </script>
