@@ -7,363 +7,251 @@
   <style>
     :root{
       --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280;
+      --surface:#ffffff; --shadow: 0 8px 30px rgba(16,24,40,0.06);
+      --radius:12px;
     }
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:#111}
-    body{background:var(--bg)}
-    .wrap{max-width:1100px;margin:16px auto;padding:12px}
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .logo{display:flex;align-items:center;gap:10px}
-    .logo img{height:52px;border-radius:8px}
-    .userbox{display:flex;gap:12px;align-items:center}
-    .avatar{width:44px;height:44px;border-radius:50%;background:#eef3ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent)}
-    .btn{background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
-    .row{display:flex;gap:12px}
-    .col{flex:1}
-    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06)}
+    html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:var(--bg);color:#111827;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:980px;margin:18px auto;padding:14px}
+    /* HEADER - logo full width, menu button to the right */
+    header{display:flex;align-items:center;gap:12px}
+    .logo{
+      flex:1; display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0b5cff,#55a7ff);
+      border-radius:10px;padding:8px 12px;color:white;box-shadow:0 8px 24px rgba(11,92,255,0.08);
+      height:56px;box-sizing:border-box;
+    }
+    .logo img{height:40px; object-fit:contain}
+    .menu-btn{
+      width:54px;height:54px;border-radius:10px;border:0;background:#0b5cff;color:white;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 8px 18px rgba(11,92,255,0.12);cursor:pointer;font-weight:700;
+    }
+    main.card{background:var(--card);border-radius:var(--radius);padding:14px;margin-top:12px;box-shadow:var(--shadow)}
+    /* content blocks */
+    .section{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(16,24,40,0.04)}
+    .section h3{margin:0 0 6px;font-size:16px}
+    .top-list{padding:8px 0}
+    .top-item{padding:10px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#fbfcff);margin-bottom:8px}
     .muted{color:var(--muted);font-size:13px}
-    h2{margin:0 0 8px 0;font-size:18px}
-    .leaderboard li{padding:8px 0;border-bottom:1px dashed #eee}
-    .ann, .article{margin-bottom:10px}
-    .actions{display:flex;gap:8px;align-items:center}
-
-    /* Booking form */
-    .form-row{display:flex;gap:8px}
-    .form-row .col{flex:1}
-    input, select, textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;box-sizing:border-box}
-    textarea{min-height:80px}
-
-    /* mobile responsive */
-    @media(max-width:900px){ .row{flex-direction:column} .logo img{height:44px} .avatar{width:36px;height:36px} }
-
-    /* modal for accept/decline */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:2000}
-    .modal-card{background:white;padding:18px;border-radius:12px;max-width:420px;width:92%}
-    .timer{font-weight:700;color:var(--accent)}
+    /* off-canvas menu */
+    .drawer-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;z-index:1000}
+    .drawer{position:fixed;right:0;top:0;height:100%;width:320px;max-width:86vw;background:white;box-shadow:-16px 0 40px rgba(2,6,23,0.12);transform:translateX(100%);transition:transform .28s ease;z-index:1001;padding:18px;box-sizing:border-box}
+    .drawer.open{transform:translateX(0)}
+    .drawer .header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+    .drawer .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#0b5cff,#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+    .drawer a{display:block;padding:12px;border-radius:8px;color:#0b0b0b;text-decoration:none;margin-bottom:8px;border:1px solid #f1f5f9;background:#fbfdff}
+    .drawer .primary{background:linear-gradient(90deg,#0b5cff,#55a7ff);color:white;border:0}
+    .drawer .muted{font-size:13px;color:var(--muted)}
+    .toggle-row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 0}
+    .badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#eef3ff;color:var(--accent)}
+    /* responsive */
+    @media(max-width:720px){
+      .drawer{width:92vw}
+      .logo img{height:34px}
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="logo">
-        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect">
-        <div>
-          <div style="font-weight:700">WireConnect</div>
-          <div class="muted" id="roleLabel">Loading...</div>
-        </div>
+      <div class="logo" role="banner" aria-label="WireConnect">
+        <!-- exact logo you provided -->
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+        <div style="font-weight:700;font-size:15px">WireConnect — Technician Dashboard</div>
       </div>
 
-      <div class="userbox">
-        <div class="muted" id="welcome">Welcome</div>
-        <div class="avatar" id="avatar">WC</div>
-        <button class="btn" id="menuBtn">☰ Menu</button>
-      </div>
+      <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
     </header>
 
-    <div class="row">
-      <div class="col" style="flex:1.6">
-        <div class="card" style="margin-bottom:12px">
-          <h2>Announcements</h2>
-          <div id="announcements"></div>
+    <main class="card" role="main">
+      <!-- optional greeting below logo (visible inside page) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-size:16px;font-weight:700">Welcome back</div>
+          <div class="muted" id="userGreeting">Tech — set up your profile</div>
         </div>
-
-        <div class="card" style="margin-bottom:12px">
-          <h2>Articles & News</h2>
-          <div id="articles"></div>
-        </div>
-
-        <!-- booking form (visible only for clients) -->
-        <div id="bookingCard" class="card" style="display:none">
-          <h2>Book a Job</h2>
-          <div class="muted" style="margin-bottom:8px">Fill details and press Book</div>
-          <div class="form-row">
-            <div class="col"><input id="job_type" placeholder="Job type (e.g., Conduit Wiring)"></div>
-            <div class="col"><input id="job_price" type="number" placeholder="Price (optional)"></div>
-          </div>
-          <div style="margin-top:8px"><input id="job_state" placeholder="State"></div>
-          <div style="margin-top:8px"><input id="job_city" placeholder="City"></div>
-          <div style="margin-top:8px"><input id="job_address" placeholder="Address"></div>
-          <div style="margin-top:8px"><textarea id="job_desc" placeholder="Description"></textarea></div>
-          <div style="margin-top:8px"><button id="bookBtn" class="btn">Book</button></div>
-          <div id="bookMsg" class="muted" style="margin-top:8px"></div>
-        </div>
-
+        <div class="badge" id="statusBadge">Offline</div>
       </div>
 
-      <div class="col" style="flex:0.9">
-        <div class="card" style="margin-bottom:12px">
-          <h2 id="leaderTitle">Leaderboard</h2>
-          <ul class="leaderboard" id="leaderboard" style="list-style:none;padding:0;margin:8px 0"></ul>
-        </div>
+      <!-- Announcements -->
+      <section class="section" aria-labelledby="ann">
+        <h3 id="ann">Announcements</h3>
+        <div class="muted">No new announcements</div>
+      </section>
 
-        <div class="card" style="margin-bottom:12px">
-          <h2>Quick Actions</h2>
-          <div style="display:flex;gap:8px;flex-direction:column">
-            <button id="toggleOnline" class="btn">Go Online</button>
-            <button id="profileBtn" class="btn" style="background:#eef3ff;color:var(--accent)">Profile & KYC</button>
-            <button id="settingsBtn" class="btn" style="background:#fff;border:1px solid #e6e9ef;color:#333">Settings</button>
-          </div>
-        </div>
+      <!-- Articles -->
+      <section class="section" aria-labelledby="news">
+        <h3 id="news">Articles & News</h3>
+        <div class="muted">Latest industry news will appear here.</div>
+      </section>
 
-      </div>
-    </div>
+      <!-- Top Technicians (example) -->
+      <section class="section" aria-labelledby="toptech">
+        <h3 id="toptech">Top Technicians</h3>
+        <div class="top-list" id="leaderboard">
+          <div class="top-item"><strong>Ezeh Bonk</strong><div class="muted">Count: 0</div></div>
+        </div>
+      </section>
+
+      <!-- the Quick Actions were removed from the page body and moved into the Menu as requested -->
+      <div class="muted">Quick actions (Go Online/Offline, Profile & KYC, Settings, Quotations) are available inside the Menu (top-right).</div>
+    </main>
   </div>
 
-  <!-- Technician accept modal -->
-  <div id="acceptModal" class="modal" role="dialog" aria-modal="true">
-    <div class="modal-card">
-      <h3 id="modalTitle">New Job Request</h3>
-      <div id="modalDetails" style="margin-top:8px"></div>
-      <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between">
-        <div>Respond remaining: <span class="timer" id="countdown">60</span>s</div>
-        <div style="display:flex;gap:8px">
-          <button id="acceptBtn" class="btn">Accept</button>
-          <button id="declineBtn" class="btn" style="background:#fff;color:#333;border:1px solid #e6e9ef">Decline</button>
-        </div>
+  <!-- Drawer / Menu -->
+  <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
+  <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Main menu">
+    <div class="header">
+      <div class="logo-small" aria-hidden="true">
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="" style="height:28px;object-fit:contain">
+      </div>
+      <div>
+        <div style="font-weight:700">Quick Menu</div>
+        <div class="muted" id="drawerUser">Technician</div>
       </div>
     </div>
-  </div>
 
-<script>
-/*
-  Dashboard frontend logic
-  - expects localStorage.wc_user to be set with logged-in user
-  - connects to backend endpoints:
-    GET /api/dashboard?role={role}
-    POST /api/book
-    POST /api/tech/status
-    GET /api/assigned-jobs?techId={id}
-    POST /api/job/:id/respond
-*/
+    <nav>
+      <a href="quotations.html" id="quotationsLink">Quotations</a>
+      <a href="profile.html" id="profileLink">Profile & KYC</a>
+      <a href="settings.html" id="settingsLink">Settings</a>
 
-const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
+      <div style="height:8px"></div>
 
-// read logged-in user
-const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
-if(!me){
-  // not logged in -> redirect
-  window.location.href = 'login.html';
-} else {
-  document.getElementById('welcome').textContent = 'Hi, ' + (me.username || me.fullname);
-  document.getElementById('roleLabel').textContent = (me.role === 'worker' ? 'Technician dashboard' : 'Client dashboard');
-  document.getElementById('avatar').textContent = (me.username ? me.username[0].toUpperCase() : 'WC');
-}
+      <div class="toggle-row" style="align-items:center;">
+        <div>
+          <div style="font-weight:600">Availability</div>
+          <div class="muted">Go online to receive job requests</div>
+        </div>
+        <div>
+          <button id="toggleOnlineBtn" class="primaryToggle" style="padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:white;cursor:pointer">Go Online</button>
+        </div>
+      </div>
 
-// init UI visibility
-if(me.role === 'client'){
-  document.getElementById('bookingCard').style.display = 'block';
-  document.getElementById('leaderTitle').textContent = 'Top Clients';
-} else {
-  document.getElementById('bookingCard').style.display = 'none';
-  document.getElementById('leaderTitle').textContent = 'Top Technicians';
-}
+      <div style="height:10px"></div>
+      <div class="muted">Other actions</div>
+      <a href="#" id="logoutBtn" style="background:#fff;border:1px solid #f1f5f9">Logout</a>
 
-// fetch dashboard data
-async function loadDashboard(){
-  try{
-    const res = await fetch(`${API_BASE}/api/dashboard?role=${me.role}`);
-    const data = await res.json();
-    if(!data.success) return console.error('Dashboard error', data);
-    // announcements
-    const annEl = document.getElementById('announcements'); annEl.innerHTML = '';
-    data.announcements.forEach(a=>{
-      const div = document.createElement('div'); div.className='ann';
-      div.innerHTML = `<strong>${a.title}</strong><div class="muted">${new Date(a.created_at).toLocaleString()}</div><div>${a.body}</div>`;
-      annEl.appendChild(div);
-    });
-    // articles
-    const artEl = document.getElementById('articles'); artEl.innerHTML = '';
-    data.articles.forEach(a=>{
-      const div = document.createElement('div'); div.className='article';
-      div.innerHTML = `<strong>${a.title}</strong><div class="muted">${a.excerpt || ''}</div>`;
-      artEl.appendChild(div);
-    });
-    // leaderboard
-    const lb = document.getElementById('leaderboard'); lb.innerHTML = '';
-    (data.leaderboard || []).forEach(row=>{
-      const li = document.createElement('li');
-      li.innerHTML = `<strong>${row.fullname || row.username}</strong> <div class="muted">Count: ${row.jobs_completed || row.jobs_posted || 0}</div>`;
-      lb.appendChild(li);
-    });
-  }catch(e){ console.error('loadDashboard', e); }
-}
-loadDashboard();
+      <div style="height:14px"></div>
+      <div class="muted" id="drawerFeedback" style="font-size:13px"></div>
+    </nav>
+  </aside>
 
-// ---------- Client: Booking ----------
-document.getElementById('bookBtn').addEventListener('click', async ()=>{
-  const job_type = document.getElementById('job_type').value.trim();
-  const price = document.getElementById('job_price').value || null;
-  const state = document.getElementById('job_state').value.trim() || me.state;
-  const city = document.getElementById('job_city').value.trim() || me.city;
-  const address = document.getElementById('job_address').value.trim();
-  const desc = document.getElementById('job_desc').value.trim();
-  const payload = {
-    clientId: me.id,
-    state, city, address,
-    lat: null, lng: null,
-    job_type, description: desc, price
-  };
-  document.getElementById('bookMsg').textContent = 'Sending booking...';
-  try{
-    const r = await fetch(`${API_BASE}/api/book`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
-    });
-    const data = await r.json();
-    if(data.success){
-      document.getElementById('bookMsg').textContent = data.message + ' (jobId: '+ (data.jobId||'') +')';
-    }else{
-      document.getElementById('bookMsg').textContent = 'Booking failed: ' + (data.message || 'error');
+  <script>
+    // UI elements
+    const menuBtn = document.getElementById('menuBtn');
+    const drawer = document.getElementById('drawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+    const toggleOnlineBtn = document.getElementById('toggleOnlineBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const drawerFeedback = document.getElementById('drawerFeedback');
+    const drawerUser = document.getElementById('drawerUser');
+    const userGreeting = document.getElementById('userGreeting');
+
+    // backend endpoint to POST online status (optional). Update to your real backend path if different.
+    const STATUS_ENDPOINT = (function(){ 
+      // try to guess base URL from current host, or replace with your render URL 
+      const orig = window.location.origin;
+      // if your API is hosted elsewhere, set it explicitly here:
+      return (typeof BACKEND_BASE !== 'undefined') ? BACKEND_BASE + '/api/technician/status' : 'https://wireconnet-1.onrender.com/api/technician/status';
+    })();
+
+    // open/close drawer
+    function openDrawer(){
+      drawer.classList.add('open');
+      backdrop.style.display = 'block';
+      drawer.setAttribute('aria-hidden','false');
+      backdrop.setAttribute('aria-hidden','false');
     }
-  }catch(e){ document.getElementById('bookMsg').textContent = 'Network error'; console.error(e); }
-});
+    function closeDrawer(){
+      drawer.classList.remove('open');
+      backdrop.style.display = 'none';
+      drawer.setAttribute('aria-hidden','true');
+      backdrop.setAttribute('aria-hidden','true');
+    }
+    menuBtn.addEventListener('click', openDrawer);
+    backdrop.addEventListener('click', closeDrawer);
 
-// ---------- Technician: Online toggle & polling ----------
-let pollingInterval = null;
-document.getElementById('toggleOnline').addEventListener('click', async ()=>{
-  // toggle online flag, and update on server
-  const toOnline = !me.online;
-  // attempt to capture device location if possible (optional)
-  let lat=null,lng=null;
-  try{
-    const pos = await new Promise((resolve, reject)=>{
-      navigator.geolocation.getCurrentPosition(p=>resolve(p), e=>resolve(null), {timeout:5000});
-    });
-    if(pos){ lat = pos.coords.latitude; lng = pos.coords.longitude; }
-  }catch(e){ /* ignore */ }
-
-  try{
-    const r = await fetch(`${API_BASE}/api/tech/status`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: me.id, online: toOnline, lat, lng })
-    });
-    const d = await r.json();
-    if(d.success){
-      me.online = toOnline;
-      me.lat = lat; me.lng = lng;
-      localStorage.setItem('wc_user', JSON.stringify(me));
-      document.getElementById('toggleOnline').textContent = me.online ? 'Go Offline' : 'Go Online';
-      if(me.online){
-        startPollingAssignedJobs();
-      } else {
-        stopPollingAssignedJobs();
+    // read user info from localStorage (if available)
+    function loadUser(){
+      try {
+        const raw = localStorage.getItem('wc_user');
+        if(raw){
+          const u = JSON.parse(raw);
+          drawerUser.textContent = u.fullname || u.username || 'Technician';
+          userGreeting.textContent = (u.fullname ? u.fullname : u.username) + ' — ready to work';
+        } else {
+          drawerUser.textContent = 'Technician';
+        }
+      } catch(e){
+        console.warn('Could not load user info', e);
       }
-    } else {
-      alert('Failed to update status: '+(d.message||''));
     }
-  }catch(e){ console.error('status update', e); alert('Network error'); }
-});
 
-// polling
-async function pollAssignedJobs(){
-  try{
-    const r = await fetch(`${API_BASE}/api/assigned-jobs?techId=${me.id}`);
-    const d = await r.json();
-    if(d.success && d.jobs && d.jobs.length){
-      // show newest job (first)
-      const job = d.jobs[0];
-      showAcceptModal(job);
+    // online toggle handling
+    function setOnlineUI(isOnline){
+      statusBadge.textContent = isOnline ? 'Online' : 'Offline';
+      statusBadge.style.background = isOnline ? '#ecfff5' : 'transparent';
+      statusBadge.style.color = isOnline ? '#037a50' : 'var(--muted)';
+      toggleOnlineBtn.textContent = isOnline ? 'Go Offline' : 'Go Online';
+      toggleOnlineBtn.style.background = isOnline ? '#fff' : 'var(--accent)';
+      toggleOnlineBtn.style.color = isOnline ? 'var(--accent)' : '#fff';
+      toggleOnlineBtn.style.border = isOnline ? '1px solid #e6eef9' : '0';
     }
-  }catch(e){ console.error('pollAssignedJobs', e); }
-}
-function startPollingAssignedJobs(){
-  if(pollingInterval) clearInterval(pollingInterval);
-  pollAssignedJobs();
-  pollingInterval = setInterval(pollAssignedJobs, 5000);
-}
-function stopPollingAssignedJobs(){
-  if(pollingInterval) clearInterval(pollingInterval);
-  pollingInterval = null;
-}
 
-// accept modal
-let acceptTimer = null;
-let acceptRemaining = 60;
-let currentJobModal = null;
-function showAcceptModal(job){
-  // if modal already showing for same job, ignore
-  if(currentJobModal && currentJobModal.id === job.id) return;
-  currentJobModal = job;
-  document.getElementById('modalTitle').textContent = 'New Job Request — ' + (job.job_type || 'General');
-  document.getElementById('modalDetails').innerHTML = `
-    <div><strong>Client:</strong> ${job.client_id}</div>
-    <div><strong>Address:</strong> ${job.address || (job.city) || ''}</div>
-    <div class="muted">${job.description || ''}</div>
-  `;
-  acceptRemaining = 60;
-  document.getElementById('countdown').textContent = acceptRemaining;
-  document.getElementById('acceptModal').style.display = 'flex';
+    async function updateOnlineStatus(on){
+      // local quick UI
+      setOnlineUI(on);
+      drawerFeedback.textContent = (on ? 'Trying to take jobs...' : 'You will not receive jobs while offline.');
+      localStorage.setItem('wc_online', on ? '1' : '0');
 
-  if(acceptTimer) clearInterval(acceptTimer);
-  acceptTimer = setInterval(()=>{
-    acceptRemaining--;
-    document.getElementById('countdown').textContent = acceptRemaining;
-    if(acceptRemaining <= 0){
-      clearInterval(acceptTimer);
-      acceptTimer = null;
-      // auto-decline via backend
-      declineJob(job.id);
-      hideAcceptModal();
+      // try to notify backend (best-effort)
+      const token = localStorage.getItem('wc_token');
+      try {
+        const resp = await fetch(STATUS_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+          },
+          body: JSON.stringify({ online: !!on }),
+        });
+        if(resp.ok){
+          drawerFeedback.textContent = on ? 'You are now online — waiting for job requests.' : 'You are now offline.';
+        } else {
+          const text = await resp.text().catch(()=>null);
+          drawerFeedback.textContent = 'Server response: ' + (text || resp.statusText);
+        }
+      } catch(err){
+        console.warn('Status update failed (server not reachable?)', err);
+        drawerFeedback.textContent = 'Network: could not notify server (saved locally).';
+      }
     }
-  }, 1000);
-}
 
-function hideAcceptModal(){
-  document.getElementById('acceptModal').style.display = 'none';
-  currentJobModal = null;
-  if(acceptTimer) { clearInterval(acceptTimer); acceptTimer = null; }
-}
-
-// accept/decline handlers
-async function acceptJob(jobId){
-  try{
-    const r = await fetch(`${API_BASE}/api/job/${jobId}/respond`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: me.id, action: 'accept' })
+    // wire toggle button
+    toggleOnlineBtn.addEventListener('click', ()=>{
+      const current = localStorage.getItem('wc_online') === '1';
+      const want = !current;
+      updateOnlineStatus(want);
     });
-    const d = await r.json();
-    if(d.success){
-      alert('Job accepted — open chat to coordinate.');
-      hideAcceptModal();
-    } else {
-      alert('Could not accept: ' + (d.message || ''));
-    }
-  }catch(e){ console.error('acceptJob', e); alert('Network error'); }
-}
-async function declineJob(jobId){
-  try{
-    const r = await fetch(`${API_BASE}/api/job/${jobId}/respond`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: me.id, action: 'decline' })
+
+    // pre-fill UI from stored state
+    (function init(){
+      loadUser();
+      const onlineFlag = localStorage.getItem('wc_online') === '1';
+      setOnlineUI(onlineFlag);
+      // hide menu if clicked outside or esc
+      document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeDrawer(); });
+    })();
+
+    // Logout behavior (simple)
+    document.getElementById('logoutBtn').addEventListener('click', (ev)=>{
+      ev.preventDefault();
+      localStorage.removeItem('wc_user');
+      localStorage.removeItem('wc_token');
+      // optionally clear online flag
+      localStorage.removeItem('wc_online');
+      // redirect to login
+      window.location.href = 'login.html';
     });
-    const d = await r.json();
-    if(d.success){
-      console.log('declined');
-    }
-  }catch(e){ console.error('declineJob', e); }
-}
-
-document.getElementById('acceptBtn').addEventListener('click', ()=> {
-  if(!currentJobModal) return;
-  acceptJob(currentJobModal.id);
-  hideAcceptModal();
-});
-document.getElementById('declineBtn').addEventListener('click', ()=> {
-  if(!currentJobModal) return;
-  declineJob(currentJobModal.id);
-  hideAcceptModal();
-});
-
-// initialize technician polling if online
-if(me.role === 'worker' && me.online){
-  document.getElementById('toggleOnline').textContent = 'Go Offline';
-  startPollingAssignedJobs();
-} else {
-  document.getElementById('toggleOnline').textContent = 'Go Online';
-}
-
-// hook profile/settings buttons (placeholder)
-document.getElementById('profileBtn').addEventListener('click', ()=> alert('Open profile & KYC (to build)'));
-document.getElementById('settingsBtn').addEventListener('click', ()=> alert('Open settings (to build)'));
-
-// initial refresh of dashboard every 60s
-setInterval(loadDashboard, 60*1000);
-
-</script>
+  </script>
 </body>
 </html>
