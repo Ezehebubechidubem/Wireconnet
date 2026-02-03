@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — Dashboard</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;color:#111}
+    body{background:var(--bg)}
+    .wrap{max-width:1100px;margin:16px auto;padding:12px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .logo{display:flex;align-items:center;gap:10px}
+    .logo img{height:52px;border-radius:8px}
+    .userbox{display:flex;gap:12px;align-items:center}
+    .avatar{width:44px;height:44px;border-radius:50%;background:#eef3ff;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent)}
+    .btn{background:var(--accent);color:white;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06)}
+    .muted{color:var(--muted);font-size:13px}
+    h2{margin:0 0 8px 0;font-size:18px}
+    .leaderboard li{padding:8px 0;border-bottom:1px dashed #eee}
+    .ann, .article{margin-bottom:10px}
+    .actions{display:flex;gap:8px;align-items:center}
+
+    /* Booking form */
+    .form-row{display:flex;gap:8px}
+    .form-row .col{flex:1}
+    input, select, textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;box-sizing:border-box}
+    textarea{min-height:80px}
+
+    /* mobile responsive */
+    @media(max-width:900px){ .row{flex-direction:column} .logo img{height:44px} .avatar{width:36px;height:36px} }
+
+    /* modal for accept/decline */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:2000}
+    .modal-card{background:white;padding:18px;border-radius:12px;max-width:420px;width:92%}
+    .timer{font-weight:700;color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect">
+        <div>
+          <div style="font-weight:700">WireConnect</div>
+          <div class="muted" id="roleLabel">Loading...</div>
+        </div>
+      </div>
+
+      <div class="userbox">
+        <div class="muted" id="welcome">Welcome</div>
+        <div class="avatar" id="avatar">WC</div>
+        <button class="btn" id="menuBtn">☰ Menu</button>
+      </div>
+    </header>
+
+    <div class="row">
+      <div class="col" style="flex:1.6">
+        <div class="card" style="margin-bottom:12px">
+          <h2>Announcements</h2>
+          <div id="announcements"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <h2>Articles & News</h2>
+          <div id="articles"></div>
+        </div>
+
+        <!-- booking form (visible only for clients) -->
+        <div id="bookingCard" class="card" style="display:none">
+          <h2>Book a Job</h2>
+          <div class="muted" style="margin-bottom:8px">Fill details and press Book</div>
+          <div class="form-row">
+            <div class="col"><input id="job_type" placeholder="Job type (e.g., Conduit Wiring)"></div>
+            <div class="col"><input id="job_price" type="number" placeholder="Price (optional)"></div>
+          </div>
+          <div style="margin-top:8px"><input id="job_state" placeholder="State"></div>
+          <div style="margin-top:8px"><input id="job_city" placeholder="City"></div>
+          <div style="margin-top:8px"><input id="job_address" placeholder="Address"></div>
+          <div style="margin-top:8px"><textarea id="job_desc" placeholder="Description"></textarea></div>
+          <div style="margin-top:8px"><button id="bookBtn" class="btn">Book</button></div>
+          <div id="bookMsg" class="muted" style="margin-top:8px"></div>
+        </div>
+
+      </div>
+
+      <div class="col" style="flex:0.9">
+        <div class="card" style="margin-bottom:12px">
+          <h2 id="leaderTitle">Leaderboard</h2>
+          <ul class="leaderboard" id="leaderboard" style="list-style:none;padding:0;margin:8px 0"></ul>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+          <h2>Quick Actions</h2>
+          <div style="display:flex;gap:8px;flex-direction:column">
+            <button id="toggleOnline" class="btn">Go Online</button>
+            <button id="profileBtn" class="btn" style="background:#eef3ff;color:var(--accent)">Profile & KYC</button>
+            <button id="settingsBtn" class="btn" style="background:#fff;border:1px solid #e6e9ef;color:#333">Settings</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Technician accept modal -->
+  <div id="acceptModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h3 id="modalTitle">New Job Request</h3>
+      <div id="modalDetails" style="margin-top:8px"></div>
+      <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+        <div>Respond remaining: <span class="timer" id="countdown">60</span>s</div>
+        <div style="display:flex;gap:8px">
+          <button id="acceptBtn" class="btn">Accept</button>
+          <button id="declineBtn" class="btn" style="background:#fff;color:#333;border:1px solid #e6e9ef">Decline</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Dashboard frontend logic
+  - expects localStorage.wc_user to be set with logged-in user
+  - connects to backend endpoints:
+    GET /api/dashboard?role={role}
+    POST /api/book
+    POST /api/tech/status
+    GET /api/assigned-jobs?techId={id}
+    POST /api/job/:id/respond
+*/
+
+const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
+
+// read logged-in user
+const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
+if(!me){
+  // not logged in -> redirect
+  window.location.href = 'login.html';
+} else {
+  document.getElementById('welcome').textContent = 'Hi, ' + (me.username || me.fullname);
+  document.getElementById('roleLabel').textContent = (me.role === 'worker' ? 'Technician dashboard' : 'Client dashboard');
+  document.getElementById('avatar').textContent = (me.username ? me.username[0].toUpperCase() : 'WC');
+}
+
+// init UI visibility
+if(me.role === 'client'){
+  document.getElementById('bookingCard').style.display = 'block';
+  document.getElementById('leaderTitle').textContent = 'Top Clients';
+} else {
+  document.getElementById('bookingCard').style.display = 'none';
+  document.getElementById('leaderTitle').textContent = 'Top Technicians';
+}
+
+// fetch dashboard data
+async function loadDashboard(){
+  try{
+    const res = await fetch(`${API_BASE}/api/dashboard?role=${me.role}`);
+    const data = await res.json();
+    if(!data.success) return console.error('Dashboard error', data);
+    // announcements
+    const annEl = document.getElementById('announcements'); annEl.innerHTML = '';
+    data.announcements.forEach(a=>{
+      const div = document.createElement('div'); div.className='ann';
+      div.innerHTML = `<strong>${a.title}</strong><div class="muted">${new Date(a.created_at).toLocaleString()}</div><div>${a.body}</div>`;
+      annEl.appendChild(div);
+    });
+    // articles
+    const artEl = document.getElementById('articles'); artEl.innerHTML = '';
+    data.articles.forEach(a=>{
+      const div = document.createElement('div'); div.className='article';
+      div.innerHTML = `<strong>${a.title}</strong><div class="muted">${a.excerpt || ''}</div>`;
+      artEl.appendChild(div);
+    });
+    // leaderboard
+    const lb = document.getElementById('leaderboard'); lb.innerHTML = '';
+    (data.leaderboard || []).forEach(row=>{
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${row.fullname || row.username}</strong> <div class="muted">Count: ${row.jobs_completed || row.jobs_posted || 0}</div>`;
+      lb.appendChild(li);
+    });
+  }catch(e){ console.error('loadDashboard', e); }
+}
+loadDashboard();
+
+// ---------- Client: Booking ----------
+document.getElementById('bookBtn').addEventListener('click', async ()=>{
+  const job_type = document.getElementById('job_type').value.trim();
+  const price = document.getElementById('job_price').value || null;
+  const state = document.getElementById('job_state').value.trim() || me.state;
+  const city = document.getElementById('job_city').value.trim() || me.city;
+  const address = document.getElementById('job_address').value.trim();
+  const desc = document.getElementById('job_desc').value.trim();
+  const payload = {
+    clientId: me.id,
+    state, city, address,
+    lat: null, lng: null,
+    job_type, description: desc, price
+  };
+  document.getElementById('bookMsg').textContent = 'Sending booking...';
+  try{
+    const r = await fetch(`${API_BASE}/api/book`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if(data.success){
+      document.getElementById('bookMsg').textContent = data.message + ' (jobId: '+ (data.jobId||'') +')';
+    }else{
+      document.getElementById('bookMsg').textContent = 'Booking failed: ' + (data.message || 'error');
+    }
+  }catch(e){ document.getElementById('bookMsg').textContent = 'Network error'; console.error(e); }
+});
+
+// ---------- Technician: Online toggle & polling ----------
+let pollingInterval = null;
+document.getElementById('toggleOnline').addEventListener('click', async ()=>{
+  // toggle online flag, and update on server
+  const toOnline = !me.online;
+  // attempt to capture device location if possible (optional)
+  let lat=null,lng=null;
+  try{
+    const pos = await new Promise((resolve, reject)=>{
+      navigator.geolocation.getCurrentPosition(p=>resolve(p), e=>resolve(null), {timeout:5000});
+    });
+    if(pos){ lat = pos.coords.latitude; lng = pos.coords.longitude; }
+  }catch(e){ /* ignore */ }
+
+  try{
+    const r = await fetch(`${API_BASE}/api/tech/status`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: me.id, online: toOnline, lat, lng })
+    });
+    const d = await r.json();
+    if(d.success){
+      me.online = toOnline;
+      me.lat = lat; me.lng = lng;
+      localStorage.setItem('wc_user', JSON.stringify(me));
+      document.getElementById('toggleOnline').textContent = me.online ? 'Go Offline' : 'Go Online';
+      if(me.online){
+        startPollingAssignedJobs();
+      } else {
+        stopPollingAssignedJobs();
+      }
+    } else {
+      alert('Failed to update status: '+(d.message||''));
+    }
+  }catch(e){ console.error('status update', e); alert('Network error'); }
+});
+
+// polling
+async function pollAssignedJobs(){
+  try{
+    const r = await fetch(`${API_BASE}/api/assigned-jobs?techId=${me.id}`);
+    const d = await r.json();
+    if(d.success && d.jobs && d.jobs.length){
+      // show newest job (first)
+      const job = d.jobs[0];
+      showAcceptModal(job);
+    }
+  }catch(e){ console.error('pollAssignedJobs', e); }
+}
+function startPollingAssignedJobs(){
+  if(pollingInterval) clearInterval(pollingInterval);
+  pollAssignedJobs();
+  pollingInterval = setInterval(pollAssignedJobs, 5000);
+}
+function stopPollingAssignedJobs(){
+  if(pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = null;
+}
+
+// accept modal
+let acceptTimer = null;
+let acceptRemaining = 60;
+let currentJobModal = null;
+function showAcceptModal(job){
+  // if modal already showing for same job, ignore
+  if(currentJobModal && currentJobModal.id === job.id) return;
+  currentJobModal = job;
+  document.getElementById('modalTitle').textContent = 'New Job Request — ' + (job.job_type || 'General');
+  document.getElementById('modalDetails').innerHTML = `
+    <div><strong>Client:</strong> ${job.client_id}</div>
+    <div><strong>Address:</strong> ${job.address || (job.city) || ''}</div>
+    <div class="muted">${job.description || ''}</div>
+  `;
+  acceptRemaining = 60;
+  document.getElementById('countdown').textContent = acceptRemaining;
+  document.getElementById('acceptModal').style.display = 'flex';
+
+  if(acceptTimer) clearInterval(acceptTimer);
+  acceptTimer = setInterval(()=>{
+    acceptRemaining--;
+    document.getElementById('countdown').textContent = acceptRemaining;
+    if(acceptRemaining <= 0){
+      clearInterval(acceptTimer);
+      acceptTimer = null;
+      // auto-decline via backend
+      declineJob(job.id);
+      hideAcceptModal();
+    }
+  }, 1000);
+}
+
+function hideAcceptModal(){
+  document.getElementById('acceptModal').style.display = 'none';
+  currentJobModal = null;
+  if(acceptTimer) { clearInterval(acceptTimer); acceptTimer = null; }
+}
+
+// accept/decline handlers
+async function acceptJob(jobId){
+  try{
+    const r = await fetch(`${API_BASE}/api/job/${jobId}/respond`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: me.id, action: 'accept' })
+    });
+    const d = await r.json();
+    if(d.success){
+      alert('Job accepted — open chat to coordinate.');
+      hideAcceptModal();
+    } else {
+      alert('Could not accept: ' + (d.message || ''));
+    }
+  }catch(e){ console.error('acceptJob', e); alert('Network error'); }
+}
+async function declineJob(jobId){
+  try{
+    const r = await fetch(`${API_BASE}/api/job/${jobId}/respond`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ techId: me.id, action: 'decline' })
+    });
+    const d = await r.json();
+    if(d.success){
+      console.log('declined');
+    }
+  }catch(e){ console.error('declineJob', e); }
+}
+
+document.getElementById('acceptBtn').addEventListener('click', ()=> {
+  if(!currentJobModal) return;
+  acceptJob(currentJobModal.id);
+  hideAcceptModal();
+});
+document.getElementById('declineBtn').addEventListener('click', ()=> {
+  if(!currentJobModal) return;
+  declineJob(currentJobModal.id);
+  hideAcceptModal();
+});
+
+// initialize technician polling if online
+if(me.role === 'worker' && me.online){
+  document.getElementById('toggleOnline').textContent = 'Go Offline';
+  startPollingAssignedJobs();
+} else {
+  document.getElementById('toggleOnline').textContent = 'Go Online';
+}
+
+// hook profile/settings buttons (placeholder)
+document.getElementById('profileBtn').addEventListener('click', ()=> alert('Open profile & KYC (to build)'));
+document.getElementById('settingsBtn').addEventListener('click', ()=> alert('Open settings (to build)'));
+
+// initial refresh of dashboard every 60s
+setInterval(loadDashboard, 60*1000);
+
+</script>
+</body>
+</html>
