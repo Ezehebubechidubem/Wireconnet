@@ -146,7 +146,6 @@
 
   <script>
     // ---------- Config ----------
-    // Root-based backend (same origin). Do not change; using '' means requests go to your Node.js root.
     const API_BASE = '';
 
     // ---------- Helpers ----------
@@ -225,7 +224,6 @@
 
     // Update tech status: geolocation (if online) + POST /api/tech/status
     async function updateOnlineStatus(on){
-      // show spinner when obtaining location
       availabilityStatus.innerHTML = '';
       if(on){
         const s = create('div'); s.innerHTML = '<span class="loading"></span> Obtaining location...'; availabilityStatus.appendChild(s);
@@ -233,7 +231,6 @@
         availabilityStatus.innerHTML = '<div class="small">Setting offline...</div>';
       }
 
-      // get geolocation if on
       let lat = null, lng = null, acc = null;
       if(on){
         try{
@@ -243,7 +240,6 @@
           lat = pos.coords.latitude; lng = pos.coords.longitude; acc = pos.coords.accuracy;
         }catch(e){
           console.warn('geolocation not available or denied', e);
-          // keep null coords — backend will accept null lat/lng
         }
       }
 
@@ -253,7 +249,6 @@
         setOnlineUI(false); return;
       }
 
-      // POST to backend
       try{
         const body = { techId: user.id, online: !!on, lat: lat || null, lng: lng || null };
         const resp = await fetch(API_BASE + '/api/tech/status', {
@@ -272,7 +267,6 @@
         drawerFeedback.textContent = 'Network: could not notify server (saved locally).';
       }
 
-      // save ui state & coords
       localStorage.setItem('wc_online', on ? '1' : '0');
       if(lat != null && lng != null){
         localStorage.setItem('wc_last_lat', lat);
@@ -281,7 +275,6 @@
       }
       setOnlineUI(on);
 
-      // display coords / status
       availabilityStatus.innerHTML = '';
       if(on && lat != null && lng != null){
         const coordsLine = create('div'); coordsLine.innerHTML = `<div class="small">Location: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(acc||0)}m)</div>`;
@@ -293,14 +286,12 @@
         const off = create('div'); off.innerHTML = `<div class="small">You are offline</div>`; availabilityStatus.appendChild(off);
       }
 
-      // After going online, fetch nearest assigned job distances
       if(on){
         const latSaved = lat != null ? lat : parseFloat(localStorage.getItem('wc_last_lat') || null);
         const lngSaved = lng != null ? lng : parseFloat(localStorage.getItem('wc_last_lng') || null);
         if(latSaved != null && lngSaved != null){
           fetchNearestAssignedJob(user.id, latSaved, lngSaved);
         } else {
-          // still attempt nearest by job location only (will show unavailable)
           fetchNearestAssignedJob(user.id, null, null);
         }
       } else {
@@ -365,7 +356,6 @@
           jobsListEl.innerHTML = '<div class="muted">Failed to fetch assigned jobs</div>';
         }
       } else {
-        // client side: show local bookings (fallback). Backend job listing can replace this later.
         const localJobs = JSON.parse(localStorage.getItem('wc_bookings') || '[]');
         if(!localJobs.length){ jobsListEl.innerHTML = '<div class="muted">No bookings yet</div>'; return; }
         jobsListEl.innerHTML = '';
@@ -405,7 +395,7 @@
       }
     });
 
-    // Initialize UI
+    // Initialize UI: <--- MODIFIED: show availability/toggle for clients too
     (function init(){
       const user = loadUser();
       if(!user){
@@ -422,15 +412,25 @@
       $('#drawerUser').textContent = user.fullname || user.username || 'User';
       $('#userGreeting').textContent = `Welcome back — ${(user.fullname || user.username)}`;
 
+      // *** CLIENT & TECHNICIAN: both see availability toggle now ***
       if(user.role === 'client'){
+        // show booking link for clients
         bookingLink.style.display = 'block';
-        availabilityStatus.innerHTML = '<div class="small">Clients do not have availability toggle</div>';
-        availabilityStatus.style.pointerEvents = 'none';
-        availabilityStatus.style.opacity = '0.9';
-        setOnlineUI(false);
+        // make availability area visible and allow client to toggle online/offline
+        // We'll initialize their online UI from localStorage (default offline)
+        const onlineFlag = localStorage.getItem('wc_online') === '1';
+        setOnlineUI(onlineFlag);
+
+        // client-specific status note
+        const lastLat = localStorage.getItem('wc_last_lat'), lastLng = localStorage.getItem('wc_last_lng'), lastAcc = localStorage.getItem('wc_last_acc');
+        if(lastLat && lastLng){
+          availabilityStatus.innerHTML = `<div class="small">Last known: ${parseFloat(lastLat).toFixed(6)}, ${parseFloat(lastLng).toFixed(6)} (±${Math.round(lastAcc||0)}m)</div><div class="small">Toggle Online to allow designers/technicians to see your availability (uses same status endpoint).</div>`;
+        } else {
+          availabilityStatus.innerHTML = `<div class="small">Location not set</div><div class="small">Toggle Online to publish availability (you may be asked to share location).</div>`;
+        }
+
       } else if(isTechnicianRole(user.role)){
         bookingLink.style.display = 'none';
-        // show saved coords (if any)
         const lastLat = localStorage.getItem('wc_last_lat'), lastLng = localStorage.getItem('wc_last_lng'), lastAcc = localStorage.getItem('wc_last_acc');
         if(lastLat && lastLng){
           availabilityStatus.innerHTML = `<div class="small">Last known: ${parseFloat(lastLat).toFixed(6)}, ${parseFloat(lastLng).toFixed(6)} (±${Math.round(lastAcc||0)}m)</div>`;
