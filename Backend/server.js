@@ -1,5 +1,6 @@
 // server.js
-// Minimal Express + Postgres backend for WireConnect registration
+// Minimal Express + Postgres backend for WireConnect registration & login
+// OPEN CORS version (no origin restrictions)
 // Usage:
 // 1) npm init -y
 // 2) npm install express cors bcryptjs pg dotenv
@@ -22,7 +23,9 @@ const pool = new Pool({
   ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized:false } : false
 });
 
-app.use(cors());
+// === OPEN CORS ===
+// Allow all origins and credentials (no origin restrictions)
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
 // Ensure users table exists (simple migration)
@@ -144,12 +147,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.get('/', (req,res)=> res.send('WireConnect backend (Postgres) running'));
-
-// start server
-app.listen(PORT, ()=> {
-  console.log(`WireConnect backend listening on http://localhost:${PORT}`);
-});
 // POST /api/login
 app.post('/api/login', async (req,res) => {
   try {
@@ -210,4 +207,11 @@ app.post('/api/login', async (req,res) => {
     console.error('Server error /api/login', err);
     return res.status(500).json({ success:false, message:'Server error' });
   }
+});
+
+app.get('/', (req,res)=> res.send('WireConnect backend (Postgres) running'));
+
+// start server
+app.listen(PORT, ()=> {
+  console.log(`WireConnect backend listening on http://localhost:${PORT}`);
 });
