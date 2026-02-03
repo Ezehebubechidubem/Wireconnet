@@ -438,6 +438,13 @@ app.get('/api/kyc/pending', async (req,res)=>{
     return res.json({ success:true, requests: rows });
   }catch(e){ console.error('/api/kyc/pending', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
+//userid
+app.get('/api/user/:id', async (req,res)=> {
+  const id = req.params.id;
+  const r = await pool.query(`SELECT id, fullname, username, avatar_url, lat, lng FROM users WHERE id=$1`, [id]);
+  if(!r.rows.length) return res.status(404).json({ success:false });
+  return res.json(Object.assign({ success:true }, r.rows[0]));
+});
 
 // Admin: approve/decline a KYC request
 app.post('/api/kyc/:reqId/decision', async (req,res)=>{
