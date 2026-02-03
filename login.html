@@ -90,14 +90,15 @@ color:blue;text-decoration:none;}
     .result-title{font-weight:700;margin-top:6px}
     .result-msg{color:#334155;margin-top:6px;font-size:14px}
     .result-close{margin-top:12px;padding:8px 14px;border-radius:8px;border:0;cursor:pointer;background:#0b5cff;color:white}
+    .debug{font-family:monospace;font-size:12px;color:#444;margin-top:8px;white-space:pre-wrap}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="logo">
+      <div class="logo" aria-hidden="true">
         <!-- exact logo you provided -->
-        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="site logo" width="100%" height="90px">
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo" style="height:48px;object-fit:contain">
       </div>
     </header>
 
@@ -105,7 +106,6 @@ color:blue;text-decoration:none;}
       <form id="loginForm" autocomplete="off" onsubmit="return false;">
         <div style="margin-bottom:12px">
           <label class="small">Login</label>
-
         </div>
 
         <div style="margin-top:12px">
@@ -119,12 +119,12 @@ color:blue;text-decoration:none;}
             <input id="password" name="password" type="password" placeholder="Enter your password" required />
             <div id="togglePassword" class="toggle-eye" aria-hidden="true" title="Show / hide password">
               <!-- eye open -->
-              <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
                 <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
               <!-- eye closed (hidden by default) -->
-              <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="display:none">
+              <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="display:none" aria-hidden="true">
                 <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6 0-10-7-10-7"/>
                 <path d="M1 1l22 22"/>
               </svg>
@@ -136,10 +136,14 @@ color:blue;text-decoration:none;}
           <input id="remember" type="checkbox" />
           <label for="remember" class="muted">Remember me</label>
         </div>
-<div><p>Don't have an account? <a class="bend" href="index.html">Register here</a></p></div>
+
+        <div><p>Don't have an account? <a class="bend" href="index.html">Register here</a></p></div>
+
         <div class="actions" style="margin-top:16px;">
           <button type="button" id="submitBtn">Sign in</button>
         </div>
+
+        <div id="debugBox" class="debug" aria-live="polite" style="display:none"></div>
 
       </form>
     </main>
@@ -166,7 +170,12 @@ color:blue;text-decoration:none;}
   </div>
 
   <script>
-    // DOM refs
+    // ---------- CONFIG ----------
+    // change if your backend URL differs
+    const BACKEND_URL = 'https://wireconnet-1.onrender.com';
+    const LOGIN_ENDPOINT = BACKEND_URL + '/api/login';
+
+    // ---------- DOM REFS ----------
     const overlay = document.getElementById('overlay');
     const loadingView = document.getElementById('loadingView');
     const resultView = document.getElementById('resultView');
@@ -174,7 +183,7 @@ color:blue;text-decoration:none;}
     const resultTitle = document.getElementById('resultTitle');
     const resultText = document.getElementById('resultText');
     const resultClose = document.getElementById('resultClose');
-    const msgEl = document.getElementById('msg');
+    const debugBox = document.getElementById('debugBox');
 
     // password toggle (eye)
     const togglePassword = document.getElementById('togglePassword');
@@ -193,16 +202,7 @@ color:blue;text-decoration:none;}
       }
     });
 
-    function showMessage(text, type){
-      if(type === 'success'){
-        msgEl && (msgEl.innerHTML = `<div class="success">${text}</div>`);
-      } else if(type === 'error'){
-        msgEl && (msgEl.innerHTML = `<div class="help">${text}</div>`);
-      } else {
-        msgEl && (msgEl.innerHTML = `<div class="small muted">${text}</div>`);
-      }
-    }
-
+    // ---------- UI helpers ----------
     function showLoading(){
       overlay.style.display = 'flex';
       overlay.setAttribute('aria-hidden','false');
@@ -216,81 +216,128 @@ color:blue;text-decoration:none;}
       resultTitle.textContent = title;
       resultText.textContent = message;
     }
-    function hideOverlay(){
-      overlay.style.display = 'none';
-      overlay.setAttribute('aria-hidden','true');
+    function hideOverlay(){ overlay.style.display = 'none'; overlay.setAttribute('aria-hidden','true'); }
+
+    function overlaySequenceFailure(){ if(overlay.style.display !== 'flex') overlay.style.display = 'flex'; overlay.setAttribute('aria-hidden','false'); }
+
+    function logDebug(msg){
+      console.info(msg);
+      debugBox.style.display = 'block';
+      const time = new Date().toLocaleTimeString();
+      debugBox.textContent = `[${time}] ${msg}\n` + debugBox.textContent;
     }
 
-    // validation helpers
-    function validEmail(email){ return /\S+@\S+\.\S+/.test(email); }
-    function validPhone(ph){
-      const cleaned = ph.replace(/\s+/g,'');
-      return /^(?:\+234|0)?\d{10}$/.test(cleaned);
+    // build absolute dashboard URL (same folder)
+    function redirectToDashboard(){
+      const dashUrl = new URL('dashboard.html', window.location.href).toString();
+      console.info('Redirecting to:', dashUrl);
+      window.location.href = dashUrl;
     }
 
-    document.getElementById('submitBtn').addEventListener('click', async ()=> {
+    // ---------- Login handler ----------
+    document.getElementById('submitBtn').addEventListener('click', async () => {
       const identifier = document.getElementById('identifier').value.trim();
       const password = document.getElementById('password').value;
-      const remember = document.getElementById('remember').checked;
+      // const remember = document.getElementById('remember').checked;
 
-      // basic client-side checks
+      // client-side checks
       if(!identifier){
         showLoading();
-        setTimeout(()=> showResult(false, 'Login failed', 'Please enter your username, email or phone.'), 350);
+        setTimeout(()=> showResult(false, 'Login failed', 'Please enter your username, email or phone.'), 300);
         return overlaySequenceFailure();
       }
       if(!password || password.length < 6){
         showLoading();
-        setTimeout(()=> showResult(false, 'Login failed', 'Password must be at least 6 characters.'), 350);
+        setTimeout(()=> showResult(false, 'Login failed', 'Password must be at least 6 characters.'), 300);
         return overlaySequenceFailure();
       }
 
       showLoading();
+      logDebug('Sending login request to ' + LOGIN_ENDPOINT);
 
-      // build payload: backend expects { login, password }
-      const payload = { login: identifier, password, remember };
+      const payload = { login: identifier, password };
 
       try {
-        const resp = await fetch('https://wireconnet-1.onrender.com/api/login', {
+        console.info('Login payload:', payload);
+        logDebug('Payload: ' + JSON.stringify(payload));
+
+        const resp = await fetch(LOGIN_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           credentials: 'include'
         });
 
-        const data = await resp.json().catch(()=>({ success:false, message:'Invalid server response' }));
+        console.info('Login response status:', resp.status, resp.statusText);
+        logDebug('HTTP status: ' + resp.status);
 
-        if(resp.ok && data && data.success){
-          showResult(true, 'Login successful', data.message || 'Redirecting to dashboard...');
-          // optionally store token if provided
-          if(data.token){
-            try { localStorage.setItem('wc_token', data.token); } catch(e){}
+        // parse JSON safely
+        let data;
+        try {
+          data = await resp.json();
+        } catch (parseErr) {
+          console.error('Failed to parse JSON response:', parseErr);
+          logDebug('Failed to parse JSON response: ' + parseErr.message);
+          showResult(false, 'Login failed', 'Invalid server response (not JSON). Check console for details.');
+          return;
+        }
+
+        console.info('Login response body:', data);
+        logDebug('Response body: ' + JSON.stringify(data));
+
+        if(!resp.ok){
+          const serverMsg = data && data.message ? data.message : `HTTP ${resp.status}`;
+          console.warn('Login failed:', serverMsg);
+          showResult(false, 'Login failed', serverMsg);
+          return;
+        }
+
+        // success: server responded ok
+        if(data && data.success){
+          if(data.user){
+            // store user object for other pages
+            try {
+              localStorage.setItem('wc_user', JSON.stringify(data.user));
+              logDebug('Saved wc_user in localStorage (user.id=' + (data.user.id || '??') + ')');
+            } catch(e){
+              console.warn('Could not save user to localStorage:', e);
+              logDebug('LocalStorage save failed: ' + e.message);
+            }
+
+            // also store token if provided
+            if(data.token){
+              try { localStorage.setItem('wc_token', data.token); logDebug('Saved wc_token'); } catch(e){}
+            }
+
+            showResult(true, 'Login successful', data.message || 'Redirecting to dashboard...');
+            // short delay so user sees success
+            setTimeout(()=>{
+              hideOverlay();
+              redirectToDashboard();
+            }, 900);
+          } else {
+            console.warn('Login success but server did not return user object:', data);
+            logDebug('Server success but no user returned');
+            showResult(false, 'Login failed', 'Server success but no user returned. Check backend.');
           }
-          setTimeout(()=>{
-            hideOverlay();
-            window.location.href = 'dashboard.html';
-          }, 1400);
         } else {
-          showResult(false, 'Login failed', data.message || 'Invalid credentials.');
+          const msg = (data && data.message) ? data.message : 'Invalid credentials';
+          console.warn('Login not successful:', msg);
+          showResult(false, 'Login failed', msg);
         }
 
       } catch(err){
         console.error('Network/login error', err);
+        logDebug('Network error: ' + (err && err.message ? err.message : String(err)));
         showResult(false, 'Login failed', 'Network error. Try again later.');
       }
     });
 
-    function overlaySequenceFailure(){
-      if(overlay.style.display !== 'flex') overlay.style.display = 'flex';
-      overlay.setAttribute('aria-hidden','false');
-    }
+    // result modal close
+    resultClose.addEventListener('click', () => { hideOverlay(); });
 
-    resultClose.addEventListener('click', ()=> hideOverlay());
-
-    // init
-    (function init(){
-      showMessage('Sign in using your username, email or phone.');
-    })();
+    // small init log
+    (function init(){ console.info('Login page ready'); logDebug('Login page loaded'); })();
   </script>
 </body>
 </html>
