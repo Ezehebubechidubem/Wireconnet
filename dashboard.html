@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin=""/>
   <style>
     :root{
       --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280;
@@ -26,10 +27,9 @@
     .card {width:100%;max-width:980px;height:100%;background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
     .content {flex:1 1 auto;overflow:auto;padding-right:6px}
     .section{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(16,24,40,0.04)}
-    .section h3{margin:0 0 6px;font-size:16px}
-    .top-list{padding:8px 0}
-    .top-item{padding:10px;border-radius:8px;background:linear-gradient(180deg,#ffffff,#fbfcff);margin-bottom:8px}
     .muted{color:var(--muted);font-size:13px}
+    .hero{width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(90deg,#eef6ff,#ffffff);padding:8px;margin-bottom:12px}
+    .hero img{width:100%;height:auto;max-height:140px;object-fit:cover;border-radius:8px}
     .drawer-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;z-index:1000}
     .drawer{position:fixed;right:0;top:0;height:100%;width:360px;max-width:92vw;background:white;box-shadow:-16px 0 40px rgba(2,6,23,0.12);transform:translateX(100%);transition:transform .28s ease;z-index:1001;padding:18px;box-sizing:border-box}
     .drawer.open{transform:translateX(0)}
@@ -37,23 +37,20 @@
     .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
     .drawer a{display:block;padding:12px;border-radius:8px;color:#0b0b0b;text-decoration:none;margin-bottom:8px;border:1px solid #f1f5f9;background:#fbfdff}
     .drawer a.primary{background:linear-gradient(90deg,var(--accent),#55a7ff);color:white;border:0}
-    .drawer .muted{font-size:13px;color:var(--muted)}
     .toggle-row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 0}
     .badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#eef3ff;color:var(--accent)}
     .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-    .hero{width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(90deg,#eef6ff,#ffffff);display:flex;align-items:center;justify-content:center;padding:8px;margin-bottom:12px}
-    .hero img{width:100%;height:auto;max-height:140px;object-fit:cover;border-radius:8px}
-    @media(max-width:720px){ .logo img{height:34px} .drawer{width:92vw} .card{border-radius:12px;padding:12px} }
     .content::-webkit-scrollbar{width:8px}
     .content::-webkit-scrollbar-thumb{background:rgba(11,92,255,0.12);border-radius:8px}
-    .small-note{font-size:13px;color:var(--muted);padding:6px 0}
-    .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
+    /* small modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:2000}
+    .modal{width:92%;max-width:520px;background:white;border-radius:12px;padding:16px;box-shadow:0 24px 60px rgba(2,6,23,0.2)}
+    .small-avatar{width:64px;height:64px;border-radius:12px;object-fit:cover;background:#f1f5ff;display:inline-block}
+    .btn{background:var(--accent);color:white;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
     .btn-ghost{background:transparent;border:1px solid #e6eef9;padding:8px 12px;border-radius:8px;cursor:pointer}
-    .small{font-size:13px;color:var(--muted)}
-    .status-row{display:flex;flex-direction:column;gap:6px}
-    .status-info{font-size:13px;color:#0b5cff}
-    .loading{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid rgba(11,92,255,0.2);border-top-color:var(--accent);animation:spin .9s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    .row{display:flex;gap:12px;align-items:center}
+    .leaderboard-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f6fb}
+    .muted-2{color:#64748b}
   </style>
 </head>
 <body>
@@ -91,7 +88,6 @@
           </div>
         </section>
 
-        <div class="small-note">Quick actions (Profile, KYC, Booking (clients only), Settings, Sign out) are available inside the Menu (top-right).</div>
       </div>
     </section>
   </main>
@@ -118,21 +114,16 @@
 
       <div style="height:8px"></div>
 
-      <div id="availabilityArea">
-        <div style="font-weight:600">Availability</div>
-        <div class="muted" style="margin-bottom:8px">Go online to receive job requests</div>
-
-        <div class="toggle-row" style="align-items:center;">
-          <div id="availabilityStatus" class="status-row">
-            <!-- dynamic status lines inserted here -->
+      <div id="availabilityArea" style="">
+        <div class="toggle-row">
+          <div>
+            <div style="font-weight:600">Availability</div>
+            <div class="muted">Go online to receive job requests</div>
           </div>
           <div>
-            <button id="toggleOnlineBtn" class="btn">Go Online</button>
+            <button id="toggleOnlineBtn" style="padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:white;cursor:pointer">Go Online</button>
           </div>
         </div>
-
-        <div style="height:8px"></div>
-        <div id="nearestDistance" class="small">Nearest job: —</div>
       </div>
 
       <div style="height:10px"></div>
@@ -144,30 +135,44 @@
     </nav>
   </aside>
 
-  <script>
-    // ---------- Config ----------
-    const API_BASE = '';
+  <!-- modal -->
+  <div id="modalRoot" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-live="polite">
+      <div id="modalContent"></div>
+    </div>
+  </div>
 
-    // ---------- Helpers ----------
-    const $ = (s) => document.querySelector(s);
-    const create = (t, attrs = {}) => { const e = document.createElement(t); Object.assign(e, attrs); return e; };
+  <script>
+    // ---------- config ----------
+    const API_BASE = ''; // set to '' for same origin or full url like 'https://wireconnet-1.onrender.com'
+    // ---------- utils ----------
+    function el(q){ return document.querySelector(q) }
+    function showModal(html){ const root = el('#modalRoot'); el('#modalContent').innerHTML = html; root.style.display = 'flex'; root.setAttribute('aria-hidden','false') }
+    function hideModal(){ const root = el('#modalRoot'); root.style.display = 'none'; root.setAttribute('aria-hidden','true') }
 
     // DOM refs
-    const menuBtn = $('#menuBtn'), closeDrawerBtn = $('#closeDrawerBtn'), drawer = $('#drawer'), backdrop = $('#drawerBackdrop');
-    const toggleOnlineBtn = $('#toggleOnlineBtn'), statusBadge = $('#statusBadge'), drawerFeedback = $('#drawerFeedback'), drawerUser = $('#drawerUser'), userGreeting = $('#userGreeting'), bookingLink = $('#bookingLink'), availabilityStatus = $('#availabilityStatus'), nearestDistance = $('#nearestDistance'), jobsListEl = $('#jobsList');
+    const menuBtn = el('#menuBtn'), closeDrawerBtn = el('#closeDrawerBtn'), drawer = el('#drawer'), backdrop = el('#drawerBackdrop');
+    const toggleOnlineBtn = el('#toggleOnlineBtn'), statusBadge = el('#statusBadge'), drawerFeedback = el('#drawerFeedback'), drawerUser = el('#drawerUser'), userGreeting = el('#userGreeting'), bookingLink = el('#bookingLink'), availabilityArea = el('#availabilityArea');
 
-    // Drawer open/close
-    menuBtn.addEventListener('click', ()=>{ drawer.classList.add('open'); backdrop.style.display='block'; drawer.setAttribute('aria-hidden','false'); backdrop.setAttribute('aria-hidden','false'); });
-    backdrop.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; drawer.setAttribute('aria-hidden','true'); backdrop.setAttribute('aria-hidden','true'); });
+    menuBtn.addEventListener('click', ()=>{ drawer.classList.add('open'); backdrop.style.display='block'; drawer.setAttribute('aria-hidden','false'); backdrop.setAttribute('aria-hidden','false') });
+    backdrop.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; drawer.setAttribute('aria-hidden','true'); backdrop.setAttribute('aria-hidden','true') });
     closeDrawerBtn.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; });
 
-    // User handling
+    // Load current user from localStorage
     function loadUser(){
-      try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+      try{
+        const raw = localStorage.getItem('wc_user');
+        if(!raw) return null;
+        const u = JSON.parse(raw);
+        return u;
+      }catch(e){ return null; }
     }
-    function isTechnicianRole(role){ return role === 'worker' || role === 'technician' || role === 'worker'; }
 
-    // UI setter for online/offline
+    function isTechnicianRole(role){
+      // accept both 'worker' (backend) and 'technician'
+      return role === 'worker' || role === 'technician' || role === 'worker';
+    }
+
     function setOnlineUI(isOnline){
       statusBadge.textContent = isOnline ? 'Online' : 'Offline';
       statusBadge.style.background = isOnline ? '#ecfff5' : 'transparent';
@@ -178,147 +183,59 @@
       toggleOnlineBtn.style.border = isOnline ? '1px solid #e6eef9' : '0';
     }
 
-    // Haversine distance (km)
-    function distanceKm(lat1, lon1, lat2, lon2){
-      if(lat1==null||lon1==null||lat2==null||lon2==null) return null;
-      const R = 6371; const toRad = v => v * Math.PI / 180;
-      const dLat = toRad(lat2 - lat1); const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
-    }
-
-    // Fetch nearest assigned job and compute distance
-    async function fetchNearestAssignedJob(techId, techLat, techLng){
-      nearestDistance.textContent = 'Nearest job: checking...';
-      try{
-        const resp = await fetch(API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(techId));
-        const js = await resp.json().catch(()=>null);
-        if(!resp.ok || !js || !js.success){ nearestDistance.textContent = 'Nearest job: none'; return; }
-        const jobs = js.jobs || [];
-        if(!jobs.length){ nearestDistance.textContent = 'Nearest job: none'; return; }
-
-        const distances = jobs.map(j => {
-          if(j.lat != null && j.lng != null && techLat != null && techLng != null){
-            return { id: j.id, km: distanceKm(techLat, techLng, j.lat, j.lng), job: j };
-          } else if(j.lat != null && j.lng != null){
-            return { id: j.id, km: null, job: j };
-          } else {
-            return { id: j.id, km: null, job: j };
-          }
-        });
-
-        const withKm = distances.filter(d=>d.km != null).sort((a,b)=>a.km - b.km);
-        if(withKm.length){
-          const nearest = withKm[0];
-          nearestDistance.textContent = `Nearest job: ${nearest.job.job_type || 'Job'} — ${nearest.km.toFixed(2)} km away`;
-          if(nearest.km > 50) nearestDistance.textContent += ' ( > 50km )';
-        } else {
-          nearestDistance.textContent = 'Nearest job: location unavailable';
-        }
-      }catch(e){
-        console.warn('fetchNearestAssignedJob error', e);
-        nearestDistance.textContent = 'Nearest job: error';
-      }
-    }
-
-    // Update tech status: geolocation (if online) + POST /api/tech/status
+    // update tech status on server (POST /api/tech/status)
     async function updateOnlineStatus(on){
-      availabilityStatus.innerHTML = '';
-      if(on){
-        const s = create('div'); s.innerHTML = '<span class="loading"></span> Obtaining location...'; availabilityStatus.appendChild(s);
-      } else {
-        availabilityStatus.innerHTML = '<div class="small">Setting offline...</div>';
-      }
-
-      let lat = null, lng = null, acc = null;
-      if(on){
-        try{
-          const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy:true, timeout:10000 });
-          });
-          lat = pos.coords.latitude; lng = pos.coords.longitude; acc = pos.coords.accuracy;
-        }catch(e){
-          console.warn('geolocation not available or denied', e);
-        }
-      }
+      setOnlineUI(on);
+      drawerFeedback.textContent = on ? 'Trying to take jobs...' : 'You will not receive jobs while offline.';
+      localStorage.setItem('wc_online', on ? '1' : '0');
 
       const user = loadUser();
-      if(!user){
-        drawerFeedback.textContent = 'Please login to update status.';
-        setOnlineUI(false); return;
+      if(!user) return;
+      // try to get geolocation
+      let lat=null,lng=null;
+      try{
+        const pos = await new Promise((resolve,reject)=>{
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
+        });
+        lat = pos.coords.latitude; lng = pos.coords.longitude;
+      }catch(e){
+        // geolocation not available or denied; proceed without it
       }
 
       try{
-        const body = { techId: user.id, online: !!on, lat: lat || null, lng: lng || null };
         const resp = await fetch(API_BASE + '/api/tech/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ techId: user.id, online: !!on, lat, lng })
         });
-        const js = await resp.json().catch(()=>null);
-        if(resp.ok){
-          drawerFeedback.textContent = js && js.message ? js.message : (on ? 'You are now online — waiting for jobs.' : 'You are now offline.');
-        } else {
-          drawerFeedback.textContent = 'Server: ' + (js && js.message ? js.message : resp.statusText);
-        }
-      }catch(err){
-        console.warn('network error', err);
+        const json = await resp.json().catch(()=>null);
+        if(!resp.ok) drawerFeedback.textContent = 'Server: ' + (json && json.message ? json.message : resp.statusText);
+        else drawerFeedback.textContent = json.message || 'Status updated';
+      }catch(e){
+        console.warn('Network error', e);
         drawerFeedback.textContent = 'Network: could not notify server (saved locally).';
-      }
-
-      localStorage.setItem('wc_online', on ? '1' : '0');
-      if(lat != null && lng != null){
-        localStorage.setItem('wc_last_lat', lat);
-        localStorage.setItem('wc_last_lng', lng);
-        localStorage.setItem('wc_last_acc', acc || 0);
-      }
-      setOnlineUI(on);
-
-      availabilityStatus.innerHTML = '';
-      if(on && lat != null && lng != null){
-        const coordsLine = create('div'); coordsLine.innerHTML = `<div class="small">Location: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(acc||0)}m)</div>`;
-        availabilityStatus.appendChild(coordsLine);
-      } else if(on){
-        const noCoords = create('div'); noCoords.innerHTML = `<div class="small">Location not available (permission denied or timeout)</div>`;
-        availabilityStatus.appendChild(noCoords);
-      } else {
-        const off = create('div'); off.innerHTML = `<div class="small">You are offline</div>`; availabilityStatus.appendChild(off);
-      }
-
-      if(on){
-        const latSaved = lat != null ? lat : parseFloat(localStorage.getItem('wc_last_lat') || null);
-        const lngSaved = lng != null ? lng : parseFloat(localStorage.getItem('wc_last_lng') || null);
-        if(latSaved != null && lngSaved != null){
-          fetchNearestAssignedJob(user.id, latSaved, lngSaved);
-        } else {
-          fetchNearestAssignedJob(user.id, null, null);
-        }
-      } else {
-        nearestDistance.textContent = 'Nearest job: —';
       }
     }
 
-    // Toggle click
-    toggleOnlineBtn.addEventListener('click', async ()=>{
-      const current = localStorage.getItem('wc_online') === '1';
-      await updateOnlineStatus(!current);
+    toggleOnlineBtn.addEventListener('click', ()=> {
+      const cur = localStorage.getItem('wc_online') === '1';
+      updateOnlineStatus(!cur);
     });
 
-    // Leaderboard load
+    // Leaderboard fetch
     async function loadLeaderboard(){
-      const container = $('#leaderboard');
+      const container = el('#leaderboard');
       container.innerHTML = '<div class="muted">Loading...</div>';
       try{
         const resp = await fetch(API_BASE + '/api/dashboard?role=worker');
-        const js = await resp.json().catch(()=>null);
-        if(!resp.ok || !js || !js.success){ container.innerHTML = '<div class="muted">Could not load leaderboard</div>'; return; }
+        const js = await resp.json();
+        if(!js.success){ container.innerHTML = '<div class="muted">Could not load leaderboard</div>'; return; }
         const list = js.leaderboard || [];
         if(!list.length) { container.innerHTML = '<div class="muted">No entries yet</div>'; return; }
         container.innerHTML = '';
         list.forEach((t, idx)=>{
-          const row = create('div'); row.style.padding='8px 0'; row.style.borderBottom='1px solid #f3f6fb';
-          row.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>${t.fullname || t.username}</strong><div class="small">jobs completed: ${t.jobs_completed || 0}</div></div><div class="small">${idx+1}</div></div>`;
+          const row = document.createElement('div'); row.className='leaderboard-item';
+          row.innerHTML = `<div><strong>${t.fullname || t.username}</strong><div class="muted-2">jobs completed: ${t.jobs_completed || 0}</div></div><div class="muted">${idx+1}</div>`;
           container.appendChild(row);
         });
       }catch(e){
@@ -326,145 +243,179 @@
       }
     }
 
-    // Load jobs for user
+    // Jobs list (for client show recent bookings, for tech show assigned/pending)
     async function loadJobsForUser(){
       const user = loadUser();
-      jobsListEl.innerHTML = `<div class="muted">Loading...</div>`;
-      if(!user){ jobsListEl.innerHTML = '<div class="muted">Please login</div>'; return; }
+      const jobsList = el('#jobsList');
+      jobsList.innerHTML = `<div class="muted">Loading...</div>`;
+      if(!user){ jobsList.innerHTML = '<div class="muted">Please login</div>'; return; }
 
       if(isTechnicianRole(user.role)){
+        // Poll assigned-jobs for technician
         try{
           const resp = await fetch(API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(user.id));
-          const js = await resp.json().catch(()=>null);
-          if(!resp.ok || !js || !js.success){ jobsListEl.innerHTML = '<div class="muted">No assigned jobs</div>'; return; }
+          const js = await resp.json();
+          if(!js.success) { jobsList.innerHTML = '<div class="muted">No assigned jobs</div>'; return; }
           const jobs = js.jobs || [];
-          if(!jobs.length){ jobsListEl.innerHTML = '<div class="muted">No pending jobs</div>'; return; }
-          jobsListEl.innerHTML = '';
+          if(!jobs.length) { jobsList.innerHTML = '<div class="muted">No pending jobs</div>'; return; }
+          jobsList.innerHTML = '';
           jobs.forEach(j=>{
-            const div = create('div'); div.className='section';
-            div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
-              <div><strong>${j.job_type || 'Job'}</strong><div class="muted">${j.status} — ${j.created_at ? new Date(j.created_at).toLocaleString() : ''}</div></div>
-              <div style="text-align:right">
-                <button class="btn" data-action="accept" data-id="${j.id}">Accept</button>
-                <button class="btn-ghost" data-action="decline" data-id="${j.id}">Decline</button>
+            const div = document.createElement('div');
+            div.className = 'section';
+            div.innerHTML = `
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div><strong>${j.job_type || 'Job'}</strong><div class="muted-2">status: ${j.status}</div></div>
+                <div style="text-align:right">
+                  <button class="btn" data-action="accept" data-id="${j.id}">Accept</button>
+                  <button class="btn-ghost" data-action="decline" data-id="${j.id}">Decline</button>
+                </div>
               </div>
-            </div>
-            <div style="margin-top:8px" class="muted">${(j.description || '').slice(0,160)}</div>`;
-            jobsListEl.appendChild(div);
+              <div style="margin-top:8px" class="muted">${(j.description || '').slice(0,160)}</div>
+            `;
+            jobsList.appendChild(div);
           });
         }catch(e){
-          jobsListEl.innerHTML = '<div class="muted">Failed to fetch assigned jobs</div>';
+          jobsList.innerHTML = '<div class="muted">Failed to fetch assigned jobs</div>';
         }
       } else {
+        // client: show recent bookings from localStorage (fallback) and allow opening chat if assigned
         const localJobs = JSON.parse(localStorage.getItem('wc_bookings') || '[]');
-        if(!localJobs.length){ jobsListEl.innerHTML = '<div class="muted">No bookings yet</div>'; return; }
-        jobsListEl.innerHTML = '';
+        if(!localJobs.length){ jobsList.innerHTML = '<div class="muted">No bookings yet</div>'; return; }
+        jobsList.innerHTML = '';
         localJobs.slice(0,10).forEach(b=>{
-          const div = create('div'); div.className='section';
+          const div = document.createElement('div');
+          div.className = 'section';
           div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
-            <div><strong>${b.jobType || 'Job'}</strong><div class="muted">${new Date(b.createdAt).toLocaleString()}</div></div>
+            <div><strong>${b.jobType || 'Job'}</strong><div class="muted-2">${new Date(b.createdAt).toLocaleString()}</div></div>
             <div><button class="btn" data-openjob="${b.id}">Open</button></div>
           </div>
           <div style="margin-top:8px" class="muted">${(b.description||'').slice(0,160)}</div>`;
-          jobsListEl.appendChild(div);
+          jobsList.appendChild(div);
         });
       }
     }
 
-    // Accept/Decline handlers
+    // accept/decline handler for tech
     document.addEventListener('click', async (ev)=>{
       const t = ev.target;
       if(t.dataset.action && t.dataset.id){
-        const action = t.dataset.action, jobId = t.dataset.id;
-        const user = loadUser(); if(!user) return alert('Please login');
+        const action = t.dataset.action;
+        const jobId = t.dataset.id;
+        const user = loadUser();
+        if(!user) return alert('Please login');
+        const payload = { techId: user.id, action };
         try{
-          const resp = await fetch(API_BASE + `/api/job/${jobId}/respond`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ techId: user.id, action })
-          });
+          const resp = await fetch(API_BASE + `/api/job/${jobId}/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
           const js = await resp.json().catch(()=>null);
-          if(resp.ok && js && js.success){ alert(js.message || 'OK'); setTimeout(()=>loadJobsForUser(), 800); }
-          else alert('Failed: ' + (js && js.message ? js.message : resp.statusText));
+          if(resp.ok && js && js.success){
+            alert('Response sent: ' + js.message);
+            setTimeout(()=> loadJobsForUser(), 700);
+          }else{
+            alert('Failed: ' + (js && js.message ? js.message : resp.statusText));
+          }
         }catch(e){ alert('Network error'); }
       }
-
+      // open booking job for client
       if(t.dataset.openjob){
         const jobId = t.dataset.openjob;
         window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId);
       }
     });
 
-    // Initialize UI: <--- MODIFIED: show availability/toggle for clients too
+    // after booking: poll job status until assigned or timeout
+    async function pollForAssignment(jobId){
+      const start = Date.now();
+      let assigned = null;
+      while(Date.now() - start < 35_000){ // 35s
+        try{
+          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+          const js = await resp.json();
+          if(js && js.success && js.job){
+            if(js.job.assigned_tech_id){
+              assigned = js.job;
+              break;
+            }
+          }
+        }catch(e){}
+        await new Promise(r=>setTimeout(r, 2000));
+      }
+      if(assigned){
+        // Show neat modal with assigned tech info and "Open chat" button
+        // Try fetching tech profile (optional endpoint)
+        let techProfile = null;
+        try{
+          const fetchTech = await fetch(API_BASE + '/api/user/' + encodeURIComponent(assigned.assigned_tech_id));
+          if(fetchTech.ok) techProfile = await fetchTech.json();
+        }catch(e){}
+        const name = (techProfile && techProfile.fullname) ? techProfile.fullname : (assigned.assigned_tech_id || 'Technician');
+        const avatar = (techProfile && techProfile.avatar_url) ? techProfile.avatar_url : '';
+        showModal(`
+          <div style="display:flex;gap:12px;align-items:center">
+            <div><img src="${avatar || 'https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/brand-github.svg'}" class="small-avatar" alt="avatar"></div>
+            <div>
+              <div style="font-weight:700">${name}</div>
+              <div class="muted-2">Assigned — please open chat to see live details</div>
+              <div style="margin-top:8px"><button id="openChatBtn" class="btn">Open chat</button> <button id="closeModal" class="btn-ghost">Close</button></div>
+            </div>
+          </div>
+        `);
+        document.getElementById('openChatBtn').addEventListener('click', ()=> {
+          hideModal();
+          window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId);
+        });
+        document.getElementById('closeModal').addEventListener('click', hideModal);
+      } else {
+        // not assigned
+        showModal(`<div><strong>No technicians found</strong><div class="muted-2">We couldn't find a technician in your state within the allowed radius right now. You can open support chat or try again later.</div><div style="margin-top:12px"><button id="goChat" class="btn">Open chat</button> <button id="closeModal2" class="btn-ghost">Close</button></div></div>`);
+        document.getElementById('goChat').addEventListener('click', ()=>{ hideModal(); window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId); });
+        document.getElementById('closeModal2').addEventListener('click', hideModal);
+      }
+    }
+
+    // handle logout
+    el('#logoutBtn').addEventListener('click', (ev)=>{ ev.preventDefault(); localStorage.removeItem('wc_user'); localStorage.removeItem('wc_token'); localStorage.removeItem('wc_online'); window.location.href='login.html' });
+
+    // initialize UI
     (function init(){
       const user = loadUser();
       if(!user){
-        $('#drawerUser').textContent = 'Guest';
-        $('#userGreeting').textContent = 'Welcome — please login';
+        el('#drawerUser').textContent = 'Guest';
+        el('#userGreeting').textContent = 'Welcome — please login';
         bookingLink.style.display = 'none';
-        availabilityStatus.innerHTML = '<div class="small">Location not set</div>';
+        availabilityArea.style.display = 'none';
         setOnlineUI(false);
         loadLeaderboard();
         loadJobsForUser();
         return;
       }
 
-      $('#drawerUser').textContent = user.fullname || user.username || 'User';
-      $('#userGreeting').textContent = `Welcome back — ${(user.fullname || user.username)}`;
-
-      // *** CLIENT & TECHNICIAN: both see availability toggle now ***
+      el('#drawerUser').textContent = user.fullname || user.username || 'User';
+      el('#userGreeting').textContent = `Welcome back — ${(user.fullname || user.username)}`;
+      // show/hide booking and availability
       if(user.role === 'client'){
-        // show booking link for clients
         bookingLink.style.display = 'block';
-        // make availability area visible and allow client to toggle online/offline
-        // We'll initialize their online UI from localStorage (default offline)
-        const onlineFlag = localStorage.getItem('wc_online') === '1';
-        setOnlineUI(onlineFlag);
-
-        // client-specific status note
-        const lastLat = localStorage.getItem('wc_last_lat'), lastLng = localStorage.getItem('wc_last_lng'), lastAcc = localStorage.getItem('wc_last_acc');
-        if(lastLat && lastLng){
-          availabilityStatus.innerHTML = `<div class="small">Last known: ${parseFloat(lastLat).toFixed(6)}, ${parseFloat(lastLng).toFixed(6)} (±${Math.round(lastAcc||0)}m)</div><div class="small">Toggle Online to allow designers/technicians to see your availability (uses same status endpoint).</div>`;
-        } else {
-          availabilityStatus.innerHTML = `<div class="small">Location not set</div><div class="small">Toggle Online to publish availability (you may be asked to share location).</div>`;
-        }
-
+        availabilityArea.style.display = 'none';
+        setOnlineUI(false);
       } else if(isTechnicianRole(user.role)){
         bookingLink.style.display = 'none';
-        const lastLat = localStorage.getItem('wc_last_lat'), lastLng = localStorage.getItem('wc_last_lng'), lastAcc = localStorage.getItem('wc_last_acc');
-        if(lastLat && lastLng){
-          availabilityStatus.innerHTML = `<div class="small">Last known: ${parseFloat(lastLat).toFixed(6)}, ${parseFloat(lastLng).toFixed(6)} (±${Math.round(lastAcc||0)}m)</div>`;
-        } else {
-          availabilityStatus.innerHTML = `<div class="small">Location not set</div>`;
-        }
+        availabilityArea.style.display = 'block';
         const onlineFlag = localStorage.getItem('wc_online') === '1';
         setOnlineUI(onlineFlag);
       } else {
         bookingLink.style.display = 'none';
-        availabilityStatus.innerHTML = '<div class="small">Role not recognized</div>';
+        availabilityArea.style.display = 'none';
         setOnlineUI(false);
       }
 
       loadLeaderboard();
       loadJobsForUser();
 
-      // Poll assigned jobs & nearest distance periodically if technician & online
-      if(isTechnicianRole(user.role)){
-        setInterval(async ()=>{
-          const onlineFlag = localStorage.getItem('wc_online') === '1';
-          if(onlineFlag){
-            const lat = parseFloat(localStorage.getItem('wc_last_lat') || null);
-            const lng = parseFloat(localStorage.getItem('wc_last_lng') || null);
-            await fetchNearestAssignedJob(user.id, lat, lng);
-            await loadJobsForUser();
-          }
-        }, 6000);
-      }
+      // poll assigned jobs regularly for tech
+      if(isTechnicianRole(user.role)) setInterval(loadJobsForUser, 5000);
     })();
-
-    // Logout
-    $('#logoutBtn').addEventListener('click', (ev)=>{ ev.preventDefault(); localStorage.removeItem('wc_user'); localStorage.removeItem('wc_token'); localStorage.removeItem('wc_online'); localStorage.removeItem('wc_last_lat'); localStorage.removeItem('wc_last_lng'); localStorage.removeItem('wc_last_acc'); window.location.href='login.html'; });
-
   </script>
+
+  <!-- Leaflet script (only used by chat page) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="" crossorigin=""></script>
 </body>
 </html>
