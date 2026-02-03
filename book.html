@@ -5,238 +5,274 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — Book Job</title>
   <style>
-    :root{ --accent:#0b5cff; --muted:#6b7280; --bg:#f6f8fb; --card:#fff; --radius:10px }
-    body{font-family:Inter,system-ui,Arial;margin:0;background:var(--bg);color:#111;padding:12px}
-    .card{max-width:760px;margin:18px auto;background:var(--card);padding:16px;border-radius:var(--radius);box-shadow:0 8px 30px rgba(16,24,40,0.06)}
-    h1{margin:0 0 10px;font-size:20px}
-    label{display:block;margin-bottom:8px}
-    input[type="number"], textarea, select, input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef9;box-sizing:border-box;margin-bottom:8px}
-    .radio-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-    button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer}
+    :root{
+      --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280;
+      --surface:#ffffff; --shadow: 0 8px 30px rgba(16,24,40,0.06);
+    }
+    html,body{height:100%;margin:0}
+    body{font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:var(--bg);color:#111827;display:flex;justify-content:center;align-items:flex-start;padding:24px}
+    .wrap{width:100%;max-width:900px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+    h1{margin:0 0 8px}
     .muted{color:var(--muted);font-size:13px}
-    .estimate{margin-top:12px;padding:12px;border-radius:8px;background:#f3f8ff}
-    .row{display:flex;gap:8px;align-items:center}
-    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:2000}
-    .modal{width:92%;max-width:520px;background:white;border-radius:12px;padding:16px}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #eef3fb;box-sizing:border-box;margin-bottom:8px}
+    label{display:block;margin-bottom:6px;font-size:14px}
+    .btn{background:var(--accent);color:white;border:0;padding:10px 14px;border-radius:10px;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid #e6eef9;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .diag{background:#0b1220;color:#e6f0ff;padding:10px;border-radius:8px;font-family:monospace;font-size:13px;white-space:pre-wrap;overflow:auto;max-height:220px}
+    .estimate{background:#f0f7ff;padding:10px;border-radius:8px;margin-bottom:8px}
+    .small{font-size:13px;color:var(--muted)}
+    .hidden{display:none}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Book a Job</h1>
-    <p class="muted">Only clients can create bookings.</p>
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h1>Book a Job</h1>
+      <div><a href="dashboard.html" style="text-decoration:none;color:var(--accent)">← Back to dashboard</a></div>
+    </div>
 
-    <form id="bookingForm">
-      <label>Job name</label>
-      <input id="jobName" type="text" placeholder="e.g. Conduit wiring for 3 rooms" required>
+    <div class="muted" id="userGreeting">—</div>
+    <div style="height:12px"></div>
 
-      <label>Job type</label>
-      <div class="radio-row">
-        <label><input type="radio" name="jobType" value="conduit" checked> Conduit Wiring</label>
-        <label><input type="radio" name="jobType" value="solar"> Solar Installation</label>
+    <!-- Booking form -->
+    <div>
+      <label>Choose job type</label>
+      <select id="jobType">
+        <option value="conduit">Conduit wiring</option>
+        <option value="solar">Solar installation</option>
+        <option value="other">Other (custom)</option>
+      </select>
+
+      <!-- dynamic options for conduit -->
+      <div id="conduitFields" style="margin-top:8px">
+        <label>Number of rooms</label>
+        <input id="conduitRooms" type="number" min="1" value="1">
+        <label><input id="conduitDB" type="checkbox"> Include DB mounting (₦15,000)</label>
+        <label><input id="conduitNEPA" type="checkbox"> Include NEPA connection (₦50,000)</label>
+        <label><input id="conduitWiringAdd" type="checkbox"> Add extra wiring (₦5,000 per room)</label>
+        <label><input id="conduitFittings" type="checkbox"> Include fittings (₦15,000 per room)</label>
       </div>
 
-      <div id="conduitOptions">
-        <label>How many rooms?</label>
-        <input id="rooms" type="number" min="1" value="1">
-
-        <label><input id="dbMount" type="checkbox"> Mount DB (₦15,000)</label>
-        <label><input id="nepaConnect" type="checkbox"> Connect to NEPA (₦50,000)</label>
-
-        <label>Fittings per room? (each room fittings cost ₦15,000)</label>
-        <input id="fittingsPerRoom" type="number" min="0" value="0">
+      <!-- dynamic options for solar -->
+      <div id="solarFields" class="hidden" style="margin-top:8px">
+        <label>Building type</label>
+        <select id="solarBuilding">
+          <option value="bungalow">Bungalow (base)</option>
+          <option value="one_story">1 storey (base + 30,000)</option>
+          <option value="two_plus">2+ storey (base + 60,000)</option>
+        </select>
+        <label><input id="solarComplex" type="checkbox"> Complex roof / high access (+₦50,000)</label>
       </div>
 
-      <div id="solarOptions" style="display:none">
-        <label>Number of storeys (1 = bungalow)</label>
-        <input id="storeys" type="number" min="1" value="1">
-        <div class="muted">Base bungalow: ₦270,000. One-storey: ₦200,000 (if you add decking, +₦130,000)</div>
-        <label><input id="decking" type="checkbox"> Add decking (extra cost)</label>
+      <div id="otherFields" class="hidden" style="margin-top:8px">
+        <label>Job name</label>
+        <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
       </div>
 
-      <label>How many technicians are required?</label>
-      <input id="techsNeeded" type="number" min="1" value="1">
+      <label style="margin-top:8px">Small description (max 500 words)</label>
+      <textarea id="description" rows="5" placeholder="Describe the job — location, special constraints, etc."></textarea>
 
-      <label>Estimated days to complete</label>
-      <input id="expectedDays" type="number" min="1" value="1">
-
-      <label>Description (max 500 chars)</label>
-      <textarea id="description" maxlength="500" rows="5" placeholder="Describe the job location and details"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <button id="calcBtn" class="btn">Calculate estimate</button>
+        <button id="submitBtn" class="btn-ghost">Submit booking</button>
+        <label style="margin-left:auto"><input id="useAssign" type="checkbox"> use /api/book-assign</label>
+      </div>
 
       <div style="height:12px"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="muted">Tap Calculate to get estimate</div>
-        <div style="display:flex;gap:8px">
-          <button id="calcBtn" type="button">Calculate</button>
-          <button id="submitBtn" type="submit">Request booking</button>
-        </div>
-      </div>
+      <div class="estimate" id="estimateBox">Estimate: —</div>
 
-      <div id="estimateBox" class="estimate" style="display:none"></div>
-    </form>
-  </div>
-
-  <div id="modalRoot" class="modal-backdrop" aria-hidden="true">
-    <div class="modal" role="dialog" aria-live="polite">
-      <div id="modalContent"></div>
+      <h4>Diagnostics (server request/response)</h4>
+      <div id="diag" class="diag">No actions yet.</div>
     </div>
   </div>
 
   <script>
+    // BACKEND ROOT
     const API_BASE = '';
-    function el(q){ return document.querySelector(q) }
 
-    const jobName = el('#jobName'), jobTypeRad = document.getElementsByName('jobType'), roomsEl = el('#rooms'), dbMountEl = el('#dbMount'), nepaEl = el('#nepaConnect'), fittingsEl = el('#fittingsPerRoom'), storeysEl = el('#storeys'), deckingEl = el('#decking'), techsNeededEl = el('#techsNeeded'), expectedDaysEl = el('#expectedDays'), descEl = el('#description'), calcBtn = el('#calcBtn'), estimateBox = el('#estimateBox'), bookingForm = el('#bookingForm');
+    // DOM
+    const jobType = document.getElementById('jobType');
+    const conduitFields = document.getElementById('conduitFields');
+    const solarFields = document.getElementById('solarFields');
+    const otherFields = document.getElementById('otherFields');
+    const conduitRooms = document.getElementById('conduitRooms');
+    const conduitDB = document.getElementById('conduitDB');
+    const conduitNEPA = document.getElementById('conduitNEPA');
+    const conduitWiringAdd = document.getElementById('conduitWiringAdd');
+    const conduitFittings = document.getElementById('conduitFittings');
+    const solarBuilding = document.getElementById('solarBuilding');
+    const solarComplex = document.getElementById('solarComplex');
+    const otherName = document.getElementById('otherName');
+    const description = document.getElementById('description');
+    const calcBtn = document.getElementById('calcBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const estimateBox = document.getElementById('estimateBox');
+    const diag = document.getElementById('diag');
+    const useAssign = document.getElementById('useAssign');
+    const userGreeting = document.getElementById('userGreeting');
 
-    // Pricing (Naira)
+    // Pricing rules (adjustable, explicit)
+    // CONDUIT:
+    // - per room base: ₦25,000
+    // - DB mounting: ₦15,000 (flat)
+    // - NEPA connection: ₦50,000 (flat)
+    // - extra wiring: ₦5,000 per room (if selected)
+    // - fittings: ₦15,000 per room (if selected)
     const PRICES = {
-      conduit_per_room: 25000, // ₦25,000 per room per your latest spec
-      parlor_fee: 5000,
-      db_mount: 15000,
-      nepa_connect: 50000,
-      fittings_per_room: 15000,
-      solar_bungalow: 270000,
-      solar_one_storey: 200000,
-      decking_extra: 130000
+      conduit_per_room: 25000,
+      conduit_db: 15000,
+      conduit_nepa: 50000,
+      conduit_wiring_add_per_room: 5000,
+      conduit_fittings_per_room: 15000,
+      solar_base_bungalow: 170000,
+      solar_extra_per_storey: 30000,
+      solar_complex: 50000
     };
 
-    function jobType(){ return Array.from(jobTypeRad).find(r=>r.checked).value }
-
-    function showHideOptions(){
-      if(jobType() === 'conduit'){ el('#conduitOptions').style.display='block'; el('#solarOptions').style.display='none' }
-      else { el('#conduitOptions').style.display='none'; el('#solarOptions').style.display='block' }
-      estimateBox.style.display='none';
+    function loadUser(){
+      try { const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
     }
-    Array.from(jobTypeRad).forEach(r=> r.addEventListener('change', showHideOptions));
 
+    function ensureClient(){
+      const u = loadUser();
+      if(!u){ alert('Please login (client) to book'); window.location.href = 'login.html'; return null; }
+      if(u.role !== 'client'){ alert('Only clients can book. Please login as a client.'); window.location.href = 'dashboard.html'; return null; }
+      return u;
+    }
+
+    // show/hide dynamic fields
+    jobType.addEventListener('change', () => {
+      const v = jobType.value;
+      conduitFields.classList.toggle('hidden', v !== 'conduit');
+      solarFields.classList.toggle('hidden', v !== 'solar');
+      otherFields.classList.toggle('hidden', v !== 'other');
+    });
+
+    // calculator
     function calculateEstimate(){
-      let total = 0; const breakdown = [];
-      if(jobType() === 'conduit'){
-        let rooms = parseInt(roomsEl.value,10) || 1;
-        const roomsCost = rooms * PRICES.conduit_per_room;
-        total += roomsCost; breakdown.push(`${rooms} room(s) @ ₦${PRICES.conduit_per_room.toLocaleString()} = ₦${roomsCost.toLocaleString()}`);
-        if(dbMountEl.checked){ total += PRICES.db_mount; breakdown.push(`DB mounting = ₦${PRICES.db_mount.toLocaleString()}`) }
-        if(nepaEl.checked){ total += PRICES.nepa_connect; breakdown.push(`NEPA connection = ₦${PRICES.nepa_connect.toLocaleString()}`) }
-        const fittings = (parseInt(fittingsEl.value,10) || 0) * PRICES.fittings_per_room;
-        if(fittings){ total += fittings; breakdown.push(`Fittings = ₦${fittings.toLocaleString()}`) }
+      const v = jobType.value;
+      let total = 0;
+      let breakdown = [];
+
+      if(v === 'conduit'){
+        const rooms = Math.max(1, Number(conduitRooms.value || 1));
+        const base = PRICES.conduit_per_room * rooms;
+        total += base; breakdown.push(`${rooms} room(s) × ₦${PRICES.conduit_per_room.toLocaleString()} = ₦${base.toLocaleString()}`);
+        if(conduitDB.checked){ total += PRICES.conduit_db; breakdown.push(`DB mounting = ₦${PRICES.conduit_db.toLocaleString()}`); }
+        if(conduitNEPA.checked){ total += PRICES.conduit_nepa; breakdown.push(`NEPA connection = ₦${PRICES.conduit_nepa.toLocaleString()}`); }
+        if(conduitWiringAdd.checked){ const add = PRICES.conduit_wiring_add_per_room * rooms; total += add; breakdown.push(`Extra wiring ${rooms}×₦${PRICES.conduit_wiring_add_per_room.toLocaleString()} = ₦${add.toLocaleString()}`); }
+        if(conduitFittings.checked){ const fit = PRICES.conduit_fittings_per_room * rooms; total += fit; breakdown.push(`Fittings ${rooms}×₦${PRICES.conduit_fittings_per_room.toLocaleString()} = ₦${fit.toLocaleString()}`); }
+      } else if(v === 'solar'){
+        let base = PRICES.solar_base_bungalow;
+        const b = solarBuilding.value;
+        if(b === 'bungalow') { base = PRICES.solar_base_bungalow; breakdown.push(`Bungalow base ₦${base.toLocaleString()}`); }
+        else if(b === 'one_story') { base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey; breakdown.push(`1 storey: base + ₦${PRICES.solar_extra_per_storey.toLocaleString()}`); }
+        else if(b === 'two_plus') { base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey * 2; breakdown.push(`2+ storey: base + ₦${(PRICES.solar_extra_per_storey*2).toLocaleString()}`); }
+        total += base;
+        if(solarComplex.checked){ total += PRICES.solar_complex; breakdown.push(`Complex roof = ₦${PRICES.solar_complex.toLocaleString()}`); }
       } else {
-        const storeys = Math.max(1, parseInt(storeysEl.value,10) || 1);
-        if(storeys === 1){
-          total += PRICES.solar_bungalow;
-          breakdown.push(`Base bungalow = ₦${PRICES.solar_bungalow.toLocaleString()}`);
-        } else {
-          // use one_storey price for single storey example in your spec; if multiple storeys we can add increments
-          total += PRICES.solar_one_storey + (storeys - 1) * PRICES.solar_one_storey;
-          breakdown.push(`${storeys} storey(s) base = ₦${(PRICES.solar_one_storey * storeys).toLocaleString()}`);
-        }
-        if(deckingEl.checked){ total += PRICES.decking_extra; breakdown.push(`Decking = ₦${PRICES.decking_extra.toLocaleString()}`) }
+        // other: client supplies estimate price
+        const price = Number(prompt('Enter your estimated price in Naira (₦):', '50000')) || 0;
+        total = price;
+        breakdown.push(`Client-provided estimate ₦${price.toLocaleString()}`);
       }
-      estimateBox.style.display='block';
-      estimateBox.innerHTML = `<div><strong>Estimated: ₦${total.toLocaleString()}</strong></div><div style="margin-top:8px">${breakdown.map(x=>`<div class="muted">${x}</div>`).join('')}</div>`;
-      return total;
+
+      return { total, breakdown };
     }
 
-    calcBtn.addEventListener('click', (e)=>{ e.preventDefault(); calculateEstimate(); });
-
-    // ensure client role
-    const raw = localStorage.getItem('wc_user');
-    if(!raw){ alert('Please login as client first'); window.location.href='login.html'; }
-    const user = JSON.parse(raw);
-    if(user.role && user.role !== 'client' && user.role !== 'CLIENT'){ alert('Only clients can book'); window.location.href='dashboard.html'; }
-
-    bookingForm.addEventListener('submit', async (e)=>{
+    // show estimate button
+    calcBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      const price = calculateEstimate();
+      const u = ensureClient();
+      if(!u) return;
+      const res = calculateEstimate();
+      estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
+    });
+
+    // submit booking
+    submitBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const user = ensureClient();
+      if(!user) return;
+
+      // build job payload
+      const jt = jobType.value;
+      let job_type = jt;
+      let descriptionText = description.value || '';
+      if(jt === 'conduit'){
+        job_type = 'conduit';
+        const rooms = Math.max(1, Number(conduitRooms.value || 1));
+        descriptionText = `Conduit wiring — rooms: ${rooms}. ` + descriptionText;
+      } else if(jt === 'solar'){
+        job_type = 'solar';
+        descriptionText = `Solar install — building: ${solarBuilding.value}. ` + descriptionText;
+      } else {
+        job_type = otherName.value || 'other';
+      }
+
+      // calculate price
+      const est = calculateEstimate();
+      const price = est.total;
+
+      // get last known coords if available
+      const lat = parseFloat(localStorage.getItem('wc_last_lat') || null);
+      const lng = parseFloat(localStorage.getItem('wc_last_lng') || null);
+
       const payload = {
         clientId: user.id,
         state: user.state || 'unknown',
         city: user.city || null,
         address: null,
-        lat: null,
-        lng: null,
-        job_type: jobType(),
-        description: (jobName.value + ' — ' + descEl.value).slice(0,1000),
+        lat: isFinite(lat) ? lat : null,
+        lng: isFinite(lng) ? lng : null,
+        job_type,
+        description: descriptionText,
         price
       };
 
-      // attempt to set lat/lng via geolocation
-      try{
-        const pos = await new Promise((res,rej)=> navigator.geolocation.getCurrentPosition(res, rej, { timeout:8000 }));
-        payload.lat = pos.coords.latitude;
-        payload.lng = pos.coords.longitude;
-      }catch(e){ /* ignore */ }
+      const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
+      diag.textContent = `POST ${endpoint}\\nPAYLOAD:\\n${JSON.stringify(payload, null, 2)}\\nSending...`;
 
-      // POST booking
       try{
-        const resp = await fetch(API_BASE + '/api/book', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-        const js = await resp.json().catch(()=>null);
-        if(!resp.ok || !js || !js.success){
-          const msg = js && js.message ? js.message : 'Booking failed';
-          alert(msg);
-          return;
+        const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+        const txt = await resp.text().catch(()=>null);
+        let body = null;
+        try{ body = txt ? JSON.parse(txt) : null; } catch(e){ body = txt; }
+        diag.textContent = `HTTP ${resp.status} ${resp.statusText}\\nRESPONSE:\\n${JSON.stringify(body, null, 2)}`;
+        if(resp.ok && body && body.success && body.jobId){
+          // save to local storage bookings
+          const existing = JSON.parse(localStorage.getItem('wc_bookings') || '[]');
+          existing.unshift({ id: body.jobId, jobType: job_type, description: payload.description, estimate: price, createdAt: new Date().toISOString(), assigned: body.assigned || false, technician: body.technician || null });
+          localStorage.setItem('wc_bookings', JSON.stringify(existing));
+
+          // redirect to chat page for the job
+          window.location.href = 'chat.html?jobId=' + encodeURIComponent(body.jobId);
+        } else {
+          // keep diagnostics visible
+          console.warn('Booking not successful', body);
         }
-        // save locally for client-side job list & quick access
-        const book = { id: js.jobId || ('bk_'+Date.now()), jobType: payload.job_type, description: payload.description, estimate: payload.price, createdAt: new Date().toISOString() };
-        const existing = JSON.parse(localStorage.getItem('wc_bookings') || '[]');
-        existing.unshift(book);
-        localStorage.setItem('wc_bookings', JSON.stringify(existing));
-
-        // now poll for assignment (server will attemptAssign)
-        showModal(`<div><strong>Booking created</strong><div class="muted">We are trying to find available technicians near you. Please wait...</div></div>`);
-        await pollAssignment(js.jobId || book.id);
-      }catch(e){ alert('Network error creating booking'); console.error(e); }
+      }catch(err){
+        diag.textContent += '\\nNETWORK ERROR:\\n' + String(err);
+      }
     });
 
-    function showModal(html){
-      const root = el('#modalRoot'); el('#modalContent').innerHTML = html; root.style.display='flex'; root.setAttribute('aria-hidden','false');
-    }
-    function hideModal(){ const root = el('#modalRoot'); root.style.display='none'; root.setAttribute('aria-hidden','true') }
-
-    async function pollAssignment(jobId){
-      const start = Date.now(); let assigned=null;
-      while(Date.now() - start < 35000){
-        try{
-          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
-          const js = await resp.json();
-          if(js && js.success && js.job && js.job.assigned_tech_id){
-            assigned = js.job;
-            break;
-          }
-        }catch(e){}
-        await new Promise(r=>setTimeout(r,2000));
-      }
-
-      hideModal();
-
-      if(assigned){
-        // show assigned modal (try to fetch profile)
-        let techProfile = null;
-        try{
-          const t = await fetch(API_BASE + '/api/user/' + encodeURIComponent(assigned.assigned_tech_id));
-          if(t.ok) techProfile = await t.json();
-        }catch(e){ /* ignore */ }
-        const name = techProfile && techProfile.fullname ? techProfile.fullname : (assigned.assigned_tech_id || 'Technician');
-        const avatar = techProfile && techProfile.avatar_url ? techProfile.avatar_url : '';
-        showModal(`<div style="display:flex;gap:12px;align-items:center">
-          <div><img src="${avatar || 'https://via.placeholder.com/64'}" style="width:64px;height:64px;border-radius:12px;object-fit:cover"></div>
-          <div><div style="font-weight:700">${name}</div><div class="muted">Assigned — you can open chat to see details</div><div style="margin-top:8px"><button id="openChat" class="btn">Open chat</button> <button id="closeIt" class="btn-ghost">Close</button></div></div>
-        </div>`);
-        document.getElementById('openChat').addEventListener('click', ()=>{ hideModal(); window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId); });
-        document.getElementById('closeIt').addEventListener('click', hideModal);
-      } else {
-        // not assigned: show helpful modal & option to open chat
-        showModal(`<div><strong>No technician found</strong><div class="muted">We couldn't find an available technician in your state within the assignment rules. You can open chat or try again later.</div><div style="margin-top:12px"><button id="openChat" class="btn">Open chat</button> <button id="closeIt" class="btn-ghost">Close</button></div></div>`);
-        document.getElementById('openChat').addEventListener('click', ()=>{ hideModal(); window.location.href='chat.html?jobId=' + encodeURIComponent(jobId) });
-        document.getElementById('closeIt').addEventListener('click', hideModal);
-      }
-    }
-
-    // basic access control: if not client redirect
+    // initialize user greeting and redirect if not client
     (function init(){
-      const raw = localStorage.getItem('wc_user');
-      if(!raw){ alert('Please login'); window.location.href='login.html'; return; }
-      const u = JSON.parse(raw);
-      if(u.role !== 'client'){ alert('Only clients can use booking'); window.location.href='dashboard.html'; return; }
-      showHideOptions();
+      const userRaw = localStorage.getItem('wc_user');
+      if(!userRaw){
+        alert('Please login as client to book. Redirecting to login.');
+        window.location.href = 'login.html';
+        return;
+      }
+      const user = JSON.parse(userRaw);
+      if(user.role !== 'client'){
+        alert('Only clients can access booking. Redirecting to dashboard.');
+        window.location.href = 'dashboard.html';
+        return;
+      }
+      userGreeting.textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`;
     })();
   </script>
 </body>
