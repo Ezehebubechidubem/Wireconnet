@@ -54,7 +54,9 @@
     /* paragraph text responsive */
     .fit { padding: 12px 16px; font-size: clamp(15px, 3.5vw, 20px); line-height: 1.6; color:#111; }
 
-    /* BUTTONS: neat, identical borders and size */
+    /* BUTTONS: neat, identical borders and size
+       ----- ONLY BUTTON STYLES UPDATED BELOW -----
+    */
     .audit, .audits {
       display: flex;
       justify-content: center;
@@ -64,41 +66,62 @@
       flex-wrap: wrap;
     }
 
-    /* ensure <p> wrappers for buttons don't add extra spacing and don't force left alignment */
     .audit p, .audits p, .auditss p { margin: 0; width: auto; display:flex; align-items:center; justify-content:center; }
 
-    /* unified button look - APPLIED to both .do and .to so they match exactly */
+    /* NEW BUTTON STYLE: looks like your screenshot */
     .do, .to {
       display:inline-flex;
       align-items:center;
       justify-content:center;
       text-decoration:none;
-      border-radius: 28px;
-      background-color: #0b47d1;
-      color:#fff;
-      padding: 0 18px;
-      height: 48px;
-      min-width: 160px;
+      border-radius: 30px;
+      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
+      color:#ffffff;
+      padding: 0 20px;
+      height: 56px;
+      min-width: 180px;
       box-sizing: border-box;
-      border: 3px solid #000; /* identical border size for all buttons */
-      font-weight:700;
+      border: 4px solid #000;           /* bold black border like screenshot */
+      font-weight:800;
       font-size: 18px;
       line-height:1;
-      text-align:center;     /* center text */
-      white-space: normal;   /* allow wrapping but keep centered */
+      text-align:center;
+      white-space: normal;
       word-break: break-word;
+      /* subtle inner shadow to mimic the "pressed" look */
+      box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
     }
 
+    /* small responsive tweaks for tiny phones */
     @media (max-width:480px){
-      .do, .to { min-width: 46%; height:46px; font-size:15px; }
+      .do, .to { min-width: 46%; height:48px; font-size:15px; border-width:3px; border-radius:24px; padding:0 12px; }
       .brief { padding: 12px; }
       .fit { padding: 10px 12px; }
     }
 
-    /* leaderboard small buttons (kept style uniform) */
+    /* leaderboard small buttons: keep the same look but smaller height */
     .auditss { display:flex; justify-content:center; gap:14px; padding: 18px 10px; }
+    .auditss .to { min-width: 140px; height:44px; font-size:15px; }
 
-    /* feature area */
+    /* match small menu book button to same look */
+    .menu-dropdown .book-btn {
+      display:block;
+      margin-top:6px;
+      background: linear-gradient(#1154ff,#0738d6);
+      color:#fff;
+      padding:10px 12px;
+      text-align:center;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:800;
+      border: 3px solid #000;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(0,0,0,0.06);
+    }
+
+    /* keep regular menu links visible but not changed */
+    .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
+
+    /* keep existing button classes for Learn More, etc. */
     .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
     .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
     .bond { padding:10px; }
@@ -121,8 +144,6 @@
       display:none; position:absolute; right:0; margin-top:8px; width:260px;
       background:#fff; border:1px solid #000; border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
     }
-    .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
-    .menu-dropdown a.book-btn { display:block; margin-top:6px; background:blue; color:#fff; padding:10px; text-align:center; border-radius:8px; text-decoration:none; font-weight:800; }
 
     /* toggle switch styles (kept) */
     .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
