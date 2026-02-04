@@ -172,7 +172,7 @@ main {
 .hamburger {
   font-size: 28px;
   background: none;
-  border: 1px solid black;
+  border: 1px solid #000;
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
@@ -184,7 +184,7 @@ main {
   background: white;
   border: 1px solid black;
   border-radius: 10px;
-  width: 220px;
+  width: 260px;
   padding: 10px;
   margin-top: 8px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.12);
@@ -222,24 +222,94 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 12px;
   gap: 8px;
 }
-#statusBtn {
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: none;
-  background-color: gray;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* small note under toggle */
 .status-note {
   font-size: 12px;
   color: #444;
   margin-top: 6px;
+}
+
+/* ---- Toggle switch styles ---- */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 54px;
+  height: 30px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #999;
+  transition: .3s;
+  border-radius: 30px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+input:checked + .slider {
+  background-color: #28a745; /* green */
+}
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* ---- Online indicator on main page ---- */
+.online-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 20px;
+  font-weight: bold;
+  color: #333;
+}
+.indicator-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: gray;
+  box-shadow: 0 0 6px rgba(0,0,0,0.06);
+}
+.indicator-online {
+  background: #28a745; /* green */
+  box-shadow: 0 0 8px rgba(40,167,69,0.3);
+}
+.indicator-offline {
+  background: gray;
+  box-shadow: none;
+}
+
+/* small toast */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  z-index: 9999;
+  display: none;
 }
   </style>
   </head>
@@ -267,7 +337,12 @@ main {
 
         <div class="status-toggle">
           <span>Status:</span>
-          <button id="statusBtn" data-online="false" onclick="toggleStatus()">Offline</button>
+
+          <!-- Toggle switch (on/off) -->
+          <label class="switch" title="Toggle online / offline">
+            <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
+            <span class="slider"></span>
+          </label>
         </div>
         <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
       </div>
@@ -275,7 +350,15 @@ main {
 
   </header>
   <main>
-    <p class="brief">Motto: Let Their Be Light 💥💥</p>
+    <p class="brief">
+      Motto: Let Their Be Light 💥💥
+      <!-- Online indicator placed on main page as requested -->
+      <span class="online-indicator" id="onlineIndicatorContainer" aria-live="polite">
+        <span class="indicator-dot indicator-offline" id="indicatorDot"></span>
+        <span id="indicatorText">Offline</span>
+      </span>
+    </p>
+
     <div class="sort">
       <p class="dent">WireConnect Network</p>
     </div>
@@ -337,12 +420,26 @@ Wire Connect avoids this risk by operating through a distributed service network
       </article>
   </main>
 
+  <div class="toast" id="toast"></div>
+
   <script>
+    // ---- CONFIG: point to your backend ----
+    const API_BASE = 'https://wireconnet-1.onrender.com';
+
+    // UI elements
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const statusSwitch = document.getElementById('statusSwitch');
+    const indicatorDot = document.getElementById('indicatorDot');
+    const indicatorText = document.getElementById('indicatorText');
+    const toastEl = document.getElementById('toast');
+
     // Toggle the hamburger menu visibility
     (function(){
-      const btn = document.getElementById('hamburgerBtn');
-      const menu = document.getElementById('menuDropdown');
-      btn.addEventListener('click', ()=>{
+      const btn = hamburgerBtn;
+      const menu = menuDropdown;
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
         const shown = menu.style.display === 'block';
         menu.style.display = shown ? 'none' : 'block';
         btn.setAttribute('aria-expanded', !shown);
@@ -360,98 +457,159 @@ Wire Connect avoids this risk by operating through a distributed service network
       });
     })();
 
-    // Online/Offline toggle connects to backend
-    async function toggleStatus(){
-      const btn = document.getElementById('statusBtn');
-      const currentlyOnline = btn.getAttribute('data-online') === 'true';
-      const goingOnline = !currentlyOnline;
+    // helper: show toast
+    function showToast(msg, ms = 3000){
+      toastEl.innerText = msg;
+      toastEl.style.display = 'block';
+      setTimeout(()=> { toastEl.style.display = 'none'; }, ms);
+    }
 
-      // Look up user id:
-      // 1) body data-user-id attribute
-      // 2) localStorage.userId
-      // Note: set the current user id into <body data-user-id="..."> or localStorage.userId
-      const userId = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
+    // helper: set indicator on main page
+    function setIndicator(online){
+      if(online){
+        indicatorDot.classList.remove('indicator-offline');
+        indicatorDot.classList.add('indicator-online');
+        indicatorText.innerText = 'Online';
+      } else {
+        indicatorDot.classList.remove('indicator-online');
+        indicatorDot.classList.add('indicator-offline');
+        indicatorText.innerText = 'Offline';
+      }
+    }
+
+    // Obtain user id from body attribute or localStorage
+    function getUserId(){
+      const id = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
+      return id && id.trim() !== '' ? id : null;
+    }
+
+    // Save last-known online state to localStorage (per user)
+    function storeLastKnownOnline(userId, online){
+      if(!userId) return;
+      try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){}
+    }
+    function readLastKnownOnline(userId){
+      if(!userId) return null;
+      try {
+        const v = localStorage.getItem('techOnline_' + userId);
+        if(v === null) return null;
+        return v === '1';
+      } catch(e){ return null; }
+    }
+
+    // Attempt to send status change to backend with timeout
+    async function sendStatusToBackend(userId, online, lat = null, lng = null){
+      const url = API_BASE + '/api/tech/status';
+      // small timeout for fetch
+      const controller = new AbortController();
+      const timeout = setTimeout(()=> controller.abort(), 12000); // 12s
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ techId: userId, online: !!online, lat: lat, lng: lng })
+        });
+        clearTimeout(timeout);
+        const json = await resp.json().catch(()=> null);
+        if(!resp.ok){
+          // return an object indicating failure and message if available
+          return { success:false, message: (json && json.message) ? json.message : ('HTTP ' + resp.status) };
+        }
+        return json; // should contain { success:true, message: ... }
+      } catch(err){
+        clearTimeout(timeout);
+        if(err.name === 'AbortError') return { success:false, message: 'Request timed out' };
+        return { success:false, message: err.message || 'Network error' };
+      }
+    }
+
+    // Main handler when user toggles switch
+    async function handleSwitchToggle(e){
+      const checked = e.target.checked;
+      const userId = getUserId();
       if(!userId){
-        alert('No user id found. Set the current technician id in body[data-user-id] or localStorage.userId to let the toggle send status to backend.');
+        // revert switch and inform developer/user to set id
+        statusSwitch.checked = !checked;
+        showToast('No user id found. Set body[data-user-id] or localStorage.userId to enable status updates.', 5000);
         return;
       }
 
-      // Try to get location if available (not required)
+      // get geolocation (best-effort, do not block UX too long)
       let lat = null, lng = null;
       if(navigator.geolocation){
         try{
           const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 10000, timeout: 5000 });
+            const t = setTimeout(() => reject(new Error('geolocation timeout')), 4500);
+            navigator.geolocation.getCurrentPosition((p) => { clearTimeout(t); resolve(p); }, (err) => { clearTimeout(t); reject(err); }, { maximumAge: 10000, timeout: 4500 });
           });
           lat = pos.coords.latitude;
           lng = pos.coords.longitude;
-        }catch(e){
-          // ignore geolocation errors, fallback to null
-          console.warn('Geolocation not available or denied', e);
+        }catch(err){
+          // ignore geolocation errors
+          console.warn('geolocation unavailable', err);
         }
       }
 
-      // disable button while request in flight
-      btn.disabled = true;
-      const previousText = btn.innerText;
+      // optimistic UI: set indicator and keep switch while request is in-flight
+      setIndicator(checked);
+      statusSwitch.disabled = true;
+      showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
 
-      try{
-        const resp = await fetch('/api/tech/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            techId: userId,
-            online: goingOnline,
-            lat: lat,
-            lng: lng
-          })
-        });
+      // send
+      const result = await sendStatusToBackend(userId, checked, lat, lng);
+      statusSwitch.disabled = false;
 
-        const data = await resp.json();
-
-        if(resp.ok && data && data.success){
-          // update UI
-          btn.setAttribute('data-online', String(goingOnline));
-          if(goingOnline){
-            btn.innerText = 'Online';
-            btn.style.backgroundColor = 'green';
-          } else {
-            btn.innerText = 'Offline';
-            btn.style.backgroundColor = 'gray';
-          }
-        } else {
-          const msg = (data && data.message) ? data.message : 'Failed to update status';
-          alert(msg);
-          // restore previous UI if failed
-          btn.innerText = previousText;
-        }
-      }catch(err){
-        console.error('Network error when updating status', err);
-        alert('Network error while sending status to backend.');
-        btn.innerText = previousText;
-      } finally {
-        btn.disabled = false;
+      if(result && result.success){
+        // success: persist last-known state
+        storeLastKnownOnline(userId, checked);
+        showToast('Status updated');
+      } else {
+        // failure: revert UI to previous state and show message
+        const prev = !checked;
+        statusSwitch.checked = prev;
+        setIndicator(prev);
+        const msg = (result && result.message) ? result.message : 'Failed to update status';
+        showToast('Error: ' + msg, 6000);
+        // also alert for visibility
+        alert('Could not update status: ' + msg);
       }
     }
 
-    // On load, try to reflect current online state from backend if userId exists
-    (async function initStatusFromBackend(){
-      const userId = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
-      if(!userId) return;
-      try{
-        // Attempt to fetch minimal user info to read online (route available: /api/user/:id returns id, fullname, username, avatar_url, lat, lng)
-        const r = await fetch('/api/user/' + encodeURIComponent(userId));
-        if(!r.ok) return;
-        const u = await r.json();
-        if(u && u.success){
-          const btn = document.getElementById('statusBtn');
-          // Note: the /api/user endpoint in backend returns id, fullname, username, avatar_url, lat, lng — online isn't returned there.
-          // We can request KYC/status endpoint to get kyc_status, kyc_documents etc (/api/kyc/status/:userId) — but online is stored in users.online.
-          // Because no dedicated 'get user safe object' endpoint exists here, we'll try a best-effort call to /api/login or dashboard is not appropriate.
-          // So we skip pre-populating online state unless you add a client-side source (set body[data-user-id] and body[data-online="true"]).
-        }
-      }catch(e){ /* ignore */ }
+    // Wire the switch event
+    statusSwitch.addEventListener('change', handleSwitchToggle);
+
+    // On load: set switch and indicator from localStorage for this user (best-effort)
+    (function initFromLocal(){
+      const userId = getUserId();
+      if(!userId) {
+        // nothing to pre-populate; leave offline default
+        setIndicator(false);
+        return;
+      }
+      const known = readLastKnownOnline(userId);
+      if(known === null){
+        // no saved state — leave defaults (offline)
+        setIndicator(false);
+        statusSwitch.checked = false;
+      } else {
+        statusSwitch.checked = !!known;
+        setIndicator(!!known);
+      }
     })();
+
+    // Accessibility: close dropdown with Escape
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') {
+        menuDropdown.style.display = 'none';
+        hamburgerBtn.setAttribute('aria-expanded', false);
+        menuDropdown.setAttribute('aria-hidden', true);
+      }
+    });
+
+    // Expose small helper to programmatically set user id
+    // You can call in browser console: localStorage.setItem('userId','THE_USER_ID') or set <body data-user-id="...">
+    // Optional: if you want to auto-read user object from /api/login etc, implement login flow and set localStorage.userId on success.
   </script>
 </body>
 </html>
