@@ -1,421 +1,457 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — Dashboard</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin=""/>
+  <meta charset="UTF-8">
+  <meta name="author" content="Mr Dubem">
+  <meta name="description" content="HTML practice">
+  <meta name="keywords" content="HTML,CSS,JS">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GTAN</title>
   <style>
-    :root{
-      --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280;
-      --surface:#ffffff; --shadow: 0 8px 30px rgba(16,24,40,0.06);
-      --radius:12px;
+    *{
+  margin: 0;
+  padding: 0;
+   box-sizing:border-box;
     }
-    html,body{height:100%;margin:0}
-    body{
-      height:100%;
-      font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;
-      background:var(--bg);
-      color:#111827;
-      display:flex;flex-direction:column;
-    }
-    header{display:flex;align-items:center;gap:12px;padding:12px;box-sizing:border-box;width:100%}
-    .logo{flex:1;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--accent),#55a7ff);border-radius:10px;padding:8px 12px;color:white;box-shadow:0 8px 24px rgba(11,92,255,0.08);min-height:56px}
-    .logo img{height:40px;border-radius:6px;object-fit:contain}
-    .menu-btn{width:54px;height:54px;border-radius:10px;border:0;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;cursor:pointer}
-    main{flex:1 1 auto;display:flex;align-items:flex-start;justify-content:center;width:100%;box-sizing:border-box;padding:14px;overflow:hidden}
-    .card {width:100%;max-width:980px;height:100%;background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
-    .content {flex:1 1 auto;overflow:auto;padding-right:6px}
-    .section{background:var(--surface);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 6px 20px rgba(16,24,40,0.04)}
-    .muted{color:var(--muted);font-size:13px}
-    .hero{width:100%;border-radius:10px;overflow:hidden;background:linear-gradient(90deg,#eef6ff,#ffffff);padding:8px;margin-bottom:12px}
-    .hero img{width:100%;height:auto;max-height:140px;object-fit:cover;border-radius:8px}
-    .drawer-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;z-index:1000}
-    .drawer{position:fixed;right:0;top:0;height:100%;width:360px;max-width:92vw;background:white;box-shadow:-16px 0 40px rgba(2,6,23,0.12);transform:translateX(100%);transition:transform .28s ease;z-index:1001;padding:18px;box-sizing:border-box}
-    .drawer.open{transform:translateX(0)}
-    .drawer .header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    .logo-small{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#55a7ff);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
-    .drawer a{display:block;padding:12px;border-radius:8px;color:#0b0b0b;text-decoration:none;margin-bottom:8px;border:1px solid #f1f5f9;background:#fbfdff}
-    .drawer a.primary{background:linear-gradient(90deg,var(--accent),#55a7ff);color:white;border:0}
-    .toggle-row{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 0}
-    .badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#eef3ff;color:var(--accent)}
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-    .content::-webkit-scrollbar{width:8px}
-    .content::-webkit-scrollbar-thumb{background:rgba(11,92,255,0.12);border-radius:8px}
-    /* small modal */
-    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:2000}
-    .modal{width:92%;max-width:520px;background:white;border-radius:12px;padding:16px;box-shadow:0 24px 60px rgba(2,6,23,0.2)}
-    .small-avatar{width:64px;height:64px;border-radius:12px;object-fit:cover;background:#f1f5ff;display:inline-block}
-    .btn{background:var(--accent);color:white;padding:10px 14px;border-radius:10px;border:0;cursor:pointer}
-    .btn-ghost{background:transparent;border:1px solid #e6eef9;padding:8px 12px;border-radius:8px;cursor:pointer}
-    .row{display:flex;gap:12px;align-items:center}
-    .leaderboard-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f6fb}
-    .muted-2{color:#64748b}
+  .brief{
+    color:black;
+    display:flex;
+    justify-content:left;
+    padding:30px;
+    font-weight:bold;
+    font-style:italic;
+  }
+  .sort{
+    color:rgba(0,0,200,1);
+    padding:5px;
+    font-size:85px
+  }
+  .dent{
+    display:flex;
+    justify-content:center;
+    padding:20px
+  }
+  .fit{
+    padding:20px;
+    line-spacing:1.6px;
+    font-size:25px
+  }
+  
+ fieldset{
+   border:1px solid black;
+   border-radius:10px;
+   height:70px;
+   
+ }
+  .do{
+    display:grid;
+    justify-content:center;
+    text-decoration:none;
+    border:2px solid black;
+    border-radius:20px;
+    width:200px;
+    background-color:blue;
+    color:white;
+    padding:2px;
+    margin:10px;
+  }
+  .audit,.audits{
+    display:flex;
+    justify-content:center;
+    padding:50px;
+    margin:10px;
+    height:50px;
+  }
+ .to{ display:grid;
+    justify-content:center;
+    text-decoration:none;
+    border:2px solid black;
+    border-radius:20px;
+    width:200px;
+    background-color:blue;
+    color:white;
+    padding:8px;
+   margin:10px;
+ font-weight:bold;}
+.auditss{
+  display:flex;
+    justify-content:center;
+    padding:50px;
+    margin:10px;
+    width:420px;
+}
+main {
+  padding-top: 70px; /* adjust to header height */
+}
+  .bend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  border: 1px solid black;
+  border-radius:0px;
+
+  position: fixed;   /* stays on top */
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+  .search{
+    border:none;
+    background-color:white;
+    text-decoration:none;
+    display:flex;
+    justify-content:right;
+    padding:10px;
+    margin:10px;
+    width:10px;
+  }
+  .searches{
+    border:none;
+    color:black;
+    font-weight:bold;
+    text-decoration:none;
+  }
+  .images,.imagecap{
+    display:flex;
+    justify-content:center;
+    font-weight:bold;
+    text-transform:uppercase;
+    padding:20px;
+    
+  }
+  
+  
+  .image{
+    with:1000px;
+    background-color:rgba(220,220,220,1);
+    
+  }
+.meet{
+  padding:20px;
+  display:flex;
+  justify-content:center
+  
+}
+
+.dif,.cut{
+  padding:10px;
+  line-spacing:1.6px
+}
+  .suf{
+    border:none;
+    color:blue;
+    font-weight:bold;
+    text-decoration:none;
+    padding:30px;
+  }
+  .AI{
+    position: fixed;   /* stays on top */
+ background-color:white;
+  border:none;
+  left: 80%;
+   bottom:2%;
+  width: 100%;
+  z-index: 1000;
+  }
+  .bond{
+    padding:10px
+  }
+
+/* ---- Added hamburger menu styles ---- */
+.hamburger-container {
+  position: fixed;
+  /* placed below the logo (logo ~120px high) */
+  top: 140px;
+  right: 20px;
+  z-index: 2000;
+  font-family: inherit;
+}
+
+.hamburger {
+  font-size: 28px;
+  background: none;
+  border: 1px solid black;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  background-color: white;
+}
+
+.menu-dropdown {
+  display: none;
+  background: white;
+  border: 1px solid black;
+  border-radius: 10px;
+  width: 220px;
+  padding: 10px;
+  margin-top: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Menu links */
+.menu-dropdown a.menu-link {
+  display: block;
+  padding: 8px;
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.menu-dropdown a.menu-link:hover {
+  background-color: rgba(0,0,200,0.06);
+}
+
+/* Book button (blue) */
+.menu-dropdown a.book-btn {
+  display: block;
+  background-color: blue;
+  color: white !important;
+  text-align: center;
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-decoration: none;
+  font-weight: bold;
+  margin-top: 6px;
+}
+
+/* Status row */
+.status-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  gap: 8px;
+}
+#statusBtn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: gray;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* small note under toggle */
+.status-note {
+  font-size: 12px;
+  color: #444;
+  margin-top: 6px;
+}
   </style>
-</head>
-<body>
+  </head>
+<body data-user-id="">
   <header>
-    <div class="logo" role="banner" aria-label="WireConnect">
-      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+    <div class="bend">
+    <figure >
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="Gtan logo" width="450px" height="120px">
+    </figure>
+  </div>
+       <div class="search" >
+      <a href="search.html" class="search" >🔍</a>
     </div>
-    <button id="menuBtn" class="menu-btn" aria-label="Open menu">☰</button>
+
+    <!-- Hamburger Menu (requested: top-right below logo) -->
+    <div class="hamburger-container" aria-expanded="false">
+      <button class="hamburger" id="hamburgerBtn" aria-controls="menuDropdown" aria-expanded="false">☰</button>
+
+      <div class="menu-dropdown" id="menuDropdown" role="menu" aria-hidden="true">
+        <a class="menu-link" href="profile.html">Profile</a>
+        <a class="menu-link" href="settings.html">Settings</a>
+        <a class="menu-link" href="kyc.html">KYC</a>
+
+        <a class="book-btn" href="book.html">Book Job</a>
+
+        <div class="status-toggle">
+          <span>Status:</span>
+          <button id="statusBtn" data-online="false" onclick="toggleStatus()">Offline</button>
+        </div>
+        <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
+      </div>
+    </div>
+
   </header>
-
   <main>
-    <section class="card" role="main" aria-labelledby="dashboardHeading">
-      <div class="topbar">
-        <div>
-          <div id="dashboardHeading" style="font-size:18px;font-weight:700">Welcome</div>
-          <div class="muted" id="userGreeting">—</div>
-        </div>
-        <div class="badge" id="statusBadge" aria-live="polite">Offline</div>
+    <p class="brief">Motto: Let Their Be Light 💥💥</p>
+    <div class="sort">
+      <p class="dent">WireConnect Network</p>
+    </div>
+    <div class="fit">
+      <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
+      <div class="audit">
+        <p><a class="do"  href="#">Book A Job</a></p>
+        <p><a class="do" href="#">View All Jobs</a></p>
       </div>
-
-      <div class="content">
-        <div class="hero">
-          <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect banner">
+        <div class="audits">
+        <p><a class="do" href="#">Do Kyc</a></p>
+        <p><a class="do"  href="#">Customer Services</a></p>
         </div>
-
-        <section class="section" aria-labelledby="leader">
-          <h3 id="leader">Leaderboard</h3>
-          <div id="leaderboard" style="margin-top:8px"></div>
-        </section>
-
-        <section class="section" aria-labelledby="jobs">
-          <h3 id="jobs">Your Jobs</h3>
-          <div id="jobsList">
-            <div class="muted">No jobs yet.</div>
-          </div>
-        </section>
-
-      </div>
-    </section>
+       </div>
+        <div class="auditss">
+        <p><a class="to" href="#"> Client Leaderboard</a></p>
+        <p><a class="to"  href="#">Technician Leaderboard</a></p>
+        </div>
+       <article class="image">
+    <figure class="images">
+      <img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized">
+    </figure>
+         <p class="imagecap">Distributed Network</p>
+         <p>Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved.
+Wire Connect avoids this risk by operating through a distributed service network, designed for reliability, transparency, and uninterrupted operations.</p>
+         <figure class="images">
+           <img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way ti crypto">
+         </figure>
+         <p class="imagecap">Your Secure Way to Services</p>
+         <p>The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a unique feature — the ability to access verified professionals directly through your service requests.</p>
+         <figure class="images">
+           <img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Giant Launcpad">
+         </figure>
+         <p class="imagecap">Wire Connect Hub</p>
+         <p class="bond">Empowering the Next Generation of Technicians.</p>
+         <p> The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts. A service hub built with integrity, for Africa and beyond.</p>
+       </article>
+      <aside>
+        <figure>
+          <img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="service image" class="meet">
+        </figure>
+        <h2>Meet the WireConnect Network</h2>
+        <p class="cut"><strong>The WireConnect Network</strong>
+        </a> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
+        <p class="dif"><ul>
+          <li class="dif"><strong>Service with Purpose:</strong> A portion of every connections supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
+          <li class="dif"><strong></strong></li> 
+          <li class="dif"><strong>Wire Connect Hub: </strong>A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
+          <li class="dif"><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
+          
+        </ul></p>
+        <a class="suf" href="#">Learn More</a>
+      </aside>
+      <aside class="AI">
+        <a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg"></a>
+      </aside>
+      <article>
+        
+      </article>
   </main>
 
-  <!-- Drawer -->
-  <div id="drawerBackdrop" class="drawer-backdrop" aria-hidden="true"></div>
-  <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Main menu">
-    <div class="header">
-      <div class="logo-small" aria-hidden="true">
-        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="" style="height:28px;object-fit:contain">
-      </div>
-      <div>
-        <div style="font-weight:700">Quick Menu</div>
-        <div class="muted" id="drawerUser">User</div>
-      </div>
-      <button id="closeDrawerBtn" style="margin-left:auto;background:transparent;border:0;font-size:16px;cursor:pointer">✕</button>
-    </div>
-
-    <nav id="drawerNav">
-      <a href="profile.html" id="profileLink">Profile</a>
-      <a href="kyc.html" id="kycLink">KYC</a>
-
-      <a href="book.html" id="bookingLink" style="display:none" class="primary">Book</a>
-
-      <div style="height:8px"></div>
-
-      <div id="availabilityArea" style="">
-        <div class="toggle-row">
-          <div>
-            <div style="font-weight:600">Availability</div>
-            <div class="muted">Go online to receive job requests</div>
-          </div>
-          <div>
-            <button id="toggleOnlineBtn" style="padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:white;cursor:pointer">Go Online</button>
-          </div>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-      <a href="settings.html" id="settingsLink">Settings</a>
-      <a href="#" id="logoutBtn" style="background:#fff;border:1px solid #f1f5f9">Sign out</a>
-
-      <div style="height:14px"></div>
-      <div class="muted" id="drawerFeedback" style="font-size:13px"></div>
-    </nav>
-  </aside>
-
-  <!-- modal -->
-  <div id="modalRoot" class="modal-backdrop" aria-hidden="true">
-    <div class="modal" role="dialog" aria-live="polite">
-      <div id="modalContent"></div>
-    </div>
-  </div>
-
   <script>
-    // ---------- config ----------
-    const API_BASE = ''; // set to '' for same origin or full url like 'https://wireconnet-1.onrender.com'
-    // ---------- utils ----------
-    function el(q){ return document.querySelector(q) }
-    function showModal(html){ const root = el('#modalRoot'); el('#modalContent').innerHTML = html; root.style.display = 'flex'; root.setAttribute('aria-hidden','false') }
-    function hideModal(){ const root = el('#modalRoot'); root.style.display = 'none'; root.setAttribute('aria-hidden','true') }
+    // Toggle the hamburger menu visibility
+    (function(){
+      const btn = document.getElementById('hamburgerBtn');
+      const menu = document.getElementById('menuDropdown');
+      btn.addEventListener('click', ()=>{
+        const shown = menu.style.display === 'block';
+        menu.style.display = shown ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', !shown);
+        menu.setAttribute('aria-hidden', shown);
+      });
 
-    // DOM refs
-    const menuBtn = el('#menuBtn'), closeDrawerBtn = el('#closeDrawerBtn'), drawer = el('#drawer'), backdrop = el('#drawerBackdrop');
-    const toggleOnlineBtn = el('#toggleOnlineBtn'), statusBadge = el('#statusBadge'), drawerFeedback = el('#drawerFeedback'), drawerUser = el('#drawerUser'), userGreeting = el('#userGreeting'), bookingLink = el('#bookingLink'), availabilityArea = el('#availabilityArea');
-
-    menuBtn.addEventListener('click', ()=>{ drawer.classList.add('open'); backdrop.style.display='block'; drawer.setAttribute('aria-hidden','false'); backdrop.setAttribute('aria-hidden','false') });
-    backdrop.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; drawer.setAttribute('aria-hidden','true'); backdrop.setAttribute('aria-hidden','true') });
-    closeDrawerBtn.addEventListener('click', ()=>{ drawer.classList.remove('open'); backdrop.style.display='none'; });
-
-    // Load current user from localStorage
-    function loadUser(){
-      try{
-        const raw = localStorage.getItem('wc_user');
-        if(!raw) return null;
-        const u = JSON.parse(raw);
-        return u;
-      }catch(e){ return null; }
-    }
-
-    function isTechnicianRole(role){
-      // accept both 'worker' (backend) and 'technician'
-      return role === 'worker' || role === 'technician' || role === 'worker';
-    }
-
-    function setOnlineUI(isOnline){
-      statusBadge.textContent = isOnline ? 'Online' : 'Offline';
-      statusBadge.style.background = isOnline ? '#ecfff5' : 'transparent';
-      statusBadge.style.color = isOnline ? '#037a50' : 'var(--muted)';
-      toggleOnlineBtn.textContent = isOnline ? 'Go Offline' : 'Go Online';
-      toggleOnlineBtn.style.background = isOnline ? '#fff' : 'var(--accent)';
-      toggleOnlineBtn.style.color = isOnline ? 'var(--accent)' : '#fff';
-      toggleOnlineBtn.style.border = isOnline ? '1px solid #e6eef9' : '0';
-    }
-
-    // update tech status on server (POST /api/tech/status)
-    async function updateOnlineStatus(on){
-      setOnlineUI(on);
-      drawerFeedback.textContent = on ? 'Trying to take jobs...' : 'You will not receive jobs while offline.';
-      localStorage.setItem('wc_online', on ? '1' : '0');
-
-      const user = loadUser();
-      if(!user) return;
-      // try to get geolocation
-      let lat=null,lng=null;
-      try{
-        const pos = await new Promise((resolve,reject)=>{
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 });
-        });
-        lat = pos.coords.latitude; lng = pos.coords.longitude;
-      }catch(e){
-        // geolocation not available or denied; proceed without it
-      }
-
-      try{
-        const resp = await fetch(API_BASE + '/api/tech/status', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          body: JSON.stringify({ techId: user.id, online: !!on, lat, lng })
-        });
-        const json = await resp.json().catch(()=>null);
-        if(!resp.ok) drawerFeedback.textContent = 'Server: ' + (json && json.message ? json.message : resp.statusText);
-        else drawerFeedback.textContent = json.message || 'Status updated';
-      }catch(e){
-        console.warn('Network error', e);
-        drawerFeedback.textContent = 'Network: could not notify server (saved locally).';
-      }
-    }
-
-    toggleOnlineBtn.addEventListener('click', ()=> {
-      const cur = localStorage.getItem('wc_online') === '1';
-      updateOnlineStatus(!cur);
-    });
-
-    // Leaderboard fetch
-    async function loadLeaderboard(){
-      const container = el('#leaderboard');
-      container.innerHTML = '<div class="muted">Loading...</div>';
-      try{
-        const resp = await fetch(API_BASE + '/api/dashboard?role=worker');
-        const js = await resp.json();
-        if(!js.success){ container.innerHTML = '<div class="muted">Could not load leaderboard</div>'; return; }
-        const list = js.leaderboard || [];
-        if(!list.length) { container.innerHTML = '<div class="muted">No entries yet</div>'; return; }
-        container.innerHTML = '';
-        list.forEach((t, idx)=>{
-          const row = document.createElement('div'); row.className='leaderboard-item';
-          row.innerHTML = `<div><strong>${t.fullname || t.username}</strong><div class="muted-2">jobs completed: ${t.jobs_completed || 0}</div></div><div class="muted">${idx+1}</div>`;
-          container.appendChild(row);
-        });
-      }catch(e){
-        container.innerHTML = '<div class="muted">Failed to load leaderboard</div>';
-      }
-    }
-
-    // Jobs list (for client show recent bookings, for tech show assigned/pending)
-    async function loadJobsForUser(){
-      const user = loadUser();
-      const jobsList = el('#jobsList');
-      jobsList.innerHTML = `<div class="muted">Loading...</div>`;
-      if(!user){ jobsList.innerHTML = '<div class="muted">Please login</div>'; return; }
-
-      if(isTechnicianRole(user.role)){
-        // Poll assigned-jobs for technician
-        try{
-          const resp = await fetch(API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(user.id));
-          const js = await resp.json();
-          if(!js.success) { jobsList.innerHTML = '<div class="muted">No assigned jobs</div>'; return; }
-          const jobs = js.jobs || [];
-          if(!jobs.length) { jobsList.innerHTML = '<div class="muted">No pending jobs</div>'; return; }
-          jobsList.innerHTML = '';
-          jobs.forEach(j=>{
-            const div = document.createElement('div');
-            div.className = 'section';
-            div.innerHTML = `
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div><strong>${j.job_type || 'Job'}</strong><div class="muted-2">status: ${j.status}</div></div>
-                <div style="text-align:right">
-                  <button class="btn" data-action="accept" data-id="${j.id}">Accept</button>
-                  <button class="btn-ghost" data-action="decline" data-id="${j.id}">Decline</button>
-                </div>
-              </div>
-              <div style="margin-top:8px" class="muted">${(j.description || '').slice(0,160)}</div>
-            `;
-            jobsList.appendChild(div);
-          });
-        }catch(e){
-          jobsList.innerHTML = '<div class="muted">Failed to fetch assigned jobs</div>';
+      // close menu when clicking outside
+      document.addEventListener('click', (e)=>{
+        const container = document.querySelector('.hamburger-container');
+        if(!container.contains(e.target)){
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', false);
+          menu.setAttribute('aria-hidden', true);
         }
-      } else {
-        // client: show recent bookings from localStorage (fallback) and allow opening chat if assigned
-        const localJobs = JSON.parse(localStorage.getItem('wc_bookings') || '[]');
-        if(!localJobs.length){ jobsList.innerHTML = '<div class="muted">No bookings yet</div>'; return; }
-        jobsList.innerHTML = '';
-        localJobs.slice(0,10).forEach(b=>{
-          const div = document.createElement('div');
-          div.className = 'section';
-          div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
-            <div><strong>${b.jobType || 'Job'}</strong><div class="muted-2">${new Date(b.createdAt).toLocaleString()}</div></div>
-            <div><button class="btn" data-openjob="${b.id}">Open</button></div>
-          </div>
-          <div style="margin-top:8px" class="muted">${(b.description||'').slice(0,160)}</div>`;
-          jobsList.appendChild(div);
-        });
-      }
-    }
+      });
+    })();
 
-    // accept/decline handler for tech
-    document.addEventListener('click', async (ev)=>{
-      const t = ev.target;
-      if(t.dataset.action && t.dataset.id){
-        const action = t.dataset.action;
-        const jobId = t.dataset.id;
-        const user = loadUser();
-        if(!user) return alert('Please login');
-        const payload = { techId: user.id, action };
-        try{
-          const resp = await fetch(API_BASE + `/api/job/${jobId}/respond`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-          const js = await resp.json().catch(()=>null);
-          if(resp.ok && js && js.success){
-            alert('Response sent: ' + js.message);
-            setTimeout(()=> loadJobsForUser(), 700);
-          }else{
-            alert('Failed: ' + (js && js.message ? js.message : resp.statusText));
-          }
-        }catch(e){ alert('Network error'); }
-      }
-      // open booking job for client
-      if(t.dataset.openjob){
-        const jobId = t.dataset.openjob;
-        window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId);
-      }
-    });
+    // Online/Offline toggle connects to backend
+    async function toggleStatus(){
+      const btn = document.getElementById('statusBtn');
+      const currentlyOnline = btn.getAttribute('data-online') === 'true';
+      const goingOnline = !currentlyOnline;
 
-    // after booking: poll job status until assigned or timeout
-    async function pollForAssignment(jobId){
-      const start = Date.now();
-      let assigned = null;
-      while(Date.now() - start < 35_000){ // 35s
-        try{
-          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
-          const js = await resp.json();
-          if(js && js.success && js.job){
-            if(js.job.assigned_tech_id){
-              assigned = js.job;
-              break;
-            }
-          }
-        }catch(e){}
-        await new Promise(r=>setTimeout(r, 2000));
-      }
-      if(assigned){
-        // Show neat modal with assigned tech info and "Open chat" button
-        // Try fetching tech profile (optional endpoint)
-        let techProfile = null;
-        try{
-          const fetchTech = await fetch(API_BASE + '/api/user/' + encodeURIComponent(assigned.assigned_tech_id));
-          if(fetchTech.ok) techProfile = await fetchTech.json();
-        }catch(e){}
-        const name = (techProfile && techProfile.fullname) ? techProfile.fullname : (assigned.assigned_tech_id || 'Technician');
-        const avatar = (techProfile && techProfile.avatar_url) ? techProfile.avatar_url : '';
-        showModal(`
-          <div style="display:flex;gap:12px;align-items:center">
-            <div><img src="${avatar || 'https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/brand-github.svg'}" class="small-avatar" alt="avatar"></div>
-            <div>
-              <div style="font-weight:700">${name}</div>
-              <div class="muted-2">Assigned — please open chat to see live details</div>
-              <div style="margin-top:8px"><button id="openChatBtn" class="btn">Open chat</button> <button id="closeModal" class="btn-ghost">Close</button></div>
-            </div>
-          </div>
-        `);
-        document.getElementById('openChatBtn').addEventListener('click', ()=> {
-          hideModal();
-          window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId);
-        });
-        document.getElementById('closeModal').addEventListener('click', hideModal);
-      } else {
-        // not assigned
-        showModal(`<div><strong>No technicians found</strong><div class="muted-2">We couldn't find a technician in your state within the allowed radius right now. You can open support chat or try again later.</div><div style="margin-top:12px"><button id="goChat" class="btn">Open chat</button> <button id="closeModal2" class="btn-ghost">Close</button></div></div>`);
-        document.getElementById('goChat').addEventListener('click', ()=>{ hideModal(); window.location.href = 'chat.html?jobId=' + encodeURIComponent(jobId); });
-        document.getElementById('closeModal2').addEventListener('click', hideModal);
-      }
-    }
-
-    // handle logout
-    el('#logoutBtn').addEventListener('click', (ev)=>{ ev.preventDefault(); localStorage.removeItem('wc_user'); localStorage.removeItem('wc_token'); localStorage.removeItem('wc_online'); window.location.href='login.html' });
-
-    // initialize UI
-    (function init(){
-      const user = loadUser();
-      if(!user){
-        el('#drawerUser').textContent = 'Guest';
-        el('#userGreeting').textContent = 'Welcome — please login';
-        bookingLink.style.display = 'none';
-        availabilityArea.style.display = 'none';
-        setOnlineUI(false);
-        loadLeaderboard();
-        loadJobsForUser();
+      // Look up user id:
+      // 1) body data-user-id attribute
+      // 2) localStorage.userId
+      // Note: set the current user id into <body data-user-id="..."> or localStorage.userId
+      const userId = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
+      if(!userId){
+        alert('No user id found. Set the current technician id in body[data-user-id] or localStorage.userId to let the toggle send status to backend.');
         return;
       }
 
-      el('#drawerUser').textContent = user.fullname || user.username || 'User';
-      el('#userGreeting').textContent = `Welcome back — ${(user.fullname || user.username)}`;
-      // show/hide booking and availability
-      if(user.role === 'client'){
-        bookingLink.style.display = 'block';
-        availabilityArea.style.display = 'none';
-        setOnlineUI(false);
-      } else if(isTechnicianRole(user.role)){
-        bookingLink.style.display = 'none';
-        availabilityArea.style.display = 'block';
-        const onlineFlag = localStorage.getItem('wc_online') === '1';
-        setOnlineUI(onlineFlag);
-      } else {
-        bookingLink.style.display = 'none';
-        availabilityArea.style.display = 'none';
-        setOnlineUI(false);
+      // Try to get location if available (not required)
+      let lat = null, lng = null;
+      if(navigator.geolocation){
+        try{
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { maximumAge: 10000, timeout: 5000 });
+          });
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+        }catch(e){
+          // ignore geolocation errors, fallback to null
+          console.warn('Geolocation not available or denied', e);
+        }
       }
 
-      loadLeaderboard();
-      loadJobsForUser();
+      // disable button while request in flight
+      btn.disabled = true;
+      const previousText = btn.innerText;
 
-      // poll assigned jobs regularly for tech
-      if(isTechnicianRole(user.role)) setInterval(loadJobsForUser, 5000);
+      try{
+        const resp = await fetch('/api/tech/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            techId: userId,
+            online: goingOnline,
+            lat: lat,
+            lng: lng
+          })
+        });
+
+        const data = await resp.json();
+
+        if(resp.ok && data && data.success){
+          // update UI
+          btn.setAttribute('data-online', String(goingOnline));
+          if(goingOnline){
+            btn.innerText = 'Online';
+            btn.style.backgroundColor = 'green';
+          } else {
+            btn.innerText = 'Offline';
+            btn.style.backgroundColor = 'gray';
+          }
+        } else {
+          const msg = (data && data.message) ? data.message : 'Failed to update status';
+          alert(msg);
+          // restore previous UI if failed
+          btn.innerText = previousText;
+        }
+      }catch(err){
+        console.error('Network error when updating status', err);
+        alert('Network error while sending status to backend.');
+        btn.innerText = previousText;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // On load, try to reflect current online state from backend if userId exists
+    (async function initStatusFromBackend(){
+      const userId = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
+      if(!userId) return;
+      try{
+        // Attempt to fetch minimal user info to read online (route available: /api/user/:id returns id, fullname, username, avatar_url, lat, lng)
+        const r = await fetch('/api/user/' + encodeURIComponent(userId));
+        if(!r.ok) return;
+        const u = await r.json();
+        if(u && u.success){
+          const btn = document.getElementById('statusBtn');
+          // Note: the /api/user endpoint in backend returns id, fullname, username, avatar_url, lat, lng — online isn't returned there.
+          // We can request KYC/status endpoint to get kyc_status, kyc_documents etc (/api/kyc/status/:userId) — but online is stored in users.online.
+          // Because no dedicated 'get user safe object' endpoint exists here, we'll try a best-effort call to /api/login or dashboard is not appropriate.
+          // So we skip pre-populating online state unless you add a client-side source (set body[data-user-id] and body[data-online="true"]).
+        }
+      }catch(e){ /* ignore */ }
     })();
   </script>
-
-  <!-- Leaflet script (only used by chat page) -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="" crossorigin=""></script>
 </body>
 </html>
