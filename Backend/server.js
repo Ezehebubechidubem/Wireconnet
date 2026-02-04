@@ -250,6 +250,42 @@ app.post('/api/login', async (req,res) =>{
     return res.status(500).json({ success:false, message:'Server error' });
   }
 });
+// Add this into your DB init SQL (or run once):
+/*
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  job_id TEXT REFERENCES jobs(id) ON DELETE CASCADE,
+  reviewer_id TEXT REFERENCES users(id),
+  tech_id TEXT REFERENCES users(id),
+  rating NUMERIC CHECK (rating >= 0 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+*/
+
+// Then add this route to server.js (below other endpoints)
+app.get('/api/technicians/top', async (req,res) => {
+  try{
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '7', 10)));
+    // compute average rating per technician (only workers) - fallback to 0 if no reviews
+    const q = `
+      SELECT u.id, u.username, u.fullname, u.avatar_url,
+             COALESCE(ROUND(AVG(r.rating)::numeric, 2), 0) AS avg_rating,
+             COUNT(r.*) AS reviews_count
+      FROM users u
+      LEFT JOIN reviews r ON r.tech_id = u.id
+      WHERE u.role = 'worker'
+      GROUP BY u.id
+      ORDER BY avg_rating DESC NULLS LAST, reviews_count DESC
+      LIMIT $1
+    `;
+    const rows = (await pool.query(q, [limit])).rows;
+    return res.json({ success:true, technicians: rows });
+  }catch(e){
+    console.error('/api/technicians/top', e);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
 
 // Dashboard
 app.get('/api/dashboard', async (req,res)=>{
