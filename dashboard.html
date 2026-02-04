@@ -14,10 +14,7 @@
       box-sizing:border-box;
     }
 
-    html,body{ height:100%; font-family: Georgia, "Times New Roman", Times, serif; }
-
-    main { padding-top: 70px; /* adjust to header height */ }
-
+    /* ---------- KEEP ALL YOUR ORIGINAL STYLES (unchanged) ---------- */
     .brief{
       color:black;
       display:flex;
@@ -25,25 +22,21 @@
       padding:30px;
       font-weight:bold;
       font-style:italic;
-      align-items:center;
-      gap:12px;
     }
-
     .sort{
       color:rgba(0,0,200,1);
       padding:5px;
-      font-size:85px;
-      line-height:0.95;
+      font-size:85px
     }
     .dent{
       display:flex;
       justify-content:center;
-      padding:20px;
+      padding:20px
     }
     .fit{
       padding:20px;
-      line-height:1.6;
-      font-size:25px;
+      line-spacing:1.6px;
+      font-size:25px
     }
 
     fieldset{
@@ -52,73 +45,67 @@
       height:70px;
     }
 
-    /* ---------- BUTTONS: unified, neat, identical borders ---------- */
-    /* Containers that hold your action buttons (audit, audits, auditss) */
-    .audit, .audits, .auditss {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr); /* two columns */
-      gap: 14px;
-      justify-items: center;
+    /* ---------- BUTTON FIXES (ONLY THIS BLOCK) ---------- */
+    /* we use flex container + controlled button sizing so layout doesn't scatter */
+    .audit, .audits {
+      display: flex;
+      justify-content: center;
       align-items: center;
-      padding: 18px 12px;
+      gap: 18px;
+      padding: 20px;
+      flex-wrap: wrap; /* wrap on narrow screens */
     }
 
-    /* Make sure the <p> wrappers don't add extra spacing */
-    .audit p, .audits p, .auditss p { margin: 0; width: 100%; display:flex; justify-content:center; }
+    /* make p wrapper not add spacing */
+    .audit p, .audits p { margin: 0; width: auto; }
 
-    /* Unified button style */
+    /* unified button look */
     .do, .to {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       text-decoration: none;
       border-radius: 28px;
-      background-color: #0b47d1; /* blue */
+      background-color: #0b47d1; /* same blue */
       color: #fff;
-      padding: 10px 18px;
-      min-width: 170px;
-      height: 48px;
+      padding: 0 18px;
+      height: 48px;              /* equal height */
+      min-width: 160px;         /* consistent min width */
       box-sizing: border-box;
-      border: 3px solid #000; /* consistent thick border */
+      border: 3px solid #000;   /* equal border for all buttons */
       font-weight: 700;
       font-size: 18px;
-      box-shadow: none;
+      line-height: 1;
     }
 
-    /* Keep same look for .to (technician buttons) */
-    .to { min-width: 170px; }
-
-    /* Hover / active (subtle) */
-    .do:active, .to:active { transform: translateY(1px); }
-    .do:hover, .to:hover { filter: brightness(0.95); }
-
-    /* Small screens: make buttons tidy and responsive */
-    @media (max-width:480px){
-      .audit, .audits, .auditss {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        padding: 12px;
-      }
+    /* On very small screens, let two buttons sit side-by-side neatly */
+    @media (max-width:480px) {
       .do, .to {
-        min-width: 46%;
+        min-width: 46%;   /* two-per-row */
         height: 46px;
-        font-size: 16px;
-        padding: 8px 10px;
+        font-size: 15px;
       }
-      .sort { font-size: clamp(32px, 10vw, 85px); }
-      .fit { font-size: 16px; padding: 12px; }
-      .brief { padding: 14px; font-size: 15px; }
     }
 
-    /* fallback desktop layout: buttons in single row if space allows */
-    @media (min-width:900px){
-      .audit, .audits { grid-template-columns: repeat(4, auto); }
-      .do, .to { min-width: 180px; }
+    /* On wide screens keep buttons reasonable */
+    @media (min-width:900px) {
+      .do, .to {
+        min-width: 200px;
+      }
     }
+    /* ---------- END BUTTON FIXES ---------- */
 
-    /* rest of your page styles unchanged (kept) */
-    .to{ display:grid; justify-content:center; text-decoration:none; border-radius:20px; background-color:blue; color:white; padding:8px; margin:10px; font-weight:bold;}
-    .auditss{ display:flex; justify-content:center; padding:50px; margin:10px; width:440px; }
+    /* keep the rest of your original styles unchanged below */
+    .auditss{
+      display:flex;
+      justify-content:center;
+      padding:50px;
+      margin:10px;
+      width:440px;
+    }
+    main {
+      padding-top: 70px; /* adjust to header height */
+    }
     .bend {
       display: flex;
       justify-content: space-between;
@@ -126,43 +113,223 @@
       background-color: white;
       border: 1px solid black;
       border-radius:0px;
-      position: fixed;
+      position: fixed;   /* stays on top */
       top: 0;
       left: 0;
       width: 100%;
       z-index: 1000;
     }
-    .search{ border:none; background-color:white; text-decoration:none; display:flex; justify-content:right; padding:10px; margin:10px; width:10px; }
-    .searches{ border:none; color:black; font-weight:bold; text-decoration:none; }
-    .images,.imagecap{ display:flex; justify-content:center; font-weight:bold; text-transform:uppercase; padding:20px; }
-    .image{ width:1000px; background-color:rgba(220,220,220,1); }
-    .meet{ padding:20px; display:flex; justify-content:center }
-    .dif,.cut{ padding:10px; line-spacing:1.6px }
-    .suf{ border:none; color:blue; font-weight:bold; text-decoration:none; padding:30px; }
-    .AI{ position: fixed; background-color:white; border:none; left: 80%; bottom:2%; width: 100%; z-index: 1000; }
-    .bond{ padding:10px }
-    .hamburger-container { position: fixed; top: 140px; right: 20px; z-index: 2000; font-family: inherit; }
-    .hamburger { font-size: 28px; background: none; border: 1px solid #000; border-radius: 6px; padding: 6px 10px; cursor: pointer; background-color: white; }
-    .menu-dropdown { display: none; background: white; border: 1px solid black; border-radius: 10px; width: 260px; padding: 10px; margin-top: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
-    .menu-dropdown a.menu-link { display: block; padding: 8px; text-decoration: none; color: black; font-weight: bold; border-radius: 6px; margin-bottom: 6px; }
-    .menu-dropdown a.menu-link:hover { background-color: rgba(0,0,200,0.06); }
-    .menu-dropdown a.book-btn { display: block; background-color: blue; color: white !important; text-align: center; border-radius: 8px; padding: 10px 6px; text-decoration: none; font-weight: bold; margin-top: 6px; }
-    .status-toggle { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; }
-    .status-note { font-size: 12px; color: #444; margin-top: 6px; }
-    .switch { position: relative; display: inline-block; width: 54px; height: 30px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #999; transition: .3s; border-radius: 30px; }
-    .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-    input:checked + .slider { background-color: #28a745; }
-    input:checked + .slider:before { transform: translateX(24px); }
-    .online-indicator { display: inline-flex; align-items: center; gap: 8px; margin-left: 20px; font-weight: bold; color: #333; }
-    .indicator-dot { width: 14px; height: 14px; border-radius: 50%; background: gray; box-shadow: 0 0 6px rgba(0,0,0,0.06); }
-    .indicator-online { background: #28a745; box-shadow: 0 0 8px rgba(40,167,69,0.3); }
-    .indicator-offline { background: gray; box-shadow: none; }
-    .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 8px 14px; border-radius: 8px; z-index: 9999; display: none; }
+    .search{
+      border:none;
+      background-color:white;
+      text-decoration:none;
+      display:flex;
+      justify-content:right;
+      padding:10px;
+      margin:10px;
+      width:10px;
+    }
+    .searches{
+      border:none;
+      color:black;
+      font-weight:bold;
+      text-decoration:none;
+    }
+    .images,.imagecap{
+      display:flex;
+      justify-content:center;
+      font-weight:bold;
+      text-transform:uppercase;
+      padding:20px;
+    }
+    .image{
+      with:1000px;
+      background-color:rgba(220,220,220,1);
+    }
+    .meet{
+      padding:20px;
+      display:flex;
+      justify-content:center
+    }
+    .dif,.cut{
+      padding:10px;
+      line-spacing:1.6px
+    }
+    .suf{
+      border:none;
+      color:blue;
+      font-weight:bold;
+      text-decoration:none;
+      padding:30px;
+    }
+    .AI{
+      position: fixed;   /* stays on top */
+      background-color:white;
+      border:none;
+      left: 80%;
+      bottom:2%;
+      width: 100%;
+      z-index: 1000;
+    }
+    .bond{
+      padding:10px
+    }
+
+    /* ---- Added hamburger menu styles ---- */
+    .hamburger-container {
+      position: fixed;
+      /* placed below the logo (logo ~120px high) */
+      top: 140px;
+      right: 20px;
+      z-index: 2000;
+      font-family: inherit;
+    }
+
+    .hamburger {
+      font-size: 28px;
+      background: none;
+      border: 1px solid #000;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      background-color: white;
+    }
+
+    .menu-dropdown {
+      display: none;
+      background: white;
+      border: 1px solid black;
+      border-radius: 10px;
+      width: 260px;
+      padding: 10px;
+      margin-top: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+
+    /* Menu links */
+    .menu-dropdown a.menu-link {
+      display: block;
+      padding: 8px;
+      text-decoration: none;
+      color: black;
+      font-weight: bold;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .menu-dropdown a.menu-link:hover {
+      background-color: rgba(0,0,200,0.06);
+    }
+
+    /* Book button (blue) */
+    .menu-dropdown a.book-btn {
+      display: block;
+      background-color: blue;
+      color: white !important;
+      text-align: center;
+      border-radius: 8px;
+      padding: 10px 6px;
+      text-decoration: none;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+
+    /* Status row */
+    .status-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      gap: 8px;
+    }
+    .status-note {
+      font-size: 12px;
+      color: #444;
+      margin-top: 6px;
+    }
+
+    /* ---- Toggle switch styles ---- */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 54px;
+      height: 30px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #999;
+      transition: .3s;
+      border-radius: 30px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider {
+      background-color: #28a745; /* green */
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    /* ---- Online indicator on main page ---- */
+    .online-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 20px;
+      font-weight: bold;
+      color: #333;
+    }
+    .indicator-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: gray;
+      box-shadow: 0 0 6px rgba(0,0,0,0.06);
+    }
+    .indicator-online {
+      background: #28a745; /* green */
+      box-shadow: 0 0 8px rgba(40,167,69,0.3);
+    }
+    .indicator-offline {
+      background: gray;
+      box-shadow: none;
+    }
+
+    /* small toast */
+    .toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      z-index: 9999;
+      display: none;
+    }
 
   </style>
-</head>
+  </head>
 <body data-user-id="">
   <header>
     <div class="bend">
@@ -170,14 +337,39 @@
         <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="Gtan logo" width="450px" height="120px">
       </figure>
     </div>
-
-    <div class="search" >
+       <div class="search" >
       <a href="search.html" class="search" >🔍</a>
     </div>
-  </header>
 
+    <!-- Hamburger Menu (requested: top-right below logo) -->
+    <div class="hamburger-container" aria-expanded="false">
+      <button class="hamburger" id="hamburgerBtn" aria-controls="menuDropdown" aria-expanded="false">☰</button>
+
+      <div class="menu-dropdown" id="menuDropdown" role="menu" aria-hidden="true">
+        <a class="menu-link" href="profile.html">Profile</a>
+        <a class="menu-link" href="settings.html">Settings</a>
+        <a class="menu-link" href="kyc.html">KYC</a>
+
+        <a class="book-btn" href="book.html">Book Job</a>
+
+        <div class="status-toggle">
+          <span>Status:</span>
+
+          <!-- Toggle switch (on/off) -->
+          <label class="switch" title="Toggle online / offline">
+            <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
+      </div>
+    </div>
+
+  </header>
   <main>
-    <p class="brief">Motto: Let Their Be Light 💥💥
+    <p class="brief">
+      Motto: Let Their Be Light 💥💥
+      <!-- Online indicator placed on main page as requested -->
       <span class="online-indicator" id="onlineIndicatorContainer" aria-live="polite">
         <span class="indicator-dot indicator-offline" id="indicatorDot"></span>
         <span id="indicatorText">Offline</span>
@@ -187,60 +379,64 @@
     <div class="sort">
       <p class="dent">WireConnect Network</p>
     </div>
-
     <div class="fit">
       <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
 
-      <!-- buttons are now in neat two-column grid with identical borders -->
       <div class="audit">
-        <p><a class="do" href="#">Book A Job</a></p>
+        <p><a class="do"  href="#">Book A Job</a></p>
         <p><a class="do" href="#">View All Jobs</a></p>
       </div>
 
-      <div class="audits">
+        <div class="audits">
         <p><a class="do" href="#">Do Kyc</a></p>
-        <p><a class="do" href="#">Customer Services</a></p>
-      </div>
-    </div>
-
-    <div class="auditss">
-      <p><a class="to" href="#"> Client Leaderboard</a></p>
-      <p><a class="to" href="#">Technician Leaderboard</a></p>
-    </div>
-
-    <article class="image">
-      <figure class="images"><img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized"></figure>
-      <p class="imagecap">Distributed Network</p>
-      <p>Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved.
+        <p><a class="do"  href="#">Customer Services</a></p>
+        </div>
+       </div>
+        <div class="auditss">
+        <p><a class="to" href="#"> Client Leaderboard</a></p>
+        <p><a class="to"  href="#">Technician Leaderboard</a></p>
+        </div>
+       <article class="image">
+    <figure class="images">
+      <img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized">
+    </figure>
+         <p class="imagecap">Distributed Network</p>
+         <p>Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved.
 Wire Connect avoids this risk by operating through a distributed service network, designed for reliability, transparency, and uninterrupted operations.</p>
+         <figure class="images">
+           <img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way ti crypto">
+         </figure>
+         <p class="imagecap">Your Secure Way to Services</p>
+         <p>The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a unique feature — the ability to access verified professionals directly through your service requests.</p>
+         <figure class="images">
+           <img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Giant Launcpad">
+         </figure>
+         <p class="imagecap">Wire Connect Hub</p>
+         <p class="bond">Empowering the Next Generation of Technicians.</p>
+         <p> The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts. A service hub built with integrity, for Africa and beyond.</p>
+       </article>
+      <aside>
+        <figure>
+          <img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="service image" class="meet">
+        </figure>
+        <h2>Meet the WireConnect Network</h2>
+        <p class="cut"><strong>The WireConnect Network</strong>
+        </a> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
+        <p class="dif"><ul>
+          <li class="dif"><strong>Service with Purpose:</strong> A portion of every connections supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
+          <li class="dif"><strong></strong></li> 
+          <li class="dif"><strong>Wire Connect Hub: </strong>A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
+          <li class="dif"><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
 
-      <figure class="images"><img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way ti crypto"></figure>
-      <p class="imagecap">Your Secure Way to Services</p>
-      <p>The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a unique feature — the ability to access verified professionals directly through your service requests.</p>
+        </ul></p>
+        <a class="suf" href="#">Learn More</a>
+      </aside>
+      <aside class="AI">
+        <a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg"></a>
+      </aside>
+      <article>
 
-      <figure class="images"><img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Giant Launcpad"></figure>
-      <p class="imagecap">Wire Connect Hub</p>
-      <p class="bond">Empowering the Next Generation of Technicians.</p>
-      <p>The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts. A service hub built with integrity, for Africa and beyond.</p>
-    </article>
-
-    <aside>
-      <figure><img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="service image" class="meet"></figure>
-      <h2>Meet the WireConnect Network</h2>
-      <p class="cut"><strong>The WireConnect Network</strong> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
-      <p class="dif"><ul>
-        <li class="dif"><strong>Service with Purpose:</strong> A portion of every connections supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
-        <li class="dif"><strong></strong></li>
-        <li class="dif"><strong>Wire Connect Hub: </strong>A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
-        <li class="dif"><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
-      </ul></p>
-      <a class="suf" href="#">Learn More</a>
-    </aside>
-
-    <aside class="AI">
-      <a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg" alt="chat" style="width:56px;height:auto;border-radius:6px;"></a>
-    </aside>
-
+      </article>
   </main>
 
   <div class="toast" id="toast"></div>
@@ -259,9 +455,8 @@ Wire Connect avoids this risk by operating through a distributed service network
 
     // Toggle the hamburger menu visibility
     (function(){
-      const btn = document.getElementById('hamburgerBtn');
-      const menu = document.getElementById('menuDropdown');
-      if(!btn) return;
+      const btn = hamburgerBtn;
+      const menu = menuDropdown;
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
         const shown = menu.style.display === 'block';
@@ -274,20 +469,18 @@ Wire Connect avoids this risk by operating through a distributed service network
       document.addEventListener('click', (e)=>{
         const container = document.querySelector('.hamburger-container');
         if(!container.contains(e.target)){
-          const menu = document.getElementById('menuDropdown');
-          if(menu) menu.style.display = 'none';
-          if(btn) btn.setAttribute('aria-expanded', false);
-          if(menu) menu.setAttribute('aria-hidden', true);
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', false);
+          menu.setAttribute('aria-hidden', true);
         }
       });
     })();
 
     // helper: show toast
     function showToast(msg, ms = 3000){
-      const t = document.getElementById('toast');
-      t.innerText = msg;
-      t.style.display = 'block';
-      setTimeout(()=> { t.style.display = 'none'; }, ms);
+      toastEl.innerText = msg;
+      toastEl.style.display = 'block';
+      setTimeout(()=> { toastEl.style.display = 'none'; }, ms);
     }
 
     // helper: set indicator on main page
@@ -356,7 +549,7 @@ Wire Connect avoids this risk by operating through a distributed service network
       const userId = getUserId();
       if(!userId){
         // revert switch and inform developer/user to set id
-        if(statusSwitch) statusSwitch.checked = !checked;
+        statusSwitch.checked = !checked;
         showToast('No user id found. Set body[data-user-id] or localStorage.userId to enable status updates.', 5000);
         return;
       }
@@ -379,12 +572,12 @@ Wire Connect avoids this risk by operating through a distributed service network
 
       // optimistic UI: set indicator and keep switch while request is in-flight
       setIndicator(checked);
-      if(statusSwitch) statusSwitch.disabled = true;
+      statusSwitch.disabled = true;
       showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
 
       // send
       const result = await sendStatusToBackend(userId, checked, lat, lng);
-      if(statusSwitch) statusSwitch.disabled = false;
+      statusSwitch.disabled = false;
 
       if(result && result.success){
         // success: persist last-known state
@@ -393,7 +586,7 @@ Wire Connect avoids this risk by operating through a distributed service network
       } else {
         // failure: revert UI to previous state and show message
         const prev = !checked;
-        if(statusSwitch) statusSwitch.checked = prev;
+        statusSwitch.checked = prev;
         setIndicator(prev);
         const msg = (result && result.message) ? result.message : 'Failed to update status';
         showToast('Error: ' + msg, 6000);
@@ -402,42 +595,36 @@ Wire Connect avoids this risk by operating through a distributed service network
       }
     }
 
-    // Wire the switch event (guard for missing element)
-    if(document.getElementById('statusSwitch')){
-      document.getElementById('statusSwitch').addEventListener('change', handleSwitchToggle);
-    }
+    // Wire the switch event
+    statusSwitch.addEventListener('change', handleSwitchToggle);
 
     // On load: set switch and indicator from localStorage for this user (best-effort)
     (function initFromLocal(){
       const userId = getUserId();
-      const ss = document.getElementById('statusSwitch');
       if(!userId) {
         // nothing to pre-populate; leave offline default
         setIndicator(false);
-        if(ss) ss.checked = false;
         return;
       }
       const known = readLastKnownOnline(userId);
       if(known === null){
         // no saved state — leave defaults (offline)
         setIndicator(false);
-        if(ss) ss.checked = false;
+        statusSwitch.checked = false;
       } else {
-        if(ss) ss.checked = !!known;
+        statusSwitch.checked = !!known;
         setIndicator(!!known);
       }
     })();
 
     // Accessibility: close dropdown with Escape
     document.addEventListener('keydown', (e)=> {
-      const menu = document.getElementById('menuDropdown');
-      const btn = document.getElementById('hamburgerBtn');
       if(e.key === 'Escape') {
-        if(menu) menu.style.display = 'none';
-        if(btn) btn.setAttribute('aria-expanded', false);
-        if(menu) menu.setAttribute('aria-hidden', true);
+        menuDropdown.style.display = 'none';
+        hamburgerBtn.setAttribute('aria-expanded', false);
+        menuDropdown.setAttribute('aria-hidden', true);
       }
     });
-  </script>
-</body>
+
+    </body>
 </html>
