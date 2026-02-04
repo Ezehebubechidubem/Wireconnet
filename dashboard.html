@@ -8,351 +8,200 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>GTAN</title>
   <style>
-    *{
-  margin: 0;
-  padding: 0;
-   box-sizing:border-box;
+    /* ---------- Base reset ---------- */
+    *{ margin:0; padding:0; box-sizing:border-box; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    html,body{ height:100%; }
+
+    /* ---------- Header / layout helpers ---------- */
+    .bend {
+      --hdr-h: 64px;                /* header visual height (used for spacing) */
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background-color:white;
+      border:1px solid black;
+      position:fixed;
+      top:0; left:0; right:0;
+      height: var(--hdr-h);
+      padding:8px 12px;
+      z-index:1000;
     }
-  .brief{
-    color:black;
-    display:flex;
-    justify-content:left;
-    padding:30px;
-    font-weight:bold;
-    font-style:italic;
-  }
-  .sort{
-    color:rgba(0,0,200,1);
-    padding:5px;
-    font-size:85px
-  }
-  .dent{
-    display:flex;
-    justify-content:center;
-    padding:20px
-  }
-  .fit{
-    padding:20px;
-    line-spacing:1.6px;
-    font-size:25px
-  }
-  
- fieldset{
-   border:1px solid black;
-   border-radius:10px;
-   height:70px;
-   
- }
-  .do{
-    display:grid;
-    justify-content:center;
-    text-decoration:none;
-    border:2px solid black;
-    border-radius:20px;
-    width:200px;
-    background-color:blue;
-    color:white;
-    padding:2px;
-    margin:10px;
-  }
-  .audit,.audits{
-    display:flex;
-    justify-content:center;
-    padding:50px;
-    margin:10px;
-    height:50px;
-  }
- .to{ display:grid;
-    justify-content:center;
-    text-decoration:none;
-    border:2px solid black;
-    border-radius:20px;
-    width:200px;
-    background-color:blue;
-    color:white;
-    padding:8px;
-   margin:10px;
- font-weight:bold;}
-.auditss{
-  display:flex;
-    justify-content:center;
-    padding:50px;
-    margin:10px;
-    width:300px;
-}
-main {
-  padding-top: 70px; /* adjust to header height */
-}
-  .bend {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: white;
-  border: 1px solid black;
-  border-radius:0px;
+    /* Override inline img width attribute so logo scales */
+    .bend figure { margin:0; display:flex; align-items:center; }
+    .bend figure img {
+      width:auto !important;
+      max-width:220px !important;
+      height:auto !important;
+      max-height:48px !important;
+      object-fit:contain;
+      display:block;
+    }
 
-  position: fixed;   /* stays on top */
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000;
-}
-  .search{
-    border:none;
-    background-color:white;
-    text-decoration:none;
-    display:flex;
-    justify-content:right;
-    padding:10px;
-    margin:10px;
-    width:10px;
-  }
-  .searches{
-    border:none;
-    color:black;
-    font-weight:bold;
-    text-decoration:none;
-  }
-  .images,.imagecap{
-    display:flex;
-    justify-content:center;
-    font-weight:bold;
-    text-transform:uppercase;
-    padding:20px;
-    
-  }
-  
-  
-  .image{
-    with:1000px;
-    background-color:rgba(220,220,220,1);
-    
-  }
-.meet{
-  padding:20px;
-  display:flex;
-  justify-content:center
-  
-}
+    main { padding-top: calc(var(--hdr-h) + 12px); min-height:100vh; }
 
-.dif,.cut{
-  padding:10px;
-  line-spacing:1.6px
-}
-  .suf{
-    border:none;
-    color:blue;
-    font-weight:bold;
-    text-decoration:none;
-    padding:30px;
-  }
-  .AI{
-    position: fixed;   /* stays on top */
- background-color:white;
-  border:none;
-  left: 80%;
-   bottom:2%;
-  width: 100%;
-  z-index: 1000;
-  }
-  .bond{
-    padding:10px
-  }
+    /* ---------- Typography and spacing ---------- */
+    .brief{
+      color:black;
+      display:flex;
+      justify-content:flex-start;
+      padding:18px;
+      font-weight:700;
+      font-style:italic;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
 
-/* ---- Added hamburger menu styles ---- */
-.hamburger-container {
-  position: fixed;
-  /* placed below the logo (logo ~120px high) */
-  top: 140px;
-  right: 20px;
-  z-index: 2000;
-  font-family: inherit;
-}
+    .sort{
+      color:rgba(0,0,200,1);
+      padding:5px;
+      font-size:48px; /* lowered default from 85 */
+      text-align:center;
+      line-height:1;
+      margin:0 12px;
+      word-break:break-word;
+    }
+    .dent{
+      display:flex;
+      justify-content:center;
+      padding:8px 0 20px;
+    }
+    .fit{
+      padding:16px;
+      line-height:1.6;
+      font-size:18px;
+    }
 
-.hamburger {
-  font-size: 28px;
-  background: none;
-  border: 1px solid #000;
-  border-radius: 6px;
-  padding: 6px 10px;
-  cursor: pointer;
-  background-color: white;
-}
+    fieldset{ border:1px solid black; border-radius:10px; height:70px; }
 
-.menu-dropdown {
-  display: none;
-  background: white;
-  border: 1px solid black;
-  border-radius: 10px;
-  width: 260px;
-  padding: 10px;
-  margin-top: 8px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-}
+    .do{
+      display:inline-grid;
+      place-items:center;
+      text-decoration:none;
+      border:2px solid black;
+      border-radius:20px;
+      min-width:140px;
+      background-color:blue;
+      color:white;
+      padding:8px 12px;
+      margin:6px;
+      font-weight:700;
+    }
+    .audit,.audits{ display:flex; justify-content:center; padding:16px; margin:10px; flex-wrap:wrap; gap:8px; }
+    .to{
+      display:inline-grid;
+      place-items:center;
+      text-decoration:none;
+      border:2px solid black;
+      border-radius:20px;
+      min-width:140px;
+      background-color:blue;
+      color:white;
+      padding:8px 12px;
+      margin:6px;
+      font-weight:bold;
+    }
+    .auditss{ display:flex; justify-content:center; padding:10px; margin:10px; width:300px; gap:8px; flex-wrap:wrap; }
 
-/* Menu links */
-.menu-dropdown a.menu-link {
-  display: block;
-  padding: 8px;
-  text-decoration: none;
-  color: black;
-  font-weight: bold;
-  border-radius: 6px;
-  margin-bottom: 6px;
-}
-.menu-dropdown a.menu-link:hover {
-  background-color: rgba(0,0,200,0.06);
-}
+    .images, .imagecap { display:flex; justify-content:center; font-weight:bold; text-transform:uppercase; padding:12px; }
+    .image img, .images img { max-width:100%; height:auto; display:block; }
 
-/* Book button (blue) */
-.menu-dropdown a.book-btn {
-  display: block;
-  background-color: blue;
-  color: white !important;
-  text-align: center;
-  border-radius: 8px;
-  padding: 10px 6px;
-  text-decoration: none;
-  font-weight: bold;
-  margin-top: 6px;
-}
+    .meet{ padding:12px; display:flex; justify-content:center; }
 
-/* Status row */
-.status-toggle {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-  gap: 8px;
-}
-.status-note {
-  font-size: 12px;
-  color: #444;
-  margin-top: 6px;
-}
+    .dif,.cut{ padding:10px; line-height:1.6; }
 
-/* ---- Toggle switch styles ---- */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 54px;
-  height: 30px;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #999;
-  transition: .3s;
-  border-radius: 30px;
-}
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 22px;
-  width: 22px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: .3s;
-  border-radius: 50%;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-input:checked + .slider {
-  background-color: #28a745; /* green */
-}
-input:checked + .slider:before {
-  transform: translateX(24px);
-}
+    .suf{ border:none; color:blue; font-weight:bold; text-decoration:none; padding:12px; display:inline-block; margin-top:12px; }
 
-/* ---- Online indicator on main page ---- */
-.online-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 20px;
-  font-weight: bold;
-  color: #333;
-}
-.indicator-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: gray;
-  box-shadow: 0 0 6px rgba(0,0,0,0.06);
-}
-.indicator-online {
-  background: #28a745; /* green */
-  box-shadow: 0 0 8px rgba(40,167,69,0.3);
-}
-.indicator-offline {
-  background: gray;
-  box-shadow: none;
-}
+    .AI{ position: fixed; background-color:white; border:none; right:12px; bottom:12px; z-index:1000; max-width:120px; }
+    .AI img{ max-width:100%; height:auto; display:block; }
 
-/* small toast */
-.toast {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.8);
-  color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
-  z-index: 9999;
-  display: none;
-}
+    .bond{ padding:10px; }
+
+    /* ---------- Hamburger menu (kept as requested) ---------- */
+    .hamburger-container { position: fixed; top: calc(var(--hdr-h) + 6px); right: 12px; z-index:2000; }
+    .hamburger { font-size: 24px; background: #fff; border:1px solid #000; border-radius:6px; padding:6px 10px; cursor:pointer; }
+    .menu-dropdown {
+      display:none;
+      background:white;
+      border:1px solid black;
+      border-radius:10px;
+      width:260px;
+      padding:10px;
+      margin-top:8px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.12);
+    }
+    .menu-dropdown a.menu-link { display:block; padding:8px; text-decoration:none; color:black; font-weight:700; border-radius:6px; margin-bottom:6px; }
+    .menu-dropdown a.book-btn { background:blue; color:#fff; text-align:center; display:block; padding:10px; border-radius:8px; text-decoration:none; font-weight:800; }
+
+    /* ---------- Toggle switch ---------- */
+    .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:8px; }
+    .status-note { font-size:12px; color:#444; margin-top:6px; }
+    .switch{ position:relative; display:inline-block; width:54px; height:30px; }
+    .switch input{ opacity:0; width:0; height:0; }
+    .slider{ position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#999; transition:.3s; border-radius:30px; }
+    .slider:before{ position:absolute; content:""; height:22px; width:22px; left:4px; bottom:4px; background:#fff; transition:.3s; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,.2); }
+    input:checked + .slider{ background:#28a745; }
+    input:checked + .slider:before{ transform:translateX(24px); }
+
+    /* ---------- Online indicator ---------- */
+    .online-indicator { display:inline-flex; align-items:center; gap:8px; margin-left:12px; font-weight:700; }
+    .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
+    .indicator-online { background:#28a745; box-shadow:0 0 8px rgba(40,167,69,.25); }
+    .indicator-offline { background:gray; box-shadow:none; }
+
+    /* ---------- Toast ---------- */
+    .toast{ position:fixed; top:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
+
+    /* ---------- Make large hero / image areas responsive ---------- */
+    article.image { margin:12px; }
+    .imagecap { margin-top:6px; margin-bottom:8px; font-weight:700; }
+
+    /* ---------- Small screens responsive tweaks ---------- */
+    @media (max-width:900px){
+      .sort{ font-size:40px; }
+      .fit{ font-size:17px; padding:12px; }
+      .brief{ padding:12px; }
+      .hamburger-container{ top: calc(var(--hdr-h) + 6px); right:10px; }
+    }
+    @media (max-width:600px){
+      .sort{ font-size:28px; }
+      .bend { --hdr-h:56px; height:56px; padding:6px 10px; }
+      main { padding-top: calc(var(--hdr-h) + 10px); }
+      .bend figure img{ max-width:180px; max-height:44px; }
+      .fit{ font-size:15px; padding:10px; }
+      .brief{ padding:10px; font-size:14px; }
+      .audit,.audits{ padding:10px; gap:6px; }
+      .auditss{ width:auto; padding:8px; gap:6px; }
+      .menu-dropdown{ width:220px; right:6px; }
+      .hamburger{ font-size:22px; padding:6px 8px; }
+      .hamburger-container{ top: calc(var(--hdr-h) + 6px); right:8px; }
+    }
+    @media (min-width:1200px){
+      .sort{ font-size:85px; } /* preserve large size on wide screens if desired */
+    }
+
+    /* ensure all images never overflow */
+    img{ max-width:100%; height:auto; display:block; }
+
   </style>
   </head>
 <body data-user-id="">
   <header>
     <div class="bend">
-    <figure >
-      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="Gtan logo" width="450px" height="120px">
-    </figure>
-  </div>
-       <div class="search" >
-      <a href="search.html" class="search" >🔍</a>
-    </div>
+      <figure>
+        <!-- kept the same img tag (CSS overrides its width) -->
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="Gtan logo" width="450px" height="120px">
+      </figure>
 
-    <!-- Hamburger Menu (requested: top-right below logo) -->
-    <div class="hamburger-container" aria-expanded="false">
-      <button class="hamburger" id="hamburgerBtn" aria-controls="menuDropdown" aria-expanded="false">☰</button>
-
-      <div class="menu-dropdown" id="menuDropdown" role="menu" aria-hidden="true">
-        <a class="menu-link" href="profile.html">Profile</a>
-        <a class="menu-link" href="settings.html">Settings</a>
-        <a class="menu-link" href="kyc.html">KYC</a>
-
-        <a class="book-btn" href="book.html">Book Job</a>
-
-        <div class="status-toggle">
-          <span>Status:</span>
-
-          <!-- Toggle switch (on/off) -->
-          <label class="switch" title="Toggle online / offline">
-            <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <a href="search.html" class="search" style="text-decoration:none; font-size:18px; padding-right:6px;">🔍</a>
       </div>
     </div>
-
   </header>
+
   <main>
     <p class="brief">
       Motto: Let Their Be Light 💥💥
-      <!-- Online indicator placed on main page as requested -->
       <span class="online-indicator" id="onlineIndicatorContainer" aria-live="polite">
         <span class="indicator-dot indicator-offline" id="indicatorDot"></span>
         <span id="indicatorText">Offline</span>
@@ -362,63 +211,95 @@ input:checked + .slider:before {
     <div class="sort">
       <p class="dent">WireConnect Network</p>
     </div>
+
     <div class="fit">
       <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
+
       <div class="audit">
-        <p><a class="do"  href="#">Book A Job</a></p>
+        <p><a class="do" href="#">Book A Job</a></p>
         <p><a class="do" href="#">View All Jobs</a></p>
       </div>
-        <div class="audits">
+
+      <div class="audits">
         <p><a class="do" href="#">Do Kyc</a></p>
-        <p><a class="do"  href="#">Customer Services</a></p>
-        </div>
-       </div>
-        <div class="auditss">
-        <p><a class="to" href="#"> Client Leaderboard</a></p>
-        <p><a class="to"  href="#">Technician Leaderboard</a></p>
-        </div>
-       <article class="image">
-    <figure class="images">
-      <img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized">
-    </figure>
-         <p class="imagecap">Distributed Network</p>
-         <p>Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved.
+        <p><a class="do" href="#">Customer Services</a></p>
+      </div>
+    </div>
+
+    <div class="auditss">
+      <p><a class="to" href="#">Client Leaderboard</a></p>
+      <p><a class="to" href="#">Technician Leaderboard</a></p>
+    </div>
+
+    <article class="image">
+      <figure class="images">
+        <img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized">
+      </figure>
+
+      <p class="imagecap">Distributed Network</p>
+      <p>Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved.
 Wire Connect avoids this risk by operating through a distributed service network, designed for reliability, transparency, and uninterrupted operations.</p>
-         <figure class="images">
-           <img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way ti crypto">
-         </figure>
-         <p class="imagecap">Your Secure Way to Services</p>
-         <p>The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a unique feature — the ability to access verified professionals directly through your service requests.</p>
-         <figure class="images">
-           <img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Giant Launcpad">
-         </figure>
-         <p class="imagecap">Wire Connect Hub</p>
-         <p class="bond">Empowering the Next Generation of Technicians.</p>
-         <p> The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts. A service hub built with integrity, for Africa and beyond.</p>
-       </article>
-      <aside>
-        <figure>
-          <img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="service image" class="meet">
-        </figure>
-        <h2>Meet the WireConnect Network</h2>
-        <p class="cut"><strong>The WireConnect Network</strong>
-        </a> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
-        <p class="dif"><ul>
+
+      <figure class="images">
+        <img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way ti crypto">
+      </figure>
+      <p class="imagecap">Your Secure Way to Services</p>
+      <p>The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a unique feature — the ability to access verified professionals directly through your service requests.</p>
+
+      <figure class="images">
+        <img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Giant Launcpad">
+      </figure>
+      <p class="imagecap">Wire Connect Hub</p>
+      <p class="bond">Empowering the Next Generation of Technicians.</p>
+      <p>The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts. A service hub built with integrity, for Africa and beyond.</p>
+    </article>
+
+    <aside>
+      <figure>
+        <img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="service image" class="meet">
+      </figure>
+
+      <h2>Meet the WireConnect Network</h2>
+      <p class="cut"><strong>The WireConnect Network</strong> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
+
+      <p class="dif">
+        <ul>
           <li class="dif"><strong>Service with Purpose:</strong> A portion of every connections supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
-          <li class="dif"><strong></strong></li> 
           <li class="dif"><strong>Wire Connect Hub: </strong>A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
           <li class="dif"><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
-          
-        </ul></p>
-        <a class="suf" href="#">Learn More</a>
-      </aside>
-      <aside class="AI">
-        <a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg"></a>
-      </aside>
-      <article>
-        
-      </article>
+        </ul>
+      </p>
+
+      <a class="suf" href="#">Learn More</a>
+    </aside>
+
+    <aside class="AI">
+      <a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg" alt="chat"></a>
+    </aside>
+
   </main>
+
+  <!-- Hamburger Menu (kept in same place) -->
+  <div class="hamburger-container" aria-expanded="false">
+    <button class="hamburger" id="hamburgerBtn" aria-controls="menuDropdown" aria-expanded="false">☰</button>
+
+    <div class="menu-dropdown" id="menuDropdown" role="menu" aria-hidden="true">
+      <a class="menu-link" href="profile.html">Profile</a>
+      <a class="menu-link" href="settings.html">Settings</a>
+      <a class="menu-link" href="kyc.html">KYC</a>
+
+      <a class="book-btn" href="book.html">Book Job</a>
+
+      <div class="status-toggle">
+        <span>Status:</span>
+        <label class="switch" title="Toggle online / offline">
+          <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
 
