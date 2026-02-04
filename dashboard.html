@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="author" content="Mr Dubem">
+  <meta name="description" content="HTML practice">
+  <meta name="keywords" content="HTML,CSS,JS">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GTAN</title>
+  <style>
+    *{
+  margin: 0;
+  padding: 0;
+   box-sizing:border-box;
+    }
+  .brief{
+    color:black;
+    display:flex;
+    justify-content:left;
+    padding:30px;
+    font-weight:bold;
+    font-style:italic;
+  }
+  .sort{
+    color:rgba(0,0,200,1);
+    padding:5px;
+    font-size:85px
+  }
+  .dent{
+    display:flex;
+    justify-content:center;
+    padding:20px
+  }
+  .fit{
+    padding:20px;
+    line-spacing:1.6px;
+    font-size:25px
+  }
+
+ fieldset{
+   border:1px solid black;
+   border-radius:10px;
+   height:70px;
+
+ }
+  .do{
+    display:grid;
+    justify-content:center;
+    text-decoration:none;
+    border:2px solid black;
+    border-radius:20px;
+    width:200px;
+    background-color:blue;
+    color:white;
+    padding:2px;
+    margin:10px;
+  }
+  .audit,.audits{
+    display:flex;
+    justify-content:center;
+    padding:50px;
+    margin:10px;
+    height:50px;
+  }
+ .to{ display:grid;
+    justify-content:center;
+    text-decoration:none;
+    border:2px solid black;
+    border-radius:20px;
+    width:200px;
+    background-color:blue;
+    color:white;
+    padding:8px;
+   margin:10px;
+ font-weight:bold;}
+.auditss{
+  display:flex;
+    justify-content:center;
+    padding:50px;
+    margin:10px;
+    width:300px;
+}
+main {
+  padding-top: 70px; /* adjust to header height */
+}
+  .bend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  border: 1px solid black;
+  border-radius:0px;
+
+  position: fixed;   /* stays on top */
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+  .search{
+    border:none;
+    background-color:white;
+    text-decoration:none;
+    display:flex;
+    justify-content:right;
+    padding:10px;
+    margin:10px;
+    width:10px;
+  }
+  .searches{
+    border:none;
+    color:black;
+    font-weight:bold;
+    text-decoration:none;
+  }
+  .images,.imagecap{
+    display:flex;
+    justify-content:center;
+    font-weight:bold;
+    text-transform:uppercase;
+    padding:20px;
+
+  }
+
+
+  .image{
+    with:1000px;
+    background-color:rgba(220,220,220,1);
+
+  }
+.meet{
+  padding:20px;
+  display:flex;
+  justify-content:center
+
+}
+
+.dif,.cut{
+  padding:10px;
+  line-spacing:1.6px
+}
+  .suf{
+    border:none;
+    color:blue;
+    font-weight:bold;
+    text-decoration:none;
+    padding:30px;
+  }
+  .AI{
+    position: fixed;   /* stays on top */
+ background-color:white;
+  border:none;
+  left: 80%;
+   bottom:2%;
+  width: 100%;
+  z-index: 1000;
+  }
+  .bond{
+    padding:10px
+  }
+
+/* ---- Added hamburger menu styles ---- */
+.hamburger-container {
+  position: fixed;
+  /* placed below the logo (logo ~120px high) */
+  top: 140px;
+  right: 20px;
+  z-index: 2000;
+  font-family: inherit;
+}
+
+.hamburger {
+  font-size: 28px;
+  background: none;
+  border: 1px solid #000;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  background-color: white;
+}
+
+.menu-dropdown {
+  display: none;
+  background: white;
+  border: 1px solid black;
+  border-radius: 10px;
+  width: 260px;
+  padding: 10px;
+  margin-top: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Menu links */
+.menu-dropdown a.menu-link {
+  display: block;
+  padding: 8px;
+  text-decoration: none;
+  color: black;
+  font-weight: bold;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.menu-dropdown a.menu-link:hover {
+  background-color: rgba(0,0,200,0.06);
+}
+
+/* Book button (blue) */
+.menu-dropdown a.book-btn {
+  display: block;
+  background-color: blue;
+  color: white !important;
+  text-align: center;
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-decoration: none;
+  font-weight: bold;
+  margin-top: 6px;
+}
+
+/* Status row */
+.status-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  gap: 8px;
+}
+.status-note {
+  font-size: 12px;
+  color: #444;
+  margin-top: 6px;
+}
+
+/* ---- Toggle switch styles ---- */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 54px;
+  height: 30px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #999;
+  transition: .3s;
+  border-radius: 30px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+input:checked + .slider {
+  background-color: #28a745; /* green */
+}
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* ---- Online indicator on main page ---- */
+.online-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 20px;
+  font-weight: bold;
+  color: #333;
+}
+.indicator-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: gray;
+  box-shadow: 0 0 6px rgba(0,0,0,0.06);
+}
+.indicator-online {
+  background: #28a745; /* green */
+  box-shadow: 0 0 8px rgba(40,167,69,0.3);
+}
+.indicator-offline {
+  background: gray;
+  box-shadow: none;
+}
+
+/* small toast */
+.toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  z-index: 9999;
+  display: none;
+}
+  </style>
+  </head>
+<body data-user-id="">
+  <header>
+    <div class="bend">
+    <figure >
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="Gtan logo" width="450px" height="120px">
+    </figure>
+  </div>
+       <div class="search" >
+      <a href="search.html" class="search" >🔍</a>
+    </div>
+
+    <!-- Hamburger Menu (requested: top-right below logo) -->
+    <div class="hamburger-container" aria-expanded="false">
+      <button class="hamburger" id="hamburgerBtn" aria-controls="menuDropdown" aria-expanded="false">☰</button>
+
+      <div class="menu-dropdown" id="menuDropdown" role="menu" aria-hidden="true">
+        <a class="menu-link" href="profile.html">Profile</a>
+        <a class="menu-link" href="settings.html">Settings</a>
+        <a class="menu-link" href="kyc.html">KYC</a>
+
+        <a class="book-btn" href="book.html">Book Job</a>
+
+        <div class="status-toggle">
+          <span>Status:</span>
+
+          <!-- Toggle switch (on/off) -->
+          <label class="switch" title="Toggle online / offline">
+            <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
+      </div>
+    </div>
+
+  </header>
+  <main>
+    <p class="brief">
+      Motto: Let Their Be Light 💥💥
+      <!-- Online indicator placed on main page as requested -->
+      <span class="online-indicator" id="onlineIndicatorContainer" aria-live="polite">
+        <span class="indicator-dot indicator-offline" id="indicatorDot"></span>
+        <span id="indicatorText">Offline</span>
+      </span>
+    </p>
+
+    <div class="sort">
+      <p class="dent">WireConnect Network</p>
+    </div>
+    <div class="fit">
+      <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
+      <div class="audit">
+        <p><a class="do"  href="#">Book A Job</a></p>
+        <p><a class="do" href="#">View All Jobs</a></p>
+      </div>
+        <div class="audits">
+        <p><a class="do" href="#">Do Kyc</a></p>
+        <p><a class="do"  href="#">Customer Services</a></p>
+        </div>
+       </div>
+        <div class="auditss">
+        <p><a class="to" href="#"> Client Leaderboard</a></p>
+        <p><a class="to"  href="#">Technician Leaderboard</a></p>
+        </div>
+       <article class="image">
+    <figure class="images">
+      <img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized">
+    </figure>
+         <p class="imagecap">Distributed Network</p>
+         <p>Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved.
+Wire Connect avoids this risk by operating through a distributed service network, designed for reliability, transparency, and uninterrupted operations.</p>
+         <figure class="images">
+           <img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way ti crypto">
+         </figure>
+         <p class="imagecap">Your Secure Way to Services</p>
+         <p>The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a unique feature — the ability to access verified professionals directly through your service requests.</p>
+         <figure class="images">
+           <img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Giant Launcpad">
+         </figure>
+         <p class="imagecap">Wire Connect Hub</p>
+         <p class="bond">Empowering the Next Generation of Technicians.</p>
+         <p> The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts. A service hub built with integrity, for Africa and beyond.</p>
+       </article>
+      <aside>
+        <figure>
+          <img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="service image" class="meet">
+        </figure>
+        <h2>Meet the WireConnect Network</h2>
+        <p class="cut"><strong>The WireConnect Network</strong>
+        </a> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
+        <p class="dif"><ul>
+          <li class="dif"><strong>Service with Purpose:</strong> A portion of every connections supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
+          <li class="dif"><strong></strong></li> 
+          <li class="dif"><strong>Wire Connect Hub: </strong>A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
+          <li class="dif"><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
+
+        </ul></p>
+        <a class="suf" href="#">Learn More</a>
+      </aside>
+      <aside class="AI">
+        <a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg"></a>
+      </aside>
+      <article>
+
+      </article>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- CONFIG: point to your backend ----
+    const API_BASE = 'https://wireconnet-1.onrender.com';
+
+    // UI elements
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const statusSwitch = document.getElementById('statusSwitch');
+    const indicatorDot = document.getElementById('indicatorDot');
+    const indicatorText = document.getElementById('indicatorText');
+    const toastEl = document.getElementById('toast');
+
+    // Toggle the hamburger menu visibility
+    (function(){
+      const btn = hamburgerBtn;
+      const menu = menuDropdown;
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const shown = menu.style.display === 'block';
+        menu.style.display = shown ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', !shown);
+        menu.setAttribute('aria-hidden', shown);
+      });
+
+      // close menu when clicking outside
+      document.addEventListener('click', (e)=>{
+        const container = document.querySelector('.hamburger-container');
+        if(!container.contains(e.target)){
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', false);
+          menu.setAttribute('aria-hidden', true);
+        }
+      });
+    })();
+
+    // helper: show toast
+    function showToast(msg, ms = 3000){
+      toastEl.innerText = msg;
+      toastEl.style.display = 'block';
+      setTimeout(()=> { toastEl.style.display = 'none'; }, ms);
+    }
+
+    // helper: set indicator on main page
+    function setIndicator(online){
+      if(online){
+        indicatorDot.classList.remove('indicator-offline');
+        indicatorDot.classList.add('indicator-online');
+        indicatorText.innerText = 'Online';
+      } else {
+        indicatorDot.classList.remove('indicator-online');
+        indicatorDot.classList.add('indicator-offline');
+        indicatorText.innerText = 'Offline';
+      }
+    }
+
+    // Obtain user id from body attribute or localStorage
+    function getUserId(){
+      const id = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
+      return id && id.trim() !== '' ? id : null;
+    }
+
+    // Save last-known online state to localStorage (per user)
+    function storeLastKnownOnline(userId, online){
+      if(!userId) return;
+      try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){}
+    }
+    function readLastKnownOnline(userId){
+      if(!userId) return null;
+      try {
+        const v = localStorage.getItem('techOnline_' + userId);
+        if(v === null) return null;
+        return v === '1';
+      } catch(e){ return null; }
+    }
+
+    // Attempt to send status change to backend with timeout
+    async function sendStatusToBackend(userId, online, lat = null, lng = null){
+      const url = API_BASE + '/api/tech/status';
+      // small timeout for fetch
+      const controller = new AbortController();
+      const timeout = setTimeout(()=> controller.abort(), 12000); // 12s
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ techId: userId, online: !!online, lat: lat, lng: lng })
+        });
+        clearTimeout(timeout);
+        const json = await resp.json().catch(()=> null);
+        if(!resp.ok){
+          // return an object indicating failure and message if available
+          return { success:false, message: (json && json.message) ? json.message : ('HTTP ' + resp.status) };
+        }
+        return json; // should contain { success:true, message: ... }
+      } catch(err){
+        clearTimeout(timeout);
+        if(err.name === 'AbortError') return { success:false, message: 'Request timed out' };
+        return { success:false, message: err.message || 'Network error' };
+      }
+    }
+
+    // Main handler when user toggles switch
+    async function handleSwitchToggle(e){
+      const checked = e.target.checked;
+      const userId = getUserId();
+      if(!userId){
+        // revert switch and inform developer/user to set id
+        statusSwitch.checked = !checked;
+        showToast('No user id found. Set body[data-user-id] or localStorage.userId to enable status updates.', 5000);
+        return;
+      }
+
+      // get geolocation (best-effort, do not block UX too long)
+      let lat = null, lng = null;
+      if(navigator.geolocation){
+        try{
+          const pos = await new Promise((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error('geolocation timeout')), 4500);
+            navigator.geolocation.getCurrentPosition((p) => { clearTimeout(t); resolve(p); }, (err) => { clearTimeout(t); reject(err); }, { maximumAge: 10000, timeout: 4500 });
+          });
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+        }catch(err){
+          // ignore geolocation errors
+          console.warn('geolocation unavailable', err);
+        }
+      }
+
+      // optimistic UI: set indicator and keep switch while request is in-flight
+      setIndicator(checked);
+      statusSwitch.disabled = true;
+      showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
+
+      // send
+      const result = await sendStatusToBackend(userId, checked, lat, lng);
+      statusSwitch.disabled = false;
+
+      if(result && result.success){
+        // success: persist last-known state
+        storeLastKnownOnline(userId, checked);
+        showToast('Status updated');
+      } else {
+        // failure: revert UI to previous state and show message
+        const prev = !checked;
+        statusSwitch.checked = prev;
+        setIndicator(prev);
+        const msg = (result && result.message) ? result.message : 'Failed to update status';
+        showToast('Error: ' + msg, 6000);
+        // also alert for visibility
+        alert('Could not update status: ' + msg);
+      }
+    }
+
+    // Wire the switch event
+    statusSwitch.addEventListener('change', handleSwitchToggle);
+
+    // On load: set switch and indicator from localStorage for this user (best-effort)
+    (function initFromLocal(){
+      const userId = getUserId();
+      if(!userId) {
+        // nothing to pre-populate; leave offline default
+        setIndicator(false);
+        return;
+      }
+      const known = readLastKnownOnline(userId);
+      if(known === null){
+        // no saved state — leave defaults (offline)
+        setIndicator(false);
+        statusSwitch.checked = false;
+      } else {
+        statusSwitch.checked = !!known;
+        setIndicator(!!known);
+      }
+    })();
+
+    // Accessibility: close dropdown with Escape
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') {
+        menuDropdown.style.display = 'none';
+        hamburgerBtn.setAttribute('aria-expanded', false);
+        menuDropdown.setAttribute('aria-hidden', true);
+      }
+    });
+
+    // Expose small helper to programmatically set user id
+    // You can call in browser console: localStorage.setItem('userId','THE_USER_ID') or set <body data-user-id="...">
+    // Optional: if you want to auto-read user object from /api/login etc, implement login flow and set localStorage.userId on success.
+  </script>
+</body>
+</html>
