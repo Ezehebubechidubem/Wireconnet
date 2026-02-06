@@ -129,8 +129,8 @@
           <h1>Book a Job</h1>
           <div class="muted" id="userGreeting">—</div>
         </div>
-        <div style="align-self:flex-start;color:var(--muted);font-weight:700"> <!-- intentionally simple right info kept -->
-          <!-- left intentionally minimal (no 'back to dashboard' link as requested) -->
+        <div style="align-self:flex-start;color:var(--muted);font-weight:700">
+          <!-- intentionally minimal right info kept -->
         </div>
       </div>
 
@@ -276,32 +276,25 @@
 
     // ------------------ Utility: nice popup (replaces alert) ------------------
     function showPopup(title, message, opts = {}) {
-      // opts: { okText, onOk, buttons: [{text, action}], autoCloseMs }
       modalBackdrop.style.display = 'flex';
       modalBackdrop.setAttribute('aria-hidden','false');
       const html = [];
       if(title) html.push(`<h3 id="modalTitle">${title}</h3>`);
       html.push(`<div class="muted">${typeof message === 'string' ? message.replace(/\n/g,'<br>') : (JSON.stringify(message,null,2))}</div>`);
       modalContent.innerHTML = html.join('');
-      // show/hide ok button
       if(opts.okText === null) { modalOk.style.display='none'; }
       else {
         modalOk.style.display='inline-block';
         modalOk.innerText = opts.okText || 'OK';
       }
-      // hide Close if requested
       modalClose.style.display = (opts.hideClose ? 'none' : 'inline-block');
-
-      // handler
       const okHandler = () => {
         if(opts.onOk) try{ opts.onOk(); }catch(e){}
         closeModal();
       };
       const closeHandler = closeModal;
-
       modalOk.onclick = okHandler;
       modalClose.onclick = closeHandler;
-
       if(opts.autoCloseMs && typeof opts.autoCloseMs === 'number') {
         setTimeout(() => { okHandler(); }, opts.autoCloseMs);
       }
@@ -357,7 +350,7 @@
           </div>
 
           <div style="height:8px"></div>
-          <div class="muted">You can close this dialog to continue. A chat page will open automatically if available.</div>
+          <div class="muted">You will be redirected to chat in a moment...</div>
         </div>
       `;
       modalOk.style.display='inline-block';
@@ -454,7 +447,7 @@
       return { total, breakdown };
     }
 
-    // display estimate
+     // display estimate
     calcBtn.addEventListener('click', (e) => {
       e.preventDefault();
       const u = ensureClient(); if(!u) return;
@@ -503,10 +496,9 @@
         showPopup('Set estimated price', 'This is a custom job — please enter an estimated price in Naira (no commas):', {
           okText: 'Use price',
           onOk: () => {
-            const pRaw = prompt('Enter your estimated price in Naira (₦):', '50000'); // fallback quick prompt (rare)
+            const pRaw = prompt('Enter your estimated price in Naira (₦):', '50000');
             const p = Number(pRaw || 0) || 0;
             price = p;
-            // continue submission after user provided price
             doSubmitJob(user, job_type, descriptionText, price);
           },
           hideClose: true
@@ -587,10 +579,20 @@
             localStorage.setItem('wc_bookings', JSON.stringify(existing));
           }catch(e){ /* ignore storage errors */ }
 
-          if(body.assigned === true && body.technician){
-            showModalAssigned(body.technician, user.fullname || user.username || 'Client', body.jobId);
-            // optionally open chat after delay (kept commented — unchanged behavior)
-            // setTimeout(()=>{ window.location.href = 'chat.html?jobId=' + encodeURIComponent(body.jobId); }, 3000);
+          if(body.assigned === true){
+            // show the assigned modal
+            const tech = body.technician || {};
+            showModalAssigned(tech, user.fullname || user.username || 'Client', body.jobId);
+
+            // --- NEW: redirect to chat.html immediately (short delay to allow modal render) ---
+            // Compose chat URL with jobId and techId if available
+            const jobId = body.jobId;
+            const techId = (tech && (tech.id || tech.user_id || tech.tech_id)) ? (tech.id || tech.user_id || tech.tech_id) : (body.assigned_tech_id || body.assignedTechId || null);
+            const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+            // Delay 700ms then redirect
+            setTimeout(() => {
+              window.location.href = 'chat.html?' + qs;
+            }, 700);
             return;
           } else {
             showModalNotAssigned(body);
@@ -609,10 +611,8 @@
 
     // init
     (async function init(){
-      // try to load user; if missing, show popup and redirect (per ensureClient)
       const userRaw = localStorage.getItem('wc_user');
       if(!userRaw){
-        // show popup and then redirect to login
         showPopup('Not logged in', 'Please login as client to book. You will be redirected to login.', { okText:'Login', onOk: ()=> { window.location.href='login.html'; } });
         return;
       }
@@ -623,14 +623,12 @@
       }
       userGreeting.textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`;
 
-      // prefill state/lga/city if available in user object
       try{
         if(user.state) stateInput.value = user.state;
         if(user.lga) lgaInput.value = user.lga;
         if(user.city) cityInput.value = user.city;
       }catch(e){}
 
-      // attempt to fetch pricing from backend (if route exists)
       try{
         const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
         if(resp.ok){
@@ -646,12 +644,10 @@
         }
       }catch(e){ /* ignore */ }
 
-      // pre-calc to show initial price
       const res = calculateEstimateLocal();
       estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
 
-      // try geolocation for assignment
       tryGeolocationSave();
     })();
 
