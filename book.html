@@ -22,7 +22,7 @@
       display:flex;
       justify-content:center;
       align-items:flex-start;
-      padding:28px;
+      padding:18px;
     }
 
     .wrap{
@@ -30,12 +30,31 @@
       max-width:980px;
       background:var(--card);
       border-radius:12px;
-      padding:18px;
+      padding:0;
       box-shadow:var(--shadow);
       box-sizing:border-box;
+      overflow:hidden;
     }
 
-    /* header row with logo */
+    /* HEADER: logo full width (removed the small title/back link) */
+    .header-logo {
+      width:100%;
+      display:block;
+      background:#fff;
+      border-bottom: 1px solid #e6eef9;
+    }
+    .header-logo img {
+      width:100%;
+      height:120px;
+      object-fit:cover;
+      display:block;
+    }
+
+    .content {
+      padding:18px;
+    }
+
+    /* booking form */
     .top {
       display:flex;
       align-items:center;
@@ -43,12 +62,7 @@
       gap:12px;
       margin-bottom:12px;
     }
-    .logo {
-      display:flex;
-      align-items:center;
-      gap:12px;
-    }
-    .logo img{height:72px;border-radius:10px;object-fit:cover}
+    .logo { display:flex; align-items:center; gap:12px; }
     h1{margin:0;font-size:20px;font-weight:800;font-style:italic}
     .muted{color:var(--muted);font-size:13px}
     .row{display:flex;gap:12px}
@@ -64,133 +78,155 @@
     .hidden{display:none}
     .controls { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
 
-    /* Modal */
+    /* Modal/pop popups */
     .modal-backdrop{
-      position:fixed;inset:0;background:rgba(2,6,23,0.55);display:none;align-items:center;justify-content:center;z-index:9999;
+      position:fixed;inset:0;background:rgba(2,6,23,0.35);display:none;align-items:center;justify-content:center;z-index:9999;
     }
     .modal{
       width:92%;
-      max-width:520px;
+      max-width:560px;
       background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 48px rgba(2,6,23,0.4);
-      transform:translateY(8px);
+      transform:translateY(0);
     }
     .modal h3{margin:0 0 8px;font-size:18px}
     .modal .muted{margin-bottom:8px}
-    .spinner{
-      width:56px;height:56px;border-radius:50%;border:6px solid #eef6ff;border-top-color:var(--accent);animation:spin 1s linear infinite;margin:10px auto;
-    }
+    .spinner{width:56px;height:56px;border-radius:50%;border:6px solid #eef6ff;border-top-color:var(--accent);animation:spin 1s linear infinite;margin:10px auto}
     @keyframes spin{to{transform:rotate(360deg)}}
     .tech-card{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;border:1px solid #eef6ff;background:#fbfeff}
     .tech-avatar{width:64px;height:64px;border-radius:10px;object-fit:cover;background:#f0f3ff;display:inline-block}
     .tech-info{flex:1}
     .success-italic{font-style:italic;color:#065f46;font-weight:700;margin-top:8px}
     .fail{color:#b91c1c;font-weight:700;margin-top:8px}
+    .popup-ok { display:inline-block; margin-top:12px; padding:8px 12px; background:var(--accent); color:#fff; border-radius:8px; cursor:pointer; font-weight:800; text-align:center; }
 
     /* responsive */
     @media(max-width:680px){
-      .logo img{height:58px}
+      .logo img{height:72px}
       .controls{flex-direction:column;align-items:stretch}
     }
 
-    /* little visual hint for price field */
+    /* price display */
     .price-input { display:flex; gap:8px; align-items:center; }
     .price-currency { background:#f3f8ff;border-radius:8px;padding:10px 12px;border:1px solid #eef3fb;color:var(--muted) }
+
+    /* small spacing tweaks */
+    .form-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    @media(max-width:680px){ .form-grid { grid-template-columns: 1fr; } }
+
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="top">
-      <div class="logo" aria-hidden="true">
-        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+    <!-- logo full width, removed back link/title area -->
+    <div class="header-logo" role="banner" aria-hidden="true">
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+    </div>
+
+    <div class="content">
+      <!-- top small heading inside content (kept as section title) -->
+      <div class="top" aria-hidden="false" style="padding-bottom:6px">
         <div>
           <h1>Book a Job</h1>
           <div class="muted" id="userGreeting">—</div>
         </div>
-      </div>
-      <div style="align-self:flex-start">
-        <a href="dashboard.html" style="text-decoration:none;color:var(--accent);font-weight:800">← Back to dashboard</a>
-      </div>
-    </div>
-
-    <!-- Booking form -->
-    <div>
-      <label>Choose job type</label>
-      <select id="jobType">
-        <option value="conduit">Conduit wiring</option>
-        <option value="solar">Solar installation</option>
-        <option value="other">Other (custom)</option>
-      </select>
-
-      <!-- dynamic options for conduit -->
-      <div id="conduitFields" style="margin-top:8px">
-        <label>Number of rooms</label>
-        <input id="conduitRooms" type="number" min="1" value="1">
-        <label><input id="conduitDB" type="checkbox"> Include DB mounting (₦15,000)</label>
-        <label><input id="conduitNEPA" type="checkbox"> Include NEPA connection (₦50,000)</label>
-        <label><input id="conduitWiringAdd" type="checkbox"> Add extra wiring (₦5,000 per room)</label>
-        <label><input id="conduitFittings" type="checkbox"> Include fittings (₦15,000 per room)</label>
+        <div style="align-self:flex-start;color:var(--muted);font-weight:700"> <!-- intentionally simple right info kept -->
+          <!-- left intentionally minimal (no 'back to dashboard' link as requested) -->
+        </div>
       </div>
 
-      <!-- dynamic options for solar -->
-      <div id="solarFields" class="hidden" style="margin-top:8px">
-        <label>Building type</label>
-        <select id="solarBuilding">
-          <option value="bungalow">Bungalow (base)</option>
-          <option value="one_story">1 storey (base + 30,000)</option>
-          <option value="two_plus">2+ storey (base + 60,000)</option>
+      <!-- Booking form -->
+      <div>
+        <label>Choose job type</label>
+        <select id="jobType">
+          <option value="conduit">Conduit wiring</option>
+          <option value="solar">Solar installation</option>
+          <option value="other">Other (custom)</option>
         </select>
-        <label><input id="solarComplex" type="checkbox"> Complex roof / high access (+₦50,000)</label>
-      </div>
 
-      <div id="otherFields" class="hidden" style="margin-top:8px">
-        <label>Job name</label>
-        <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
-      </div>
-
-      <label style="margin-top:8px">Small description (max 500 words)</label>
-      <textarea id="description" rows="5" placeholder="Describe the job — location, special constraints, etc."></textarea>
-
-      <div class="controls">
-        <button id="calcBtn" class="btn" title="Estimate price">Calculate estimate</button>
-        <button id="submitBtn" class="btn-ghost" title="Submit booking">Submit booking</button>
-
-        <!-- price display (read only) -->
-        <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-          <div class="price-currency">₦</div>
-          <div id="priceDisplay" style="font-weight:800;font-size:16px">—</div>
+        <!-- dynamic options for conduit -->
+        <div id="conduitFields" style="margin-top:8px">
+          <label>Number of rooms</label>
+          <input id="conduitRooms" type="number" min="1" value="1">
+          <label><input id="conduitDB" type="checkbox"> Include DB mounting (₦15,000)</label>
+          <label><input id="conduitNEPA" type="checkbox"> Include NEPA connection (₦50,000)</label>
+          <label><input id="conduitWiringAdd" type="checkbox"> Add extra wiring (₦5,000 per room)</label>
+          <label><input id="conduitFittings" type="checkbox"> Include fittings (₦15,000 per room)</label>
         </div>
 
-        <label style="margin-left:12px;align-self:center">
-          <input id="useAssign" type="checkbox"> use /api/book-assign
-        </label>
+        <!-- dynamic options for solar -->
+        <div id="solarFields" class="hidden" style="margin-top:8px">
+          <label>Building type</label>
+          <select id="solarBuilding">
+            <option value="bungalow">Bungalow (base)</option>
+            <option value="one_story">1 storey (base + 30,000)</option>
+            <option value="two_plus">2+ storey (base + 60,000)</option>
+          </select>
+          <label><input id="solarComplex" type="checkbox"> Complex roof / high access (+₦50,000)</label>
+        </div>
+
+        <div id="otherFields" class="hidden" style="margin-top:8px">
+          <label>Job name</label>
+          <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
+        </div>
+
+        <!-- NEW: State, L.G.A, Town/City inputs (user requested) -->
+        <div style="margin-top:10px" class="form-grid">
+          <div>
+            <label for="stateInput">State</label>
+            <input id="stateInput" type="text" placeholder="e.g. Abuja / Lagos / Kano">
+          </div>
+          <div>
+            <label for="lgaInput">L.G.A</label>
+            <input id="lgaInput" type="text" placeholder="Local Government Area">
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label for="cityInput">Town / City</label>
+            <input id="cityInput" type="text" placeholder="e.g. Wuse, Ikeja, Maitama">
+          </div>
+        </div>
+
+        <label style="margin-top:8px">Small description (max 500 words)</label>
+        <textarea id="description" rows="5" placeholder="Describe the job — location, special constraints, etc."></textarea>
+
+        <div class="controls">
+          <button id="calcBtn" class="btn" title="Estimate price">Calculate estimate</button>
+          <button id="submitBtn" class="btn-ghost" title="Submit booking">Submit booking</button>
+
+          <!-- price display (read only) -->
+          <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+            <div class="price-currency">₦</div>
+            <div id="priceDisplay" style="font-weight:800;font-size:16px">—</div>
+          </div>
+
+          <label style="margin-left:12px;align-self:center">
+            <input id="useAssign" type="checkbox"> use /api/book-assign
+          </label>
+        </div>
+
+        <div style="height:12px"></div>
+        <div class="estimate" id="estimateBox"><em>Estimate:</em> —</div>
+
+        <h4 style="margin-bottom:6px">Diagnostics (server request/response)</h4>
+        <div id="diag" class="diag">No actions yet.</div>
       </div>
-
-      <div style="height:12px"></div>
-      <div class="estimate" id="estimateBox"><em>Estimate:</em> —</div>
-
-      <h4 style="margin-bottom:6px">Diagnostics (server request/response)</h4>
-      <div id="diag" class="diag">No actions yet.</div>
     </div>
   </div>
 
-  <!-- modal -->
+  <!-- modal used for "searching / success / error" and as generic popup -->
   <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal" role="document" aria-labelledby="modalTitle">
       <div id="modalContent">
-        <!-- content injected by JS -->
-        <div style="text-align:center">
-          <div class="spinner" aria-hidden="true"></div>
-          <div class="muted">Searching for a nearby technician — this may take a few seconds...</div>
-        </div>
+        <!-- injected by JS -->
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <div id="modalOk" class="popup-ok" style="display:none">OK</div>
         <button id="modalClose" class="btn-ghost">Close</button>
       </div>
     </div>
   </div>
 
   <script>
-    // API root - point to your backend
+    // API root
     const API_BASE = 'https://wireconnet-1.onrender.com';
 
     // DOM refs
@@ -215,10 +251,16 @@
     const userGreeting = document.getElementById('userGreeting');
     const priceDisplay = document.getElementById('priceDisplay');
 
+    // new inputs
+    const stateInput = document.getElementById('stateInput');
+    const lgaInput = document.getElementById('lgaInput');
+    const cityInput = document.getElementById('cityInput');
+
     // modal refs
     const modalBackdrop = document.getElementById('modalBackdrop');
     const modalContent = document.getElementById('modalContent');
     const modalClose = document.getElementById('modalClose');
+    const modalOk = document.getElementById('modalOk');
 
     // default PRICES (fallback)
     let PRICES = {
@@ -232,33 +274,48 @@
       solar_complex: 50000
     };
 
-    // Attempt to fetch prices from backend so an admin can change them without editing front-end.
-    async function fetchPricesFromBackend(){
-      try{
-        const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
-        if(!resp.ok) return null;
-        const json = await resp.json();
-        if(json && typeof json === 'object' && json.prices) return json.prices;
-        return null;
-      }catch(e){
-        return null;
+    // ------------------ Utility: nice popup (replaces alert) ------------------
+    function showPopup(title, message, opts = {}) {
+      // opts: { okText, onOk, buttons: [{text, action}], autoCloseMs }
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden','false');
+      const html = [];
+      if(title) html.push(`<h3 id="modalTitle">${title}</h3>`);
+      html.push(`<div class="muted">${typeof message === 'string' ? message.replace(/\n/g,'<br>') : (JSON.stringify(message,null,2))}</div>`);
+      modalContent.innerHTML = html.join('');
+      // show/hide ok button
+      if(opts.okText === null) { modalOk.style.display='none'; }
+      else {
+        modalOk.style.display='inline-block';
+        modalOk.innerText = opts.okText || 'OK';
+      }
+      // hide Close if requested
+      modalClose.style.display = (opts.hideClose ? 'none' : 'inline-block');
+
+      // handler
+      const okHandler = () => {
+        if(opts.onOk) try{ opts.onOk(); }catch(e){}
+        closeModal();
+      };
+      const closeHandler = closeModal;
+
+      modalOk.onclick = okHandler;
+      modalClose.onclick = closeHandler;
+
+      if(opts.autoCloseMs && typeof opts.autoCloseMs === 'number') {
+        setTimeout(() => { okHandler(); }, opts.autoCloseMs);
       }
     }
 
-    // load local user
-    function loadUser(){
-      try { const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+    function closeModal(){
+      modalBackdrop.style.display = 'none';
+      modalBackdrop.setAttribute('aria-hidden','true');
+      modalContent.innerHTML = '';
+      modalOk.onclick = null;
+      modalClose.onclick = null;
     }
 
-    // ensure client only booking
-    function ensureClient(){
-      const u = loadUser();
-      if(!u){ alert('Please login (client) to book'); window.location.href = 'login.html'; return null; }
-      if(u.role !== 'client'){ alert('Only clients can book. Redirecting to dashboard.'); window.location.href = 'dashboard.html'; return null; }
-      return u;
-    }
-
-    // show modal helper
+    // --------- Modal variants used in previous page behavior (keep names) ----------
     function showModalLoading(){
       modalBackdrop.style.display = 'flex';
       modalBackdrop.setAttribute('aria-hidden','false');
@@ -268,9 +325,13 @@
           <div class="muted" style="margin-top:8px">Searching for a nearby technician — this may take a few seconds...</div>
         </div>
       `;
+      modalOk.style.display = 'none';
+      modalClose.style.display = 'none';
     }
 
     function showModalAssigned(technician, clientName, jobId){
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden','false');
       modalContent.innerHTML = `
         <div>
           <h3 id="modalTitle">Job matching successful ✅</h3>
@@ -299,9 +360,14 @@
           <div class="muted">You can close this dialog to continue. A chat page will open automatically if available.</div>
         </div>
       `;
+      modalOk.style.display='inline-block';
+      modalOk.innerText = 'Close';
+      modalClose.style.display='inline-block';
     }
 
     function showModalNotAssigned(body){
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden','false');
       modalContent.innerHTML = `
         <div>
           <h3 id="modalTitle">Job created — no immediate match</h3>
@@ -310,9 +376,14 @@
           <div class="diag" style="max-height:160px;background:#fff;color:#111;border:1px solid #eef3fb">${JSON.stringify(body,null,2)}</div>
         </div>
       `;
+      modalOk.style.display='inline-block';
+      modalOk.innerText = 'Close';
+      modalClose.style.display='inline-block';
     }
 
     function showModalError(message, raw){
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden','false');
       modalContent.innerHTML = `
         <div>
           <h3 id="modalTitle">Error</h3>
@@ -321,22 +392,36 @@
           <div class="diag" style="max-height:140px;background:#fff;color:#111;border:1px solid #fee">${raw ? JSON.stringify(raw,null,2) : ''}</div>
         </div>
       `;
+      modalOk.style.display='inline-block';
+      modalOk.innerText = 'Close';
+      modalClose.style.display='inline-block';
     }
 
-    function closeModal(){
-      modalBackdrop.style.display = 'none';
-      modalBackdrop.setAttribute('aria-hidden','true');
-    }
-    modalClose.addEventListener('click', closeModal);
-    modalBackdrop.addEventListener('click', (e)=>{ if(e.target === modalBackdrop) closeModal(); });
+    // ------------------ Form behaviour & helpers ------------------
 
-    // show/hide dynamic fields
     jobType.addEventListener('change', () => {
       const v = jobType.value;
       conduitFields.classList.toggle('hidden', v !== 'conduit');
       solarFields.classList.toggle('hidden', v !== 'solar');
       otherFields.classList.toggle('hidden', v !== 'other');
     });
+
+    function loadUser() {
+      try { const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+    }
+
+    function ensureClient(){
+      const u = loadUser();
+      if(!u){
+        showPopup('Not logged in', 'Please log in as a client to book a job. You will be redirected to login.', { okText: 'OK', onOk: () => { window.location.href = 'login.html'; } });
+        return null;
+      }
+      if(u.role !== 'client'){
+        showPopup('Wrong account', 'Only client accounts can create bookings. You will be redirected to dashboard.', { okText: 'OK', onOk: () => { window.location.href = 'dashboard.html'; } });
+        return null;
+      }
+      return u;
+    }
 
     // calculate estimate using PRICES
     function calculateEstimateLocal(){
@@ -361,7 +446,6 @@
         total += base;
         if(solarComplex.checked){ total += PRICES.solar_complex; breakdown.push(`Complex roof = ₦${PRICES.solar_complex.toLocaleString()}`); }
       } else {
-        // other: leave 0 and ask user to confirm (we'll prompt if needed)
         const price = 0;
         total = price;
         breakdown.push(`Custom job — client to set price at checkout/negotiation.`);
@@ -391,7 +475,7 @@
       }catch(e){ /* ignore */ }
     }
 
-    // Submit booking with modal UX
+    // Submit booking with modal UX (uses state/lga/city inputs)
     submitBtn.addEventListener('click', async (ev) => {
       ev.preventDefault();
       const user = ensureClient(); if(!user) return;
@@ -415,21 +499,40 @@
       const est = calculateEstimateLocal();
       let price = est.total;
       if(price === 0 && jt === 'other'){
-        // ask for a suggested price for "other"
-        const p = Number(prompt('Enter your estimated price in Naira (₦):', '50000')) || 0;
-        price = p;
+        // ask using popup for suggested price
+        showPopup('Set estimated price', 'This is a custom job — please enter an estimated price in Naira (no commas):', {
+          okText: 'Use price',
+          onOk: () => {
+            const pRaw = prompt('Enter your estimated price in Naira (₦):', '50000'); // fallback quick prompt (rare)
+            const p = Number(pRaw || 0) || 0;
+            price = p;
+            // continue submission after user provided price
+            doSubmitJob(user, job_type, descriptionText, price);
+          },
+          hideClose: true
+        });
+        return;
       }
 
-      await tryGeolocationSave(); // best-effort
+      // proceed with job submission
+      doSubmitJob(user, job_type, descriptionText, price);
+    });
 
-      // last known coords
+    async function doSubmitJob(user, job_type, descriptionText, price){
+      // Save last known coords
+      await tryGeolocationSave();
       const latLocal = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
       const lngLocal = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
 
+      // Use the form state inputs to locate technicians (user requested)
+      const stateVal = (stateInput.value && stateInput.value.trim()) ? stateInput.value.trim() : (user.state || 'unknown');
+      const lgaVal = (lgaInput.value && lgaInput.value.trim()) ? lgaInput.value.trim() : (user.lga || null);
+      const cityVal = (cityInput.value && cityInput.value.trim()) ? cityInput.value.trim() : (user.city || null);
+
       const payload = {
         clientId: user.id,
-        state: user.state || 'unknown',
-        city: user.city || null,
+        state: stateVal,
+        city: cityVal,
         address: null,
         lat: Number.isFinite(latLocal) ? latLocal : null,
         lng: Number.isFinite(lngLocal) ? lngLocal : null,
@@ -438,7 +541,7 @@
         price
       };
 
-      // Show modal loading
+      // Show modal loading (pop menu)
       showModalLoading();
 
       // choose endpoint
@@ -463,7 +566,6 @@
         diag.textContent = `HTTP ${resp.status} ${resp.statusText}\nRESPONSE:\n${JSON.stringify(body, null, 2)}`;
 
         if(!resp.ok){
-          // error from server
           showModalError('Server error while creating booking', body || `HTTP ${resp.status}`);
           return;
         }
@@ -485,82 +587,80 @@
             localStorage.setItem('wc_bookings', JSON.stringify(existing));
           }catch(e){ /* ignore storage errors */ }
 
-          // If assigned true and technician info returned -> show success with tech info
           if(body.assigned === true && body.technician){
-            // If backend returned technician id only, try fetching profile (attempt)
-            const tech = body.technician;
-            // show assigned modal with technician info
-            showModalAssigned(tech, user.fullname || user.username || 'Client', body.jobId);
-
-            // attempt to auto-open chat after short delay if you have chat page (optional)
-            setTimeout(()=>{
-              // open chat if you have chat.html
-              if(typeof window !== 'undefined') {
-                // optional: open chat page (uncomment if desired)
-                // window.location.href = 'chat.html?jobId=' + encodeURIComponent(body.jobId);
-              }
-            }, 3500);
-
+            showModalAssigned(body.technician, user.fullname || user.username || 'Client', body.jobId);
+            // optionally open chat after delay (kept commented — unchanged behavior)
+            // setTimeout(()=>{ window.location.href = 'chat.html?jobId=' + encodeURIComponent(body.jobId); }, 3000);
             return;
           } else {
-            // not immediately assigned
             showModalNotAssigned(body);
             return;
           }
         } else {
-          // weird response
           showModalError('Unexpected response from server', body);
           return;
         }
       }catch(err){
-        // network / timeout
         const isAbort = err && err.name === 'AbortError';
         showModalError(isAbort ? 'Request timed out' : 'Network error', String(err));
         diag.textContent += '\nNETWORK ERROR:\n' + String(err);
       }
-    });
+    }
 
-    // init: user greeting, load dynamic prices
+    // init
     (async function init(){
-      // user check
+      // try to load user; if missing, show popup and redirect (per ensureClient)
       const userRaw = localStorage.getItem('wc_user');
-      if(!userRaw){ alert('Please login as client to book. Redirecting to login.'); window.location.href = 'login.html'; return; }
+      if(!userRaw){
+        // show popup and then redirect to login
+        showPopup('Not logged in', 'Please login as client to book. You will be redirected to login.', { okText:'Login', onOk: ()=> { window.location.href='login.html'; } });
+        return;
+      }
       const user = JSON.parse(userRaw);
-      if(user.role !== 'client'){ alert('Only clients can access booking. Redirecting to dashboard.'); window.location.href = 'dashboard.html'; return; }
+      if(user.role !== 'client'){
+        showPopup('Not allowed', 'Only clients can book. Redirecting to dashboard.', { okText:'OK', onOk: ()=> { window.location.href='dashboard.html'; } });
+        return;
+      }
       userGreeting.textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`;
 
-      // attempt to fetch pricing from backend so admin can change prices without updating frontend
-      const backendPrices = await fetchPricesFromBackend().catch(()=>null);
-      if(backendPrices && typeof backendPrices === 'object'){
-        // merge (safely) only numeric values
-        for(const k in backendPrices){
-          if(Object.prototype.hasOwnProperty.call(PRICES, k) && typeof backendPrices[k] === 'number'){
-            PRICES[k] = backendPrices[k];
+      // prefill state/lga/city if available in user object
+      try{
+        if(user.state) stateInput.value = user.state;
+        if(user.lga) lgaInput.value = user.lga;
+        if(user.city) cityInput.value = user.city;
+      }catch(e){}
+
+      // attempt to fetch pricing from backend (if route exists)
+      try{
+        const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
+        if(resp.ok){
+          const json = await resp.json().catch(()=>null);
+          const backendPrices = (json && json.prices) ? json.prices : json;
+          if(backendPrices && typeof backendPrices === 'object'){
+            for(const k in backendPrices){
+              if(Object.prototype.hasOwnProperty.call(PRICES, k) && typeof backendPrices[k] === 'number'){
+                PRICES[k] = backendPrices[k];
+              }
+            }
           }
         }
-        // reflect in UI: nothing required; estimate calc will use PRICES
-      }
+      }catch(e){ /* ignore */ }
 
       // pre-calc to show initial price
       const res = calculateEstimateLocal();
       estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
 
-      // try to get geolocation for better assignment
+      // try geolocation for assignment
       tryGeolocationSave();
     })();
 
-    // helper: request prices endpoint (attempt)
-    async function fetchPricesFromBackend(){
-      try{
-        const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
-        if(!resp.ok) return null;
-        const json = await resp.json();
-        return json && json.prices ? json.prices : json;
-      }catch(e){
-        return null;
-      }
-    }
+    // keyboard / backdrop close
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') closeModal();
+    });
+    modalBackdrop.addEventListener('click', (e)=>{ if(e.target === modalBackdrop) closeModal(); });
+    modalClose.addEventListener('click', closeModal);
 
   </script>
 </body>
