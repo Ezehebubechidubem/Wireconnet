@@ -274,6 +274,17 @@
       modal._onClose = null;
     }
 
+    // showErrorPopup helper
+    function showErrorPopup(title, message){
+      const html = `
+        <h3>${title}</h3>
+        <div class="muted">${String(message)}</div>
+        <div class="modal-actions"><button id="errClose" class="btn">OK</button></div>
+      `;
+      openModal(html, { closable:true });
+      document.getElementById('errClose').addEventListener('click', closeModal);
+    }
+
     // Nice confirm for incoming job (Accept / Decline UI)
     function showJobRequestModal(job, onAccept, onDecline){
       const html = `
@@ -303,12 +314,12 @@
           <button id="acceptedOk" class="btn">OK</button>
         </div>
       `;
-      openModal(acceptedHtml);
+      openModal(acceptedHtml, { closable: true });
       document.getElementById('acceptedOk').addEventListener('click', ()=>{
         closeModal();
         showAssignmentModal(job, jobId, techId, { autoRedirect:true });
       });
-      // also auto-proceed after 600ms
+      // also auto-proceed shortly after
       setTimeout(()=> {
         if(modalBackdrop.style.display === 'flex') {
           closeModal();
@@ -319,7 +330,6 @@
 
     // Assignment modal showing countdown (estimated_days from job)
     function showAssignmentModal(job, jobId, techId, { autoRedirect = false } = {}){
-      // estimated days fallback
       const days = Number(job.estimated_days || job.estimatedDays || job.estimatedDaysFromClient || 1) || 1;
       const endTs = Date.now() + days * 24*60*60*1000;
       const html = `
@@ -336,7 +346,7 @@
           <button id="assignmentClose" class="btn secondary">Close</button>
         </div>
       `;
-      openModal(html);
+      openModal(html, { closable: true });
       // countdown updater
       const cdEl = document.getElementById('assignmentCountdown');
       let intId = null;
@@ -355,28 +365,25 @@
 
       // button behavior
       document.getElementById('goChatBtn').addEventListener('click', ()=> {
-        // redirect to chat
         const qs = 'jobId=' + encodeURIComponent(jobId || job.id) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+        // ensure chat.html exists in your project
         window.location.href = 'chat.html?' + qs;
       });
       document.getElementById('assignmentClose').addEventListener('click', ()=> {
-        clearInterval(intId); closeModal();
+        clearInterval(intId);
+        closeModal();
       });
 
-      // Auto redirect if asked
       if(autoRedirect){
+        // short delay then redirect to chat automatically (technician side)
         setTimeout(()=> {
-          const qs = 'jobId=' + encodeURIComponent(jobId || job.id) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-          window.location.href = 'chat.html?' + qs;
-        }, 900);
+          if(modalBackdrop.style.display === 'flex'){
+            // redirect now
+            const qs = 'jobId=' + encodeURIComponent(jobId || job.id) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+            window.location.href = 'chat.html?' + qs;
+          }
+        }, 900); // small pause to let modal show
       }
-    }
-
-    // show a simple error popup
-    function showErrorPopup(title, text){
-      const html = `<h3>${title}</h3><div class="muted">${text}</div><div class="modal-actions"><button id="errOk" class="btn">OK</button></div>`;
-      openModal(html);
-      document.getElementById('errOk').addEventListener('click', closeModal);
     }
 
     // Accept/Decline flow for technicians
@@ -429,6 +436,7 @@
       const jobs = await fetchAssignedJobs(techId);
       if(!jobs) return;
       for(const job of jobs){
+        // We consider jobs having status pending_accept to be presented for accept/decline
         if(job.status === 'pending_accept' && !promptedJobs.has(job.id)){
           promptedJobs.add(job.id);
           await promptAcceptDecline(job);
@@ -552,9 +560,9 @@
       document.addEventListener('click', (e)=> { const container = document.querySelector('.hamburger-container'); if(!container.contains(e.target)){ menu.style.display = 'none'; btn.setAttribute('aria-expanded','false'); menu.setAttribute('aria-hidden','true'); } });
     })();
 
-    // modal backdrop close on escape / click outside
-    document.addEventListener('keydown', (e)=> { if(e.key === 'Escape') closeModal(); });
-    modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
+    // modal backdrop close on escape & click outside (honors closable flag)
+    document.addEventListener('keydown', (e)=> { if(e.key === 'Escape') { if(modal._closable !== false) closeModal(); } });
+    modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop && modal._closable !== false) closeModal(); });
 
     // ensure polling stops on unload
     window.addEventListener('beforeunload', ()=> { stopAssignedPolling(); });
