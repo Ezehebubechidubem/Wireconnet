@@ -240,8 +240,6 @@
       <!-- LOGOUT added above Book Job as requested -->
       <a id="logoutBtn" class="menu-link" href="#">Logout</a>
 
-      
-
       <div class="status-toggle">
         <span>Status:</span>
         <label class="switch" title="Toggle online / offline">
@@ -273,18 +271,18 @@
     </section>
 
     <div class="audit">
-      <p><a class="do" href="#"> Job Map</a></p>
-      <p><a class="do" href="#">View All Jobs</a></p>
+      <p><a id="jobMapBtn" class="do" href="javascript:void(0)"> Job Map</a></p>
+      <p><a id="viewJobsBtn" class="do" href="javascript:void(0)">View All Jobs</a></p>
     </div>
 
     <div class="audits">
-      <p><a class="too" href="#">Do Kyc</a></p>
+      <p><a class="too" href="kyc.html">Do Kyc</a></p>
       <p><a class="too" href="#">Customer Services</a></p>
     </div>
 
     <div class="auditss">
-      <p><a class="to" href="#">Job Rules</a></p>
-      <p><a class="to" href="#">Technician Leaderboard</a></p>
+      <p><a id="jobRulesBtn" class="to" href="javascript:void(0)">Job Rules</a></p>
+      <p><a id="techLeaderboardBtn" class="to" href="javascript:void(0)">Technician Leaderboard</a></p>
     </div>
 
     <article class="image">
@@ -333,27 +331,12 @@
     const toastEl = document.getElementById('toast');
     const logoutBtn = document.getElementById('logoutBtn');
 
-    // hamburger toggle (unchanged)
-    (function(){
-      const btn = hamburgerBtn, menu = menuDropdown;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const shown = menu.style.display === 'block';
-        menu.style.display = shown ? 'none' : 'block';
-        btn.setAttribute('aria-expanded', String(!shown));
-        menu.setAttribute('aria-hidden', String(shown));
-      });
-      document.addEventListener('click', (e) => {
-        const container = document.querySelector('.hamburger-container');
-        if(!container.contains(e.target)){
-          menu.style.display = 'none';
-          btn.setAttribute('aria-expanded', 'false');
-          menu.setAttribute('aria-hidden', 'true');
-        }
-      });
-    })();
+    const jobMapBtn = document.getElementById('jobMapBtn');
+    const viewJobsBtn = document.getElementById('viewJobsBtn');
+    const jobRulesBtn = document.getElementById('jobRulesBtn');
+    const techLeaderboardBtn = document.getElementById('techLeaderboardBtn');
 
-    // toast helper
+    // helper: show toast
     function showToast(msg, ms = 3000){
       toastEl.innerText = msg;
       toastEl.style.display = 'block';
@@ -361,6 +344,7 @@
       showToast._t = setTimeout(()=> toastEl.style.display = 'none', ms);
     }
 
+    // indicator UI
     function setIndicator(online){
       if(online){
         indicatorDot.classList.remove('indicator-offline');
@@ -373,7 +357,7 @@
       }
     }
 
-    // get user from storage (try wc_user object then fallback)
+    // local user helpers (prefer wc_user stored by login)
     function getLocalUser(){
       try {
         const raw = localStorage.getItem('wc_user');
@@ -399,10 +383,18 @@
 
     function getUserRole(){
       const u = getLocalUser();
-      if(u && u.role) return u.role;
+      if(u && u.role) return (typeof u.role === 'string') ? u.role : null;
       return null;
     }
 
+    // flexible check for technician role (server uses 'worker')
+    function isTechnicianRole(role){
+      if(!role) return false;
+      const r = role.toString().toLowerCase();
+      return r === 'worker' || r.includes('tech') || r.includes('worker');
+    }
+
+    // storage helpers for last known
     function storeLastKnownOnline(userId, online){
       if(!userId) return;
       try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){}
@@ -412,6 +404,7 @@
       try { const v = localStorage.getItem('techOnline_' + userId); return v === null ? null : v === '1'; } catch(e){ return null; }
     }
 
+    // send status to backend
     async function sendStatusToBackend(userId, online, lat = null, lng = null){
       const url = API_BASE + '/api/tech/status';
       const controller = new AbortController();
@@ -434,28 +427,114 @@
       }
     }
 
-    // Toggle handler: ONLY ALLOW when user role === 'client'
+    // ----------- Technician behavior -----------
+    let assignedPollInterval = null;
+    const shownPendingJobs = new Set(); // job ids we already prompted for
+
+    // fetch pending assigned jobs for this tech
+    async function fetchAssignedJobs(techId){
+      try {
+        const url = API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(techId);
+        const resp = await fetch(url, { method:'GET', headers:{ 'Content-Type':'application/json' } });
+        if(!resp.ok) return null;
+        const data = await resp.json().catch(()=>null);
+        if(!data || !data.success) return null;
+        return data.jobs || [];
+      } catch(err){
+        console.warn('fetchAssignedJobs error', err);
+        return null;
+      }
+    }
+
+    // show a simple confirm to accept/decline a job (keeps UI unchanged)
+    async function promptAcceptDecline(job){
+      if(!job || !job.id) return;
+      if(shownPendingJobs.has(job.id)) return;
+      shownPendingJobs.add(job.id);
+
+      // description to show
+      const txtParts = [];
+      if(job.job_type) txtParts.push('Type: ' + job.job_type);
+      if(job.description) txtParts.push('Desc: ' + job.description);
+      if(job.address) txtParts.push('Address: ' + job.address);
+      if(job.price) txtParts.push('Price: ' + job.price);
+      const promptText = 'New job request:\n\n' + txtParts.join('\n') + '\n\nAccept this job?';
+      const accept = window.confirm(promptText);
+      // send response
+      try {
+        const techId = getUserId();
+        const url = API_BASE + '/api/job/' + encodeURIComponent(job.id) + '/respond';
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ techId: techId, action: accept ? 'accept' : 'decline' })
+        });
+        const js = await resp.json().catch(()=>null);
+        if(resp.ok && js && js.success){
+          showToast(accept ? 'Job accepted' : 'Job declined', 3000);
+        } else {
+          const msg = js && js.message ? js.message : ('HTTP ' + resp.status);
+          showToast('Server: ' + msg, 5000);
+          // revert shown set so user may be prompted again if still pending
+          shownPendingJobs.delete(job.id);
+        }
+      } catch(err){
+        console.warn('respond error', err);
+        showToast('Network error responding to job', 5000);
+        shownPendingJobs.delete(job.id);
+      }
+    }
+
+    // start polling assigned jobs every 5s
+    function startAssignedPolling(techId){
+      if(assignedPollInterval) return;
+      assignedPollInterval = setInterval(async ()=>{
+        const jobs = await fetchAssignedJobs(techId);
+        if(Array.isArray(jobs) && jobs.length){
+          // for each job with pending_accept, prompt (server returns only pending_accept per endpoint)
+          for(const job of jobs){
+            await promptAcceptDecline(job);
+          }
+        }
+      }, 5000);
+      // run immediately once
+      (async ()=> {
+        const jobs = await fetchAssignedJobs(techId);
+        if(Array.isArray(jobs) && jobs.length){
+          for(const job of jobs) await promptAcceptDecline(job);
+        }
+      })();
+    }
+
+    function stopAssignedPolling(){
+      if(assignedPollInterval){
+        clearInterval(assignedPollInterval);
+        assignedPollInterval = null;
+      }
+    }
+
+    // Toggle handler: now enabled for technicians only
     async function handleSwitchToggle(e){
       const checked = e.target.checked;
 
-      // allow only for clients
+      // allow only for technicians
       const role = getUserRole();
-      const isClient = role === 'client';
-      if(!isClient){
-        // revert
+      const isTech = isTechnicianRole(role);
+      if(!isTech){
+        // revert and inform
         if(statusSwitch) statusSwitch.checked = false;
-        showToast('Availability toggle works only when a client is signed in.', 4500);
+        showToast('Availability toggle works only when a technician is signed in.', 4500);
         return;
       }
 
       const userId = getUserId();
       if(!userId){
         if(statusSwitch) statusSwitch.checked = false;
-        showToast('No user id found. Set body[data-user-id] or localStorage.userId to enable status updates.', 5000);
+        showToast('No user id found. Set body[data-user-id] or localStorage.wc_user to enable status updates.', 5000);
         return;
       }
 
-      // best-effort geolocation
+      // try geolocation (best-effort)
       let lat = null, lng = null;
       if(navigator.geolocation){
         try{
@@ -464,13 +543,13 @@
             navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge: 10000, timeout:4500 });
           });
           lat = pos.coords.latitude; lng = pos.coords.longitude;
-        }catch(err){ /* ignore */ }
+        }catch(err){ /* ignore geolocation errors */ }
       }
 
-      // optimistic UI update
+      // optimistic UI
       setIndicator(checked);
       if(statusSwitch) statusSwitch.disabled = true;
-      showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
+      showToast( checked ? 'Going online…' : 'Going offline…', 2000 );
 
       const result = await sendStatusToBackend(userId, checked, lat, lng);
       if(statusSwitch) statusSwitch.disabled = false;
@@ -478,8 +557,15 @@
       if(result && result.success){
         storeLastKnownOnline(userId, checked);
         showToast('Status updated', 2000);
+        // start or stop polling assigned jobs for technicians
+        if(checked){
+          startAssignedPolling(userId);
+        } else {
+          stopAssignedPolling();
+          shownPendingJobs.clear();
+        }
       } else {
-                // revert
+        // revert UI
         const prev = !checked;
         if(statusSwitch) statusSwitch.checked = prev;
         setIndicator(prev);
@@ -490,25 +576,26 @@
     }
 
     // attach listener if present
-    if(document.getElementById('statusSwitch')){
-      document.getElementById('statusSwitch').addEventListener('change', handleSwitchToggle);
+    if(statusSwitch){
+      statusSwitch.addEventListener('change', handleSwitchToggle);
     }
 
-    // initial UI state: if no user OR role != client -> set OFFLINE and leave switch unchecked
+    // initial UI & maybe start polling if last-known shows online
     (function initFromLocal(){
       const role = getUserRole();
-      const isClient = role === 'client';
+      const isTech = isTechnicianRole(role);
       const userId = getUserId();
       const ss = document.getElementById('statusSwitch');
 
-      if(!isClient){
-        // hide nothing (you asked leave UI unchanged) — but ensure switch is unchecked and indicator offline
+      if(!isTech){
+        // Not a technician: ensure indicator offline, switch unchecked
         setIndicator(false);
         if(ss) ss.checked = false;
+        stopAssignedPolling();
         return;
       }
 
-      // for client, restore last known if any
+      // technician: restore last known online flag
       const known = readLastKnownOnline(userId);
       if(known === null){
         setIndicator(false);
@@ -516,8 +603,62 @@
       } else {
         setIndicator(!!known);
         if(ss) ss.checked = !!known;
+        if(known) startAssignedPolling(userId);
       }
     })();
+
+    // JOB MAP: open Google Maps for first pending assigned job (if any)
+    jobMapBtn && jobMapBtn.addEventListener('click', async function(){
+      const userId = getUserId();
+      if(!userId){ showToast('Not signed in'); return; }
+      const jobs = await fetchAssignedJobs(userId);
+      if(!jobs || jobs.length === 0){ alert('No pending assigned jobs found.'); return; }
+      // pick first job with coords
+      const j = jobs.find(x=>x.lat && x.lng) || jobs[0];
+      if(j && j.lat && j.lng){
+        const q = encodeURIComponent((j.address || '') );
+        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.lat + ',' + j.lng)}&query_place_id=${q}`;
+        window.open(url, '_blank');
+      } else {
+        alert('Job has no coordinates. Address: ' + (j.address || 'n/a'));
+      }
+    });
+
+    // VIEW ALL JOBS: show list of assigned pending jobs
+    viewJobsBtn && viewJobsBtn.addEventListener('click', async function(){
+      const userId = getUserId();
+      if(!userId){ showToast('Not signed in'); return; }
+      const jobs = await fetchAssignedJobs(userId);
+      if(!jobs) { alert('Could not fetch jobs.'); return; }
+      if(jobs.length === 0) { alert('No pending assigned jobs.'); return; }
+      const lines = jobs.map(j => `ID: ${j.id}\nType: ${j.job_type||'-'}\nAddress: ${j.address||'-'}\nPrice: ${j.price||'-'}`).join('\n\n---\n\n');
+      alert('Assigned / Pending jobs:\n\n' + lines);
+    });
+
+    // JOB RULES: simple static message (you can replace with fetch if you have rules endpoint)
+    jobRulesBtn && jobRulesBtn.addEventListener('click', function(){
+      const txt = `Job rules (brief):
+- You have 60 seconds to accept a job; if you decline or timeout, the system will try the next technician.
+- Keep phone contact inside the app (privacy).
+- Only accept jobs within your coverage area/state.
+- Always mark job status correctly (accepted -> started -> completed).`;
+      alert(txt);
+    });
+
+    // TECH LEADERBOARD: fetch from dashboard endpoint
+    techLeaderboardBtn && techLeaderboardBtn.addEventListener('click', async function(){
+      try {
+        const resp = await fetch(API_BASE + '/api/dashboard?role=worker', { method:'GET' });
+        if(!resp.ok){ alert('Could not fetch leaderboard'); return; }
+        const data = await resp.json().catch(()=>null);
+        if(!data || !data.success || !Array.isArray(data.leaderboard)){ alert('No leaderboard data'); return; }
+        const list = data.leaderboard.map((t,i)=> `${i+1}. ${t.fullname || t.username} — ${t.jobs_completed || t.jobs_completed === 0 ? t.jobs_completed : '-' }`).join('\n');
+        alert('Top Technicians:\n\n' + list);
+      } catch(err){
+        console.warn('leaderboard err', err);
+        alert('Failed to fetch leaderboard');
+      }
+    });
 
     // LOGOUT: clear session-related keys and redirect to login.html
     logoutBtn && logoutBtn.addEventListener('click', function (ev) {
@@ -525,18 +666,16 @@
       try {
         const u = getLocalUser();
         if(u && u.id) {
-          // remove any per-user online flag
           localStorage.removeItem('techOnline_' + u.id);
         }
       } catch(e){}
-      // clear common session keys used by your pages
       localStorage.removeItem('wc_user');
       localStorage.removeItem('wc_token');
       localStorage.removeItem('userId');
       localStorage.removeItem('userRole');
-      // also remove generic online flag
       localStorage.removeItem('wc_online');
-      // navigate to login
+      // stop polling
+      stopAssignedPolling();
       window.location.href = 'login.html';
     });
 
@@ -550,6 +689,29 @@
         if(menu) menu.setAttribute('aria-hidden', true);
       }
     });
+
+    // landing: enable hamburger open/close (unchanged)
+    (function(){
+      const btn = hamburgerBtn, menu = menuDropdown;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const shown = menu.style.display === 'block';
+        menu.style.display = shown ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', String(!shown));
+        menu.setAttribute('aria-hidden', String(shown));
+      });
+      document.addEventListener('click', (e) => {
+        const container = document.querySelector('.hamburger-container');
+        if(!container.contains(e.target)){
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', 'false');
+          menu.setAttribute('aria-hidden', 'true');
+        }
+      });
+    })();
+
+    // ensure we stop polling on unload
+    window.addEventListener('beforeunload', ()=> { stopAssignedPolling(); });
   </script>
 </body>
 </html>
