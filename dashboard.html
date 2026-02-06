@@ -21,7 +21,7 @@
       display:flex; align-items:center; justify-content:center; overflow:hidden;
     }
     .bend figure { width:100%; height:100%; margin:0; }
-    .bend figure img { width:100%; height:100%; object-fit: coer; display:block; }
+    .bend figure img { width:100%; height:100%; object-fit: cover; display:block; }
 
     /* push page content below header */
     main { padding-top: var(--header-h); min-height: calc(100vh - var(--header-h)); }
@@ -273,7 +273,7 @@
     </section>
 
     <div class="audit">
-      <p><a class="do" href="#">Book A Job</a></p>
+      <p><a class="do" href="book.html">Book A Job</a></p>
       <p><a class="do" href="#">View All Jobs</a></p>
     </div>
 
@@ -502,7 +502,7 @@
       const ss = document.getElementById('statusSwitch');
 
       if(!isClient){
-        // hide nothing (you asked leave UI unchanged) — but ensure switch is unchecked and indicator offline
+        // leave UI unchanged visually but ensure switch is unchecked and indicator offline
         setIndicator(false);
         if(ss) ss.checked = false;
         return;
