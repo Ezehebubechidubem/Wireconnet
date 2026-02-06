@@ -6,11 +6,11 @@
   <meta name="description" content="WireConnect Frontend" />
   <meta name="keywords" content="WireConnect, technicians, jobs" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Wireconnet</title>
+  <title>GTAN</title>
   <style>
     /* reset */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: Georgia, "Times New Roman", Times, serif; -webkit-text-size-adjust: 100%; width:100%;}
+    html, body { height: 100%; font-family: Georgia, "Times New Roman", Times, serif; -webkit-text-size-adjust: 100%; }
 
     /* header logo (covers top) */
     :root { --header-h: 110px; } /* slightly reduced so more space on mobile */
@@ -57,7 +57,7 @@
     /* BUTTONS: neat, identical borders and size
        ----- ONLY BUTTON STYLES UPDATED BELOW -----
     */
-     .audits {
+    .audit, .audits {
       display: flex;
       justify-content: center;
       align-items: center;
@@ -67,18 +67,6 @@
     }
 
     .audit p, .audits p, .auditss p { margin: 0; width: auto; display:flex; align-items:center; justify-content:center; }
-
-    .audit {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 18px;
-      padding:10px 100%;
-      flex-wrap: wrap;
-    }
-
-    .audit p{ margin: 0; width:auto; display:flex align-items:center; justify-content:center; }
-
  .too{ display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -101,16 +89,17 @@
     }
 
     /* NEW BUTTON STYLE: looks like your screenshot */
-  .do{display:inline-flex;
+    .do{
+      display:inline-flex;
       align-items:center;
       justify-content:center;
       text-decoration:none;
       border-radius: 30px;
       background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
       color:#ffffff;
-      padding:10px 10px;
-      height: 2px;
-      min-width: 180px;
+      padding:40px 40px;
+      height: 45px;
+      min-width: 500px;
       border: 4px solid #000;           /* bold black border like screenshot */
       font-weight:800;
       font-size: 18px;
@@ -124,12 +113,12 @@
      .to {
       display:inline-flex;
       align-items:center;
-      justify-content:center;
+      justify-content:centr;
       text-decoration:none;
       border-radius: 30px;
       background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
       color:#ffffff;
-      padding:10px 100px;
+      padding:10px 10px;
       height: 45px;
       min-width: 180px;
       border: 4px solid #000;           /* bold black border like screenshot */
