@@ -5,10 +5,35 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — Book Job</title>
   <style>
-    :root{ --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280; --shadow:0 8px 30px rgba(16,24,40,0.06); --radius:12px; }
+    :root{
+      --bg:#f6f8fb;
+      --card:#fff;
+      --accent:#0b5cff;
+      --muted:#6b7280;
+      --shadow: 0 8px 30px rgba(16,24,40,0.06);
+      --radius:12px;
+    }
     html,body{height:100%;margin:0}
-    body{ font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif; background:var(--bg); color:#111827; display:flex; justify-content:center; align-items:flex-start; padding:18px; }
-    .wrap{ width:100%; max-width:980px; background:var(--card); border-radius:12px; padding:0; box-shadow:var(--shadow); box-sizing:border-box; overflow:hidden; }
+    body{
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:#111827;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:18px;
+    }
+
+    .wrap{
+      width:100%;
+      max-width:980px;
+      background:var(--card);
+      border-radius:12px;
+      padding:0;
+      box-shadow:var(--shadow);
+      box-sizing:border-box;
+      overflow:hidden;
+    }
 
     .header-logo img{ width:100%; height:120px; object-fit:cover; display:block; }
 
@@ -17,32 +42,25 @@
     .muted{ color:var(--muted); font-size:13px; }
     label{ display:block; margin-bottom:6px; font-size:14px; font-weight:700 }
     input, select, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #eef3fb; box-sizing:border-box; margin-bottom:8px; font-size:14px; }
-    textarea{ font-family:inherit; }
+    textarea{ font-family:inherit; min-height:100px; }
 
     .controls { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
     .btn{ background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:800 }
-    .btn.secondary{ background:#f3f4f6; color:#111; border:1px solid #e6eef9; }
     .btn-ghost{ background:transparent; border:1px solid #e6eef9; padding:8px 12px; border-radius:8px; cursor:pointer }
     .estimate{ background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:8px; font-weight:700 }
     .small{ font-size:13px; color:var(--muted) }
 
-    /* modal styles (clean) */
+    /* modal styles */
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:9999; }
-    .modal{ width:92%; max-width:560px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 48px rgba(2,6,23,0.4); }
-    .modal h3{ margin:0 0 8px; font-size:18px }
-    .modal .muted{ margin-bottom:8px; color:#374151 }
-    .spinner{ width:56px; height:56px; border-radius:50%; border:6px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:10px auto }
+    .modal{ width:92%; max-width:560px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 48px rgba(2,6,23,0.4); text-align:center; }
+    .spinner{ width:64px; height:64px; border-radius:50%; border:8px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:10px auto }
     @keyframes spin{ to{ transform:rotate(360deg) } }
-    .tech-card{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; border:1px solid #eef6ff; background:#fbfeff; }
+    .tech-card{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; border:1px solid #eef6ff; background:#fbfeff; margin-top:10px }
     .tech-avatar{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#f0f3ff }
-    .modal .btn { padding:10px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:800 }
-    .modal .btn.secondary { background:#f3f4f6; color:#111; border:1px solid #e6eef9; }
+    .modal h3{ margin:0 0 8px; font-size:18px }
+    .modal .muted{ color:#374151; margin-bottom:8px; }
 
-    /* responsive */
     @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} }
-
-    /* small visual helpers */
-    .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   </style>
 </head>
 <body>
@@ -82,7 +100,22 @@
         <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
       </div>
 
-      <!-- NEW inputs requested -->
+      <!-- NEW inputs requested: State, LGA, Town/City, workers, estimated days -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
+        <div>
+          <label>State</label>
+          <input id="stateInput" type="text" placeholder="e.g. Lagos">
+        </div>
+        <div>
+          <label>LGA</label>
+          <input id="lgaInput" type="text" placeholder="e.g. Ikeja">
+        </div>
+        <div>
+          <label>Town / City</label>
+          <input id="cityInput" type="text" placeholder="e.g. Lagos Island">
+        </div>
+      </div>
+
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">
         <div>
           <label>Number of workers needed</label>
@@ -92,23 +125,6 @@
           <label>Estimated days to finish</label>
           <input id="estimatedDays" type="number" min="1" value="1">
         </div>
-      </div>
-
-      <!-- location inputs -->
-      <div class="row-2" style="margin-top:8px;">
-        <div>
-          <label>State</label>
-          <input id="stateInput" type="text" placeholder="State name (e.g. Lagos)">
-        </div>
-        <div>
-          <label>LGA</label>
-          <input id="lgaInput" type="text" placeholder="Local Government Area">
-        </div>
-      </div>
-
-      <div style="margin-top:8px;">
-        <label>Town / City</label>
-        <input id="cityInput" type="text" placeholder="Town or city">
       </div>
 
       <label style="margin-top:8px">Small description (max 500 words)</label>
@@ -133,45 +149,17 @@
   <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal" role="document" aria-labelledby="modalTitle">
       <div id="modalContent"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-        <button id="modalClose" class="btn secondary">Close</button>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button id="modalClose" class="btn-ghost" style="display:none">Close</button>
         <button id="modalOk" class="btn" style="display:none">OK</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ---------- CONFIG ----------
     const API_BASE = 'https://wireconnet-1.onrender.com';
 
-    // ---------- UTIL ----------
-    function safeText(t){ return (t === undefined || t === null) ? '' : String(t); }
-    function escapeHtml(s){
-      if(s === undefined || s === null) return '';
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    // ---------- PRICE FALLBACKS ----------
-    let PRICES = {
-      conduit_per_room: 25000, conduit_db:15000, conduit_nepa:50000,
-      conduit_wiring_add_per_room:5000, conduit_fittings_per_room:15000,
-      solar_base_bungalow:170000, solar_extra_per_storey:30000, solar_complex:50000
-    };
-
-    // try load backend prices (non-blocking)
-    (async function loadPrices(){
-      try{
-        const r = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
-        if(!r.ok) return;
-        const j = await r.json().catch(()=>null);
-        const p = (j && j.prices) ? j.prices : j;
-        if(p && typeof p === 'object'){
-          for(const k in p) if(Object.prototype.hasOwnProperty.call(PRICES,k) && typeof p[k] === 'number') PRICES[k] = p[k];
-        }
-      }catch(e){}
-    })();
-
-    // ---------- DOM ----------
+    // DOM refs
     const jobType = document.getElementById('jobType');
     const conduitFields = document.getElementById('conduitFields');
     const solarFields = document.getElementById('solarFields');
@@ -189,128 +177,72 @@
     const submitBtn = document.getElementById('submitBtn');
     const estimateBox = document.getElementById('estimateBox');
     const priceDisplay = document.getElementById('priceDisplay');
-    const workersNeeded = document.getElementById('workersNeeded');
-    const estimatedDays = document.getElementById('estimatedDays');
 
     const stateInput = document.getElementById('stateInput');
     const lgaInput = document.getElementById('lgaInput');
     const cityInput = document.getElementById('cityInput');
+    const workersNeeded = document.getElementById('workersNeeded');
+    const estimatedDays = document.getElementById('estimatedDays');
+    const useAssign = document.getElementById('useAssign');
 
-    // modal refs
     const modalBackdrop = document.getElementById('modalBackdrop');
     const modalContent = document.getElementById('modalContent');
     const modalClose = document.getElementById('modalClose');
     const modalOk = document.getElementById('modalOk');
 
-    // ---------- MODAL HELPERS (clean) ----------
+    // default PRICES
+    let PRICES = {
+      conduit_per_room: 25000, conduit_db:15000, conduit_nepa:50000,
+      conduit_wiring_add_per_room:5000, conduit_fittings_per_room:15000,
+      solar_base_bungalow:170000, solar_extra_per_storey:30000, solar_complex:50000
+    };
+
+    // modal helpers
     function openModal(html, { showOk=false, onOk=null, closable=true } = {}){
       modalContent.innerHTML = html;
       modalBackdrop.style.display = 'flex';
       modalBackdrop.setAttribute('aria-hidden','false');
       modalOk.style.display = showOk ? 'inline-block' : 'none';
-      modalOk.onclick = function(){ if(typeof onOk === 'function') onOk(); closeModal(); };
+      modalOk.onclick = function(){ if(onOk) onOk(); closeModal(); };
       modalClose.style.display = closable ? 'inline-block' : 'none';
+      modalClose.onclick = closeModal;
     }
     function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); modalContent.innerHTML = ''; modalOk.onclick = null; }
 
-    function showLoadingModal(msg){
-      openModal(`<div style="text-align:center"><div class="spinner" role="status" aria-hidden="true"></div><div class="muted" style="margin-top:8px">${escapeHtml(msg||'Please wait...')}</div></div>`, { showOk:false, closable:false });
+    function showModalLoading(){
+      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>Signing you in...</h3><div class="muted">Please wait while we verify your credentials.</div></div>`, { showOk:false, closable:false });
     }
 
-    function showAssignedModal(techName, jobId, techId){
-      // show only technician name and redirect on OK
-      openModal(`<div style="text-align:center"><h3>Assignment successful</h3><div class="muted" style="margin-top:8px">Technician: <strong>${escapeHtml(techName||'Technician')}</strong></div><div class="muted" style="margin-top:8px">Press OK to open chat</div></div>`, {
-        showOk:true,
-        onOk: ()=> {
-          const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-          window.location.href = 'chat.html?' + qs;
-        },
-        closable:false
-      });
+    function showModalAssigned(technicianName, jobId, techId, estimatedDaysVal){
+      const html = `<h3>Login successful</h3>
+        <div style="font-size:18px;margin-top:6px">${technicianName || 'Technician assigned'}</div>
+        <div class="muted" style="margin-top:8px">Job created and assigned. Press OK to go to chat.</div>`;
+      openModal(html, { showOk:true, onOk: ()=> {
+        // redirect to chat (guaranteed)
+        const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+        window.location.href = 'chat.html?' + qs;
+      }, closable:true });
     }
 
-    function showNotAssignedModal(jobId){
-      openModal(`<h3>No technician available right now</h3><div class="muted" style="margin-top:6px">We created your job but couldn't assign a technician at this moment.</div><div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end"><button id="na-check" class="btn">Check again</button><button id="na-close" class="btn secondary">Close</button></div>`, { showOk:false, closable:true });
-      document.getElementById('na-close').addEventListener('click', () => { closeModal(); });
-      document.getElementById('na-check').addEventListener('click', async () => {
-        const btn = document.getElementById('na-check');
-        btn.disabled = true; btn.textContent = 'Checking...';
-        const found = await pollForAssignment(jobId, { timeoutSec: 25, intervalMs: 2000 });
-        if(found && found.assigned){
-          closeModal();
-          showAssignedModal(found.technicianName || found.techId || 'Technician', jobId, found.techId || null);
-        } else {
-          openModal(`<h3>Still no technician</h3><div class="muted" style="margin-top:8px">No technician was assigned within the check period. You can try again later.</div><div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end"><button id="na-ok2" class="btn">OK</button></div>`, { showOk:false, closable:true });
-          document.getElementById('na-ok2').addEventListener('click', closeModal);
-        }
-      });
+    function showModalNoTech(){
+      openModal(`<h3>No technician available right now</h3><div class="muted">We created your job but couldn't assign a technician at this moment.</div>`, { showOk:false, closable:true });
     }
 
-    function showErrorModal(title, message){
-      openModal(`<h3>${escapeHtml(title)}</h3><div class="muted" style="margin-top:8px">${escapeHtml(message)}</div><div style="margin-top:12px;display:flex;justify-content:flex-end"><button id="errok" class="btn">OK</button></div>`, { showOk:false, closable:true });
-      document.getElementById('errok').addEventListener('click', closeModal);
+    function showModalError(msg){
+      openModal(`<h3>Error</h3><div class="muted">${msg}</div>`, { showOk:false, closable:true });
     }
 
-    // ---------- ASSIGNMENT NORMALIZER & POLLING ----------
-    function normalizeAssignment(body){
-      if(!body) return { assigned:false, technician:null, techId:null, technicianName:null };
-      // direct assigned field
-      const assignedRaw = body.assigned ?? body.is_assigned ?? body.assigned_flag ?? null;
-      const assigned = (assignedRaw === true) || (assignedRaw === 'true') || (assignedRaw === 1) || (assignedRaw === '1') || (assignedRaw === 'yes') || false;
+    // job type toggle
+    jobType.addEventListener('change', ()=> {
+      const v = jobType.value;
+      conduitFields.classList.toggle('hidden', v!=='conduit');
+      solarFields.classList.toggle('hidden', v!=='solar');
+      otherFields.classList.toggle('hidden', v!=='other');
+    });
 
-      const technician = body.technician ?? body.tech ?? body.technician_info ?? null;
-      const techId = body.assigned_tech_id ?? body.technician_id ?? body.tech_id ?? body.assignedTo ?? body.assigned_to ?? null;
-
-      // nested job object support
-      if(!assigned && body.job && typeof body.job === 'object'){
-        const j = body.job;
-        const a2 = j.assigned ?? j.assigned_flag ?? j.assigned_to ?? j.assigned_tech_id;
-        if(a2 !== undefined){
-          const a2truth = (a2 === true || a2 === 1 || a2 === '1' || a2 === 'true' || a2 === 'yes');
-          if(a2truth){
-            const tech = j.technician ?? j.tech ?? null;
-            const id = j.assigned_tech_id ?? j.technician_id ?? j.tech_id ?? null;
-            const techName = tech ? (tech.fullname || tech.username || tech.name) : null;
-            return { assigned:true, technician: tech || null, techId: id || null, technicianName: techName || null };
-          }
-        }
-      }
-
-      const techName = (technician && (technician.fullname || technician.username || technician.name)) || null;
-      return { assigned: !!assigned, technician: technician || null, techId: technician && (technician.id || technician.user_id || technician.techId) ? (technician.id || technician.user_id || technician.techId) : (techId || null), technicianName: techName };
-    }
-
-    function jobStatusUrl(jobId){
-      return API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status';
-    }
-
-    async function pollForAssignment(jobId, { timeoutSec = 20, intervalMs = 2000 } = {}){
-      const deadline = Date.now() + timeoutSec * 1000;
-      while(Date.now() < deadline){
-        try{
-          const r = await fetch(jobStatusUrl(jobId), { method:'GET', cache:'no-cache' });
-          if(r.ok){
-            const j = await r.json().catch(()=>null);
-            // normalize multiple shapes
-            const normTop = normalizeAssignment(j);
-            if(normTop.assigned){
-              return { assigned:true, technician: normTop.technician, techId: normTop.techId, technicianName: normTop.technicianName };
-            }
-            // also support j.job nested
-            const normJob = normalizeAssignment(j && j.job ? j.job : null);
-            if(normJob.assigned){
-              return { assigned:true, technician: normJob.technician, techId: normJob.techId, technicianName: normJob.technicianName };
-            }
-          }
-        }catch(e){}
-        await new Promise(r => setTimeout(r, intervalMs));
-      }
-      return null;
-    }
-
-    // ---------- PRICE CALC ----------
+    // calculate estimate locally
     function calculateEstimateLocal(){
-      const v = jobType.value; let total = 0; const breakdown = [];
+      const v = jobType.value; let total = 0; let breakdown = [];
       if(v === 'conduit'){
         const rooms = Math.max(1, Number(conduitRooms.value || 1));
         const base = PRICES.conduit_per_room * rooms;
@@ -332,22 +264,17 @@
       return { total, breakdown };
     }
 
-    calcBtn.addEventListener('click', (e) => {
+    calcBtn.addEventListener('click', (e)=> {
       e.preventDefault();
       const res = calculateEstimateLocal();
       estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
     });
 
-    // jobType toggle
-    jobType.addEventListener('change', () => {
-      const v = jobType.value;
-      conduitFields.classList.toggle('hidden', v !== 'conduit');
-      solarFields.classList.toggle('hidden', v !== 'solar');
-      otherFields.classList.toggle('hidden', v !== 'other');
-    });
+    // helper to load user from localStorage
+    function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
 
-    // save geolocation best-effort
+    // try to save geolocation (best-effort)
     async function tryGeolocationSave(){
       if(!navigator.geolocation) return;
       try{
@@ -356,17 +283,14 @@
           navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge:60000, timeout:4500 });
         });
         try{ localStorage.setItem('wc_last_lat', String(pos.coords.latitude)); localStorage.setItem('wc_last_lng', String(pos.coords.longitude)); }catch(e){}
-      }catch(e){}
+      }catch(e){ /* ignore */ }
     }
 
-    // load user
-    function loadUser(){ try { const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
-
-    // ---------- SUBMIT (robust) ----------
-    submitBtn.addEventListener('click', async (ev) => {
+    // submit booking: robust handling for backend response shapes
+    submitBtn.addEventListener('click', async (ev)=>{
       ev.preventDefault();
       const user = loadUser();
-      if(!user){ showErrorModal('Login required', 'Please login as a client to book.'); return; }
+      if(!user){ showModalError('Please login as a client to book.'); return; }
 
       const jt = jobType.value;
       let job_type = jt;
@@ -382,17 +306,15 @@
         price = Number(pRaw || 0) || 0;
       }
 
-      // geolocation best-effort
-      try{ await tryGeolocationSave(); }catch(e){}
-
+      await tryGeolocationSave();
       const latLocal = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
       const lngLocal = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
 
       const payload = {
         clientId: user.id,
-        state: (stateInput && stateInput.value) || user.state || null,
-        lga: (lgaInput && lgaInput.value) || null,
-        city: (cityInput && cityInput.value) || user.city || null,
+        state: (stateInput.value || '').trim(),
+        city: (cityInput.value || '').trim(),
+        lga: (lgaInput.value || '').trim(),
         address: null,
         lat: Number.isFinite(latLocal) ? latLocal : null,
         lng: Number.isFinite(lngLocal) ? lngLocal : null,
@@ -404,108 +326,112 @@
       };
 
       // show searching modal
-      showLoadingModal('Signing you in... Searching for available technicians...');
+      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>Searching for a technician...</h3><div class="muted">Please wait while we find a nearby available technician.</div></div>`, { showOk:false, closable:false });
 
-      try {
-        const endpoint = (document.getElementById('useAssign') && document.getElementById('useAssign').checked) ? '/api/book-assign' : '/api/book';
-        const controller = new AbortController(); const timeoutId = setTimeout(()=> controller.abort(), 15000);
-        const resp = await fetch(API_BASE + endpoint, {
-          method:'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
+      try{
+        const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
+        const controller = new AbortController(); const timeout = setTimeout(()=> controller.abort(), 15000);
+        const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload), signal: controller.signal });
+        clearTimeout(timeout);
         const text = await resp.text().catch(()=>null);
-        let body = null; try{ body = text ? JSON.parse(text) : null }catch(e){ body = text; }
+        let body = null;
+        try{ body = text ? JSON.parse(text) : null; } catch(e){ body = text; }
 
-        // If server returns non-OK
-        if(!resp.ok){
-          closeModal();
-          showErrorModal('Server error', 'Could not create booking at this time.');
-          return;
-        }
+        // If backend says success & assigned true -> proceed to fetch assigned tech info (robust)
+        if(resp.ok && body && body.success){
+          const jobId = body.jobId || (body.job && body.job.id);
+          const assignedFlag = !!body.assigned;
 
-        // normalize possible response shapes
-        function normalize(bodyIn){
-          if(!bodyIn) return { assigned:false, technician:null, techId:null, techName:null, jobId:null };
-          // jobId extraction
-          const jobId = bodyIn.jobId || (bodyIn.job && (bodyIn.job.id || bodyIn.job.jobId)) || bodyIn.id || null;
-
-          // check direct assigned or nested job
-          const direct = (bodyIn.assigned === true) || (bodyIn.assigned === 'true') || (bodyIn.assigned === 1) || (bodyIn.assigned === '1');
-          const techObj = bodyIn.technician || bodyIn.tech || bodyIn.technician_info || null;
-          const techId = bodyIn.assigned_tech_id || bodyIn.technician_id || bodyIn.tech_id || (techObj && (techObj.id || techObj.user_id || techObj.techId)) || null;
-          const techName = techObj && (techObj.fullname || techObj.username || techObj.name) ? (techObj.fullname || techObj.username || techObj.name) : null;
-
-          // if nested job
-          if(bodyIn.job && typeof bodyIn.job === 'object'){
-            const j = bodyIn.job;
-            const jAssigned = (j.assigned === true) || (j.assigned === 'true') || (j.assigned === 1) || (j.assigned === '1') || false;
-            const jTech = j.technician || j.tech || null;
-            const jTechId = j.assigned_tech_id || j.technician_id || null;
-            const jTechName = jTech && (jTech.fullname || jTech.username || jTech.name) ? (jTech.fullname || jTech.username || jTech.name) : null;
-            if(jAssigned) return { assigned:true, technician:jTech || null, techId: jTechId || null, techName: jTechName || null, jobId: jobId || (j.id || null) };
-          }
-
-          return { assigned: !!direct, technician: techObj || null, techId: techId || null, techName: techName || null, jobId: jobId || null };
-        }
-
-        const norm = normalize(body);
-
-        // case: assigned and technician object present
-        if(norm.assigned && norm.technician){
-          closeModal();
-          const techName = norm.techName || (norm.technician && (norm.technician.fullname || norm.technician.username || norm.technician.name)) || 'Technician';
-          showAssignedModal(techName, norm.jobId || null, norm.techId || null);
-          return;
-        }
-
-        // case: assigned (flag true) but no details -> short poll for details
-        if(norm.assigned && !norm.technician){
-          const jobId = norm.jobId || null;
-          if(jobId){
-            const found = await pollForAssignment(jobId, { timeoutSec:8, intervalMs:1500 });
-            if(found && found.assigned){
-              closeModal();
-              showAssignedModal(found.technicianName || found.techId || 'Technician', jobId, found.techId || null);
-              return;
+          if(assignedFlag){
+            // If backend returned technician object use it; otherwise fetch job status and tech profile
+            let tech = null;
+            if(body.technician && (typeof body.technician === 'object')) tech = body.technician;
+            if(!tech && jobId){
+              // attempt to get assigned_tech_id by asking for job details/status
+              try{
+                const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status', { method:'GET' });
+                if(sresp.ok){
+                  const sjs = await sresp.json().catch(()=>null);
+                  if(sjs && sjs.success && sjs.job && (sjs.job.assigned_tech_id || sjs.job.assigned_tech_id === 0)){
+                    const techId = sjs.job.assigned_tech_id;
+                    // fetch tech profile if endpoint exists
+                    try {
+                      const tresp = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId), { method:'GET' });
+                      if(tresp.ok){
+                        const tjs = await tresp.json().catch(()=>null);
+                        if(tjs && tjs.success && tjs.user) tech = tjs.user;
+                        else if(tjs && tjs.id) tech = tjs; // sometimes returns object directly
+                      }
+                    } catch(e){}
+                    // if fetching profile fails, still redirect using techId
+                    const techName = (tech && (tech.fullname || tech.username)) || ('Technician ' + techId);
+                    closeModal();
+                    // show assigned simple modal then redirect to chat
+                    openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${techName}</div><div class="muted" style="margin-top:8px">Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
+                      const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+                      window.location.href = 'chat.html?' + qs;
+                    }, closable:true });
+                    return;
+                  }
+                }
+              }catch(e){}
             }
+
+            // if we reach here and we have tech object
+            const techId = tech && (tech.id || tech.user_id || tech._id) ? (tech.id || tech.user_id || tech._id) : null;
+            const techName = tech && (tech.fullname || tech.username || tech.name) ? (tech.fullname || tech.username || tech.name) : 'Technician assigned';
+            closeModal();
+            openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${techName}</div><div class="muted" style="margin-top:8px">Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
+              const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+              window.location.href = 'chat.html?' + qs;
+            }, closable:true });
+            return;
+          } else {
+            // not assigned now
+            closeModal();
+            showModalNoTech();
+            return;
           }
+        } else {
+          // backend returned failure or weird non-ok
+          closeModal();
+          showModalError((body && body.message) ? body.message : 'Failed to create booking');
         }
-
-        // not assigned: show friendly modal and allow check again
-        const jobId = norm.jobId || null;
-        closeModal();
-        showNotAssignedModal(jobId);
-        return;
-
-      } catch(err){
+      }catch(err){
         closeModal();
         const isAbort = err && err.name === 'AbortError';
-        showErrorModal(isAbort ? 'Timeout' : 'Network error', isAbort ? 'Request timed out' : 'Cannot reach server at this time.');
-        return;
+        showModalError(isAbort ? 'Request timed out' : 'Network error');
       }
     });
 
-    // modal basic closing behavior
-    modalClose.addEventListener('click', () => { closeModal(); });
-    modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
-
-    // init: UX setup (user greeting, initial estimate)
+    // init: load user and attempt to load prices from backend (silent)
     (function init(){
       const uRaw = localStorage.getItem('wc_user');
-      if(uRaw){
-        try{
-          const u = JSON.parse(uRaw);
-          document.getElementById('userGreeting').textContent = `${u.fullname || u.username || ''} ${u.city ? '— ' + u.city : ''}`;
-        }catch(e){}
+      if(!uRaw){ /* don't force redirect here: user may be testing */ }
+      else {
+        try { const user = JSON.parse(uRaw); document.getElementById('userGreeting').textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`; } catch(e){}
       }
-      const res = calculateEstimateLocal();
-      estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
-      priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
+
+      (async ()=> {
+        try{
+          const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
+          if(resp.ok){
+            const json = await resp.json().catch(()=>null);
+            const backendPrices = (json && json.prices) ? json.prices : json;
+            if(backendPrices && typeof backendPrices === 'object'){
+              for(const k in backendPrices){
+                if(Object.prototype.hasOwnProperty.call(PRICES,k) && typeof backendPrices[k] === 'number') PRICES[k] = backendPrices[k];
+              }
+            }
+          }
+        }catch(e){}
+        const res = calculateEstimateLocal(); estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
+        priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
+      })();
     })();
+
+    // close modal if backdrop clicked
+    modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
 
   </script>
 </body>
