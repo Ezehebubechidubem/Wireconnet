@@ -1,139 +1,243 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — Chat</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    body{font-family:Inter,Arial;margin:0;background:#f6f8fb;color:#111}
-    header{display:flex;align-items:center;gap:12px;padding:10px;background:linear-gradient(135deg,#0b5cff,#55a7ff);color:#fff}
-    .logo img{height:36px}
-    .container{display:flex;gap:12px;padding:12px;max-width:1100px;margin:12px auto}
-    .left{flex:1;min-height:400px;background:#fff;border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(16,24,40,0.06)}
-    .right{width:380px;min-height:400px;background:#fff;border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(16,24,40,0.06)}
-    #map{height:300px;border-radius:8px}
-    .chat-window{height:260px;overflow:auto;border:1px solid #eef2ff;padding:8px;border-radius:8px}
-    .chat-input{display:flex;gap:8px;margin-top:8px}
-    .btn{background:#0b5cff;color:#fff;padding:8px 10px;border-radius:8px;border:0;cursor:pointer}
-    .muted{color:#64748b}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WireConnect — Chat</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<style>
+body{font-family:Inter,Arial;margin:0;background:#f6f8fb;color:#111}
+header{display:flex;align-items:center;gap:12px;padding:10px;background:linear-gradient(135deg,#0b5cff,#55a7ff);color:#fff}
+
+.container{
+  display:flex;
+  padding:12px;
+  max-width:900px;
+  margin:12px auto;
+}
+
+.chat-card{
+  flex:1;
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:0 8px 30px rgba(16,24,40,0.06)
+}
+
+#mapWrap{
+  display:none;
+  margin-top:12px;
+}
+
+#map{
+  height:320px;
+  border-radius:10px;
+}
+
+.chat-window{
+  height:300px;
+  overflow:auto;
+  border:1px solid #eef2ff;
+  padding:8px;
+  border-radius:8px
+}
+
+.chat-input{
+  display:flex;
+  gap:8px;
+  margin-top:8px
+}
+
+.btn{
+  background:#0b5cff;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:8px;
+  border:0;
+  cursor:pointer;
+  font-weight:600
+}
+
+.muted{color:#64748b}
+</style>
 </head>
+
 <body>
-  <header><div style="display:flex;align-items:center;gap:12px"><img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" style="height:36px;object-fit:contain"><div style="font-weight:700">WireConnect — Chat</div></div></header>
 
-  <div class="container">
-    <div class="left">
-      <div id="map"></div>
-      <div style="margin-top:8px">
-        <div id="jobStatus" style="font-weight:700">Loading job...</div>
-        <div class="muted" id="distanceInfo"></div>
-      </div>
-    </div>
+<header>
+<img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" style="height:36px">
+<div style="font-weight:700">WireConnect — Chat</div>
+</header>
 
-    <div class="right">
-      <div style="display:flex;justify-content:space-between;align-items:center"><div><strong id="peerName">Peer</strong><div class="muted" id="peerRole"></div></div></div>
-      <div class="chat-window" id="chatWindow"></div>
+<div class="container">
+<div class="chat-card">
 
-      <div class="chat-input">
-        <input id="chatText" placeholder="Write a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eef2ff">
-        <button id="sendBtn" class="btn">Send</button>
-      </div>
-    </div>
-  </div>
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div>
+<strong id="peerName">Peer</strong>
+<div class="muted" id="peerRole"></div>
+</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    const API_BASE = '';
-    function q(sel){ return document.querySelector(sel) }
+<button id="toggleMapBtn" class="btn">Show Map</button>
+</div>
 
-    const params = new URLSearchParams(location.search);
-    const jobId = params.get('jobId');
+<div id="jobStatus" style="font-weight:700;margin-top:6px"></div>
+<div class="muted" id="distanceInfo"></div>
 
-    const chatWindow = q('#chatWindow'), sendBtn = q('#sendBtn'), chatText = q('#chatText'), jobStatusEl = q('#jobStatus'), peerNameEl = q('#peerName'), peerRoleEl = q('#peerRole'), distanceInfo = q('#distanceInfo');
+<div class="chat-window" id="chatWindow"></div>
 
-    if(!jobId){ alert('No job specified'); window.location.href='dashboard.html' }
+<div class="chat-input">
+<input id="chatText" placeholder="Write a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eef2ff">
+<button id="sendBtn" class="btn">Send</button>
+</div>
 
-    // Simple local message store for demo (replace with real messaging backend)
-    const storageKey = 'wc_chat_' + jobId;
-    function loadMessages(){ return JSON.parse(localStorage.getItem(storageKey) || '[]') }
-    function saveMessage(m){ const arr = loadMessages(); arr.push(m); localStorage.setItem(storageKey, JSON.stringify(arr)); renderMessages(); }
-    function renderMessages(){ const msgs = loadMessages(); chatWindow.innerHTML = msgs.map(m=>`<div style="margin-bottom:8px"><div style="font-size:12px;color:#64748b">${new Date(m.t).toLocaleTimeString()}</div><div style="padding:8px;background:${m.own? '#e6f0ff':'#f3f6fb'};border-radius:8px">${m.text}</div></div>`).join(''); chatWindow.scrollTop = chatWindow.scrollHeight; }
+<div id="mapWrap">
+<div id="map"></div>
+</div>
 
-    sendBtn.addEventListener('click', ()=>{ const txt = chatText.value.trim(); if(!txt) return; saveMessage({ t: Date.now(), text: txt, own: true }); chatText.value=''; });
+</div>
+</div>
 
-    // Map init
-    const map = L.map('map', { center: [9.0820, 8.6753], zoom: 6 });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
-    let jobMarker=null, techMarker=null;
 
-    // Haversine distance
-    function distanceKm(lat1, lon1, lat2, lon2){
-      if(!lat1||!lon1||!lat2||!lon2) return null;
-      const R=6371; const toRad=v=>v*Math.PI/180;
-      const dLat = toRad(lat2-lat1); const dLon = toRad(lon2-lon1);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R*c;
-    }
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    // Try to fetch user profile by id (optional backend endpoint)
-    async function fetchUserProfile(userId){
-      try{
-        const resp = await fetch(API_BASE + '/api/user/' + encodeURIComponent(userId));
-        if(!resp.ok) return null;
-        return await resp.json();
-      }catch(e){ return null; }
-    }
+<script>
+const API_BASE = "https://wireconnet-1.onrender.com";
 
-    // Poll job status until assigned (and keep updating)
-    async function loadJobStatus(){
-      try{
-        const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
-        if(!resp.ok) throw new Error('job not found');
-        const js = await resp.json();
-        if(!js.success) throw new Error(js.message || 'no job');
-        const job = js.job;
-        jobStatusEl.textContent = `Job: ${job.job_type || '—'} — status: ${job.status}`;
-        // show job marker (job has lat/lng if client provided)
-        if(job.lat && job.lng){
-          if(jobMarker) jobMarker.setLatLng([job.lat, job.lng]); else jobMarker = L.marker([job.lat, job.lng]).addTo(map).bindPopup('Job location');
-          map.setView([job.lat, job.lng], 12);
-        }
+const params = new URLSearchParams(location.search);
+const jobId = params.get("jobId");
 
-        if(job.assigned_tech_id){
-          // try to fetch tech profile to place marker
-          const techId = job.assigned_tech_id;
-          const techProfile = await fetchUserProfile(techId);
-          if(techProfile && techProfile.lat && techProfile.lng){
-            if(techMarker) techMarker.setLatLng([techProfile.lat, techProfile.lng]); else {
-              techMarker = L.marker([techProfile.lat, techProfile.lng], { title: techProfile.fullname || techId }).addTo(map).bindPopup('Technician');
-            }
-            const km = distanceKm(job.lat, job.lng, techProfile.lat, techProfile.lng);
-            distanceInfo.textContent = `Distance between technician and job: ${km ? km.toFixed(2) + ' km' : 'unknown'}`;
-            if(km && km > 50) distanceInfo.textContent += ' ( > permitted 50km )';
-            peerNameEl.textContent = techProfile.fullname || techId;
-            peerRoleEl.textContent = 'Technician';
-          } else {
-            // no tech coords; show id only
-            peerNameEl.textContent = job.assigned_tech_id;
-            peerRoleEl.textContent = 'Technician (profile unavailable)';
-            distanceInfo.textContent = 'Technician location not available';
-          }
-        } else {
-          peerNameEl.textContent = 'Unassigned';
-          peerRoleEl.textContent = 'Awaiting assignment';
-          distanceInfo.textContent = '';
-        }
-      }catch(e){
-        jobStatusEl.textContent = 'Could not load job';
-      }
-    }
+if(!jobId){
+ alert("No job specified");
+ location.href="dashboard.html";
+}
 
-    // keep polling every 3s
-    loadJobStatus();
-    setInterval(loadJobStatus, 3000);
-    renderMessages();
-  </script>
+function q(s){return document.querySelector(s)}
+
+const chatWindow=q("#chatWindow");
+const chatText=q("#chatText");
+const sendBtn=q("#sendBtn");
+const jobStatus=q("#jobStatus");
+const peerName=q("#peerName");
+const peerRole=q("#peerRole");
+const distanceInfo=q("#distanceInfo");
+
+const toggleMapBtn=q("#toggleMapBtn");
+const mapWrap=q("#mapWrap");
+
+//////////////////////// CHAT ////////////////////////
+const storageKey="wc_chat_"+jobId;
+
+function loadMsgs(){return JSON.parse(localStorage.getItem(storageKey)||"[]")}
+function saveMsg(m){
+ const arr=loadMsgs();
+ arr.push(m);
+ localStorage.setItem(storageKey,JSON.stringify(arr));
+ renderMsgs();
+}
+
+function renderMsgs(){
+ const msgs=loadMsgs();
+ chatWindow.innerHTML=msgs.map(m=>`
+ <div style="margin-bottom:8px">
+   <div style="font-size:12px;color:#64748b">${new Date(m.t).toLocaleTimeString()}</div>
+   <div style="padding:8px;background:${m.own?'#e6f0ff':'#f3f6fb'};border-radius:8px">${m.text}</div>
+ </div>`).join('');
+ chatWindow.scrollTop=chatWindow.scrollHeight;
+}
+
+sendBtn.onclick=()=>{
+ const txt=chatText.value.trim();
+ if(!txt)return;
+ saveMsg({t:Date.now(),text:txt,own:true});
+ chatText.value="";
+};
+
+renderMsgs();
+
+//////////////////////// MAP ////////////////////////
+let map=null;
+let routeLine=null;
+let markerA=null;
+let markerB=null;
+
+toggleMapBtn.onclick=()=>{
+ if(mapWrap.style.display==="none"){
+   mapWrap.style.display="block";
+   toggleMapBtn.textContent="Hide Map";
+   initMap();
+ }else{
+   mapWrap.style.display="none";
+   toggleMapBtn.textContent="Show Map";
+ }
+};
+
+async function initMap(){
+ if(map) return;
+
+ map=L.map("map").setView([9.0820,8.6753],6);
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+ const job=await fetch(API_BASE+"/api/job/"+jobId+"/status")
+               .then(r=>r.json()).then(j=>j.job);
+
+ if(!job.lat||!job.lng||!job.assigned_tech_id) return;
+
+ const tech=await fetch(API_BASE+"/api/user/"+job.assigned_tech_id)
+                 .then(r=>r.json());
+
+ let from,to;
+
+ const role=(localStorage.getItem("userRole")||"").toLowerCase();
+
+ if(role.includes("worker")){
+   from=[tech.lat,tech.lng];
+   to=[job.lat,job.lng];
+ }else{
+   from=[job.lat,job.lng];
+   to=[tech.lat,tech.lng];
+ }
+
+ markerA=L.marker(from).addTo(map);
+ markerB=L.marker(to).addTo(map);
+
+ drawRoute(from,to);
+}
+
+//////////////// ROUTING ///////////////////
+async function drawRoute(a,b){
+ const url=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`;
+ const data=await fetch(url).then(r=>r.json());
+
+ if(!data.routes.length) return;
+
+ const route=data.routes[0];
+
+ routeLine=L.geoJSON(route.geometry).addTo(map);
+ map.fitBounds(routeLine.getBounds());
+
+ const km=(route.distance/1000).toFixed(2);
+ const min=Math.round(route.duration/60);
+
+ distanceInfo.textContent=`Distance: ${km} km — ETA: ${min} minutes`;
+}
+
+//////////////// JOB STATUS ////////////////
+async function loadJob(){
+ const js=await fetch(API_BASE+"/api/job/"+jobId+"/status")
+             .then(r=>r.json());
+
+ const job=js.job;
+ jobStatus.textContent=`Job: ${job.job_type} — ${job.status}`;
+ peerName.textContent=job.assigned_tech_id||"Unassigned";
+ peerRole.textContent="Connected";
+}
+
+loadJob();
+setInterval(loadJob,3000);
+
+</script>
 </body>
 </html>
