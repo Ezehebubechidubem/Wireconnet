@@ -423,7 +423,12 @@
         // success path
         const body = respJson || {};
         const jobId = (body.jobId || (body.job && body.job.id)) || null;
-        const assignedFlag = !!(body.assigned === true || (body.message && /assigned/i.test(String(body.message))));
+        const assignedFlag = !!(
+    body.assigned === true ||
+    body.success === true ||              // ⭐ ADD THIS
+    jobId !== null ||                     // ⭐ ADD THIS
+    (body.message && /assigned/i.test(String(body.message)))
+);
 
         if(assignedFlag){
           // attempt to obtain technician info
