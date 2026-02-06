@@ -103,7 +103,7 @@
       <!-- NEW inputs requested: State, LGA, Town/City, workers, estimated days -->
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
         <div>
-          <label>State</label>
+          <label>State *</label>
           <input id="stateInput" type="text" placeholder="e.g. Lagos">
         </div>
         <div>
@@ -209,27 +209,33 @@
     }
     function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); modalContent.innerHTML = ''; modalOk.onclick = null; }
 
-    function showModalLoading(){
-      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>Signing you in...</h3><div class="muted">Please wait while we verify your credentials.</div></div>`, { showOk:false, closable:false });
+    function showLoadingModal(message = 'Searching for a technician...'){
+      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>${escapeHtml(message)}</h3><div class="muted">Please wait while we find a nearby available technician.</div></div>`, { showOk:false, closable:false });
     }
 
-    function showModalAssigned(technicianName, jobId, techId, estimatedDaysVal){
-      const html = `<h3>Login successful</h3>
-        <div style="font-size:18px;margin-top:6px">${technicianName || 'Technician assigned'}</div>
-        <div class="muted" style="margin-top:8px">Job created and assigned. Press OK to go to chat.</div>`;
+    function showAssignedModal(techName, jobId, techId){
+      const html = `<h3>Job matched</h3>
+        <div style="font-size:16px;margin-top:8px">${escapeHtml(techName || 'Technician assigned')}</div>
+        <div class="muted" style="margin-top:8px">Press OK to open chat with the technician.</div>`;
       openModal(html, { showOk:true, onOk: ()=> {
-        // redirect to chat (guaranteed)
         const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
         window.location.href = 'chat.html?' + qs;
       }, closable:true });
     }
 
-    function showModalNoTech(){
-      openModal(`<h3>No technician available right now</h3><div class="muted">We created your job but couldn't assign a technician at this moment.</div>`, { showOk:false, closable:true });
+    function showNoTechModal(){
+      openModal(`<h3>No technician available</h3><div class="muted">We created your job but could not assign a technician right now. We'll keep trying.</div>`, { showOk:false, closable:true });
     }
 
-    function showModalError(msg){
-      openModal(`<h3>Error</h3><div class="muted">${msg}</div>`, { showOk:false, closable:true });
+    function showErrorModal(title, details){
+      const safeDetails = details ? `<pre style="text-align:left;max-height:240px;overflow:auto;background:#fff;border:1px solid #fee;padding:8px;border-radius:6px">${escapeHtml(typeof details === 'string' ? details : JSON.stringify(details, null, 2))}</pre>` : '';
+      openModal(`<h3>${escapeHtml(title)}</h3><div class="muted">${safeDetails || ''}</div>`, { showOk:false, closable:true });
+    }
+
+    // small helper to escape HTML in messages
+    function escapeHtml(s){
+      if(!s && s !== 0) return '';
+      return String(s).replace(/[&<>"'`=\/]/g, function(ch){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[ch]; });
     }
 
     // job type toggle
@@ -271,10 +277,10 @@
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
     });
 
-    // helper to load user from localStorage
+    // load user
     function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
 
-    // try to save geolocation (best-effort)
+    // geo helper
     async function tryGeolocationSave(){
       if(!navigator.geolocation) return;
       try{
@@ -286,11 +292,22 @@
       }catch(e){ /* ignore */ }
     }
 
-    // submit booking: robust handling for backend response shapes
+    // MAIN: submit booking
     submitBtn.addEventListener('click', async (ev)=>{
       ev.preventDefault();
+
       const user = loadUser();
-      if(!user){ showModalError('Please login as a client to book.'); return; }
+      if(!user || !user.id){
+        showErrorModal('Login required', 'Please login as a client to create a booking.');
+        return;
+      }
+
+      // validate state
+      const state = (stateInput.value || '').trim();
+      if(!state){
+        showErrorModal('State required', 'Please enter the state where the job will take place.');
+        return;
+      }
 
       const jt = jobType.value;
       let job_type = jt;
@@ -312,9 +329,9 @@
 
       const payload = {
         clientId: user.id,
-        state: (stateInput.value || '').trim(),
-        city: (cityInput.value || '').trim(),
-        lga: (lgaInput.value || '').trim(),
+        state: state,
+        city: (cityInput.value || '').trim() || (user.city || null),
+        lga: (lgaInput.value || '').trim() || (user.lga || null),
         address: null,
         lat: Number.isFinite(latLocal) ? latLocal : null,
         lng: Number.isFinite(lngLocal) ? lngLocal : null,
@@ -326,92 +343,120 @@
       };
 
       // show searching modal
-      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>Searching for a technician...</h3><div class="muted">Please wait while we find a nearby available technician.</div></div>`, { showOk:false, closable:false });
+      showLoadingModal('Searching for a technician...');
 
       try{
         const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
-        const controller = new AbortController(); const timeout = setTimeout(()=> controller.abort(), 15000);
-        const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload), signal: controller.signal });
+        const controller = new AbortController();
+        const timeout = setTimeout(()=> controller.abort(), 15000);
+
+        const resp = await fetch(API_BASE + endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
         clearTimeout(timeout);
+
         const text = await resp.text().catch(()=>null);
         let body = null;
-        try{ body = text ? JSON.parse(text) : null; } catch(e){ body = text; }
+        try{ body = text ? JSON.parse(text) : null; }catch(e){ body = text; }
 
-        // If backend says success & assigned true -> proceed to fetch assigned tech info (robust)
-        if(resp.ok && body && body.success){
-          const jobId = body.jobId || (body.job && body.job.id);
-          const assignedFlag = !!body.assigned;
+        // If server responded with non-JSON or non-OK, show details
+        if(!resp.ok){
+          closeModal();
+          const serverMsg = (body && (body.message || body.error)) ? (body.message || body.error) : `HTTP ${resp.status} ${resp.statusText}`;
+          showErrorModal('Server error while creating booking', serverMsg || body || text || `HTTP ${resp.status}`);
+          console.error('Booking error response:', resp.status, body);
+          return;
+        }
 
-          if(assignedFlag){
-            // If backend returned technician object use it; otherwise fetch job status and tech profile
-            let tech = null;
-            if(body.technician && (typeof body.technician === 'object')) tech = body.technician;
-            if(!tech && jobId){
-              // attempt to get assigned_tech_id by asking for job details/status
-              try{
-                const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status', { method:'GET' });
-                if(sresp.ok){
-                  const sjs = await sresp.json().catch(()=>null);
-                  if(sjs && sjs.success && sjs.job && (sjs.job.assigned_tech_id || sjs.job.assigned_tech_id === 0)){
-                    const techId = sjs.job.assigned_tech_id;
-                    // fetch tech profile if endpoint exists
-                    try {
-                      const tresp = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId), { method:'GET' });
-                      if(tresp.ok){
-                        const tjs = await tresp.json().catch(()=>null);
-                        if(tjs && tjs.success && tjs.user) tech = tjs.user;
-                        else if(tjs && tjs.id) tech = tjs; // sometimes returns object directly
-                      }
-                    } catch(e){}
-                    // if fetching profile fails, still redirect using techId
-                    const techName = (tech && (tech.fullname || tech.username)) || ('Technician ' + techId);
-                    closeModal();
-                    // show assigned simple modal then redirect to chat
-                    openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${techName}</div><div class="muted" style="margin-top:8px">Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
-                      const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-                      window.location.href = 'chat.html?' + qs;
-                    }, closable:true });
-                    return;
-                  }
-                }
-              }catch(e){}
-            }
+        // Now resp.ok and body parsed
+        if(!body || typeof body !== 'object'){
+          closeModal();
+          showErrorModal('Unexpected server response', body || text || 'No structured JSON returned');
+          return;
+        }
 
-            // if we reach here and we have tech object
-            const techId = tech && (tech.id || tech.user_id || tech._id) ? (tech.id || tech.user_id || tech._id) : null;
-            const techName = tech && (tech.fullname || tech.username || tech.name) ? (tech.fullname || tech.username || tech.name) : 'Technician assigned';
+        // success path
+        if(body.success){
+          const jobId = body.jobId || (body.job && body.job.id) || null;
+          const assigned = !!body.assigned;
+          // if server returned technician object, use it
+          if(assigned && body.technician){
+            const tech = body.technician;
             closeModal();
-            openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${techName}</div><div class="muted" style="margin-top:8px">Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
-              const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+            showAssignedModal(tech.fullname || tech.username || tech.name || 'Technician assigned', jobId, tech.id || tech.user_id || null);
+            return;
+          }
+
+          // assigned but no technician object returned: try to fetch job status and user
+          if(assigned && jobId){
+            try {
+              // fetch job detail to get assigned_tech_id
+              const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId), { method:'GET' });
+              const sbody = sresp.ok ? await sresp.json().catch(()=>null) : null;
+              if(sresp.ok && sbody && sbody.success){
+                const tech = sbody.technician;
+                if(tech){
+                  closeModal();
+                  showAssignedModal(tech.fullname || tech.username || tech.name || ('Technician ' + (tech.id||'')), jobId, tech.id || null);
+                  return;
+                } else {
+                  // assigned but no tech profile returned
+                  closeModal();
+                  openModal(`<h3>Job matched</h3><div class="muted">Job assigned — technician details not available yet. Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
+                    const qs = jobId ? ('jobId=' + encodeURIComponent(jobId)) : '';
+                    window.location.href = 'chat.html?' + qs;
+                  }, closable:true });
+                  return;
+                }
+              }
+            }catch(e){
+              console.warn('Could not fetch job details after assignment', e);
+              // fallthrough to generic assigned redirect
+            }
+            // fallback: redirect to chat using jobId
+            closeModal();
+            openModal(`<h3>Job matched</h3><div class="muted">Assignment recorded. Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
+              const qs = jobId ? ('jobId=' + encodeURIComponent(jobId)) : '';
               window.location.href = 'chat.html?' + qs;
             }, closable:true });
             return;
-          } else {
-            // not assigned now
+          }
+
+          // not assigned immediately
+          if(!assigned){
             closeModal();
-            showModalNoTech();
+            showNoTechModal();
             return;
           }
-        } else {
-          // backend returned failure or weird non-ok
+
+          // fallback
           closeModal();
-          showModalError((body && body.message) ? body.message : 'Failed to create booking');
+          showErrorModal('Unexpected server reply', body);
+          return;
+        } else {
+          // server says success:false
+          closeModal();
+          showErrorModal('Failed to create booking', body.message || body || 'Unknown');
+          return;
         }
+
       }catch(err){
         closeModal();
         const isAbort = err && err.name === 'AbortError';
-        showModalError(isAbort ? 'Request timed out' : 'Network error');
+        showErrorModal(isAbort ? 'Request timed out' : 'Network error', String(err));
+        console.error('Booking exception', err);
       }
     });
 
-    // init: load user and attempt to load prices from backend (silent)
+    // init
     (function init(){
       const uRaw = localStorage.getItem('wc_user');
-      if(!uRaw){ /* don't force redirect here: user may be testing */ }
-      else {
+      if(uRaw){
         try { const user = JSON.parse(uRaw); document.getElementById('userGreeting').textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`; } catch(e){}
       }
-
       (async ()=> {
         try{
           const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
@@ -432,7 +477,6 @@
 
     // close modal if backdrop clicked
     modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
-
   </script>
 </body>
 </html>
