@@ -5,46 +5,82 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — Book Job</title>
   <style>
-    :root{ --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280; --shadow:0 8px 30px rgba(16,24,40,0.06); --radius:12px; }
+    :root{
+      --bg:#f6f8fb;
+      --card:#fff;
+      --accent:#0b5cff;
+      --muted:#6b7280;
+      --shadow: 0 8px 30px rgba(16,24,40,0.06);
+      --radius:12px;
+    }
     html,body{height:100%;margin:0}
-    body{ font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif; background:var(--bg); color:#111827; display:flex; justify-content:center; align-items:flex-start; padding:18px; }
-    .wrap{ width:100%; max-width:980px; background:var(--card); border-radius:12px; padding:0; box-shadow:var(--shadow); box-sizing:border-box; overflow:hidden; }
+    body{
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:#111827;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:18px;
+    }
 
-    .header-logo img{ width:100%; height:120px; object-fit:cover; display:block; }
+    .wrap{
+      width:100%;
+      max-width:980px;
+      background:var(--card);
+      border-radius:12px;
+      padding:0;
+      box-shadow:var(--shadow);
+      box-sizing:border-box;
+      overflow:hidden;
+    }
 
-    .content { padding:18px; }
-    h1{ margin:0; font-size:20px; font-weight:800; font-style:italic; }
-    .muted{ color:var(--muted); font-size:13px; }
-    label{ display:block; margin-bottom:6px; font-size:14px; font-weight:700 }
-    input, select, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #eef3fb; box-sizing:border-box; margin-bottom:8px; font-size:14px; }
-    textarea{ font-family:inherit; }
+    /* header row with logo */
+    .header {
+      width:100%;
+      height:120px;
+      overflow:hidden;
+    }
+    .header img{ width:100%; height:120px; object-fit:cover; display:block; }
 
+    .content {
+      padding:18px;
+    }
+
+    h1{margin:0;font-size:20px;font-weight:800;font-style:italic}
+    .muted{color:var(--muted);font-size:13px}
+    label{display:block;margin-bottom:6px;font-size:14px;font-weight:700}
+    input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #eef3fb;box-sizing:border-box;margin-bottom:8px;font-size:14px}
+    textarea{font-family:inherit}
+
+    .btn{background:var(--accent);color:white;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:800}
+    .btn-ghost{background:transparent;border:1px solid #e6eef9;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .estimate{background:#f0f7ff;padding:10px;border-radius:8px;margin-bottom:8px;font-weight:700}
+    .small{font-size:13px;color:var(--muted)}
     .controls { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
-    .btn{ background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:800 }
-    .btn-ghost{ background:transparent; border:1px solid #e6eef9; padding:8px 12px; border-radius:8px; cursor:pointer }
-    .diag{ background:#0b1220; color:#e6f0ff; padding:10px; border-radius:8px; font-family:monospace; font-size:13px; white-space:pre-wrap; overflow:auto; max-height:220px }
-    .estimate{ background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:8px; font-weight:700 }
-    .small{ font-size:13px; color:var(--muted) }
 
-    /* modal styles (same look as main) */
+    /* modal (clean) */
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:9999; }
-    .modal{ width:92%; max-width:560px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 48px rgba(2,6,23,0.4); }
-    .modal h3{ margin:0 0 8px; font-size:18px }
-    .modal .muted{ margin-bottom:8px; color:#374151 }
-    .spinner{ width:56px; height:56px; border-radius:50%; border:6px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:10px auto }
+    .modal{ width:92%; max-width:520px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 48px rgba(2,6,23,0.4); }
+    .modal h3{margin:0 0 8px;font-size:18px}
+    .modal .muted{margin-bottom:8px;color:#374151}
+    .spinner{ width:64px; height:64px; border-radius:50%; border:6px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:12px auto;}
     @keyframes spin{ to{ transform:rotate(360deg) } }
-    .tech-card{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; border:1px solid #eef6ff; background:#fbfeff; }
-    .tech-avatar{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#f0f3ff }
+    .success-icon{ display:block; width:64px; height:64px; margin:10px auto; background:#e6fdf0; border-radius:12px; align-items:center; justify-content:center; text-align:center; font-size:36px; color:#0f9a48; }
     .modal .btn { padding:10px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:800 }
     .modal .btn.secondary { background:#f3f4f6; color:#111; border:1px solid #e6eef9; }
+    .tech-card{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; border:1px solid #eef6ff; background:#fbfeff; margin-top:8px }
 
-    /* small responsive */
+    /* responsive minor */
     @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="header-logo"><img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo"></div>
+    <div class="header">
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+    </div>
+
     <div class="content">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div><h1>Book a Job</h1><div class="muted" id="userGreeting">—</div></div>
@@ -70,7 +106,11 @@
 
       <div id="solarFields" class="hidden" style="margin-top:8px">
         <label>Building type</label>
-        <select id="solarBuilding"><option value="bungalow">Bungalow (base)</option><option value="one_story">1 storey</option><option value="two_plus">2+ storey</option></select>
+        <select id="solarBuilding">
+          <option value="bungalow">Bungalow (base)</option>
+          <option value="one_story">1 storey (base + 30,000)</option>
+          <option value="two_plus">2+ storey (base + 60,000)</option>
+        </select>
         <label><input id="solarComplex" type="checkbox"> Complex roof / high access (+₦50,000)</label>
       </div>
 
@@ -79,7 +119,23 @@
         <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
       </div>
 
-      <!-- NEW inputs requested -->
+      <!-- NEW inputs: State, LGA, Town/City -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
+        <div>
+          <label>State</label>
+          <input id="stateInput" type="text" placeholder="State (e.g. Abuja)">
+        </div>
+        <div>
+          <label>LGA</label>
+          <input id="lgaInput" type="text" placeholder="LGA">
+        </div>
+        <div>
+          <label>Town / City</label>
+          <input id="cityInput" type="text" placeholder="Town or city">
+        </div>
+      </div>
+
+      <!-- NEW inputs requested earlier -->
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">
         <div>
           <label>Number of workers needed</label>
@@ -97,18 +153,20 @@
       <div class="controls">
         <button id="calcBtn" class="btn" title="Estimate price">Calculate estimate</button>
         <button id="submitBtn" class="btn-ghost" title="Submit booking">Submit booking</button>
+
         <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
           <div style="background:#f3f8ff; border-radius:8px; padding:10px 12px; border:1px solid #eef3fb; color:var(--muted)">₦</div>
           <div id="priceDisplay" style="font-weight:800;font-size:16px">—</div>
         </div>
-        <label style="margin-left:12px;align-self:center"><input id="useAssign" type="checkbox"> use /api/book-assign</label>
+
+        <label style="margin-left:12px;align-self:center">
+          <input id="useAssign" type="checkbox"> use /api/book-assign
+        </label>
       </div>
 
       <div style="height:12px"></div>
       <div class="estimate" id="estimateBox"><em>Estimate:</em> —</div>
 
-      <h4 style="margin-bottom:6px">Diagnostics (server request/response)</h4>
-      <div id="diag" class="diag">No actions yet.</div>
     </div>
   </div>
 
@@ -124,8 +182,10 @@
   </div>
 
   <script>
-    const API_BASE = 'https://wireconnet-1.onrender.com';
-    // DOM
+    // ======= CONFIG =======
+    const API_BASE = 'https://wireconnet-1.onrender.com'; // change if needed
+
+    // ======= DOM REFS =======
     const jobType = document.getElementById('jobType');
     const conduitFields = document.getElementById('conduitFields');
     const solarFields = document.getElementById('solarFields');
@@ -142,122 +202,117 @@
     const calcBtn = document.getElementById('calcBtn');
     const submitBtn = document.getElementById('submitBtn');
     const estimateBox = document.getElementById('estimateBox');
-    const diag = document.getElementById('diag');
-    const useAssign = document.getElementById('useAssign');
-    const userGreeting = document.getElementById('userGreeting');
     const priceDisplay = document.getElementById('priceDisplay');
+    const userGreeting = document.getElementById('userGreeting');
+    const useAssign = document.getElementById('useAssign');
 
     const workersNeeded = document.getElementById('workersNeeded');
     const estimatedDays = document.getElementById('estimatedDays');
 
-    // modal refs
+    const stateInput = document.getElementById('stateInput');
+    const lgaInput = document.getElementById('lgaInput');
+    const cityInput = document.getElementById('cityInput');
+
+    // modal elements
     const modalBackdrop = document.getElementById('modalBackdrop');
     const modalContent = document.getElementById('modalContent');
     const modalClose = document.getElementById('modalClose');
     const modalOk = document.getElementById('modalOk');
 
-    // default PRICES
+    // ======= PRICES (fallback) =======
     let PRICES = {
-      conduit_per_room: 25000, conduit_db:15000, conduit_nepa:50000,
-      conduit_wiring_add_per_room:5000, conduit_fittings_per_room:15000,
-      solar_base_bungalow:170000, solar_extra_per_storey:30000, solar_complex:50000
+      conduit_per_room: 25000,
+      conduit_db: 15000,
+      conduit_nepa: 50000,
+      conduit_wiring_add_per_room: 5000,
+      conduit_fittings_per_room: 15000,
+      solar_base_bungalow: 170000,
+      solar_extra_per_storey: 30000,
+      solar_complex: 50000
     };
 
-    // modal helpers
-    function openModal(html, { showOk=false, onOk=null, closable=true } = {}){
+    // ======= modal helpers (clean look) =======
+    function openModal(html, { showOk=false, onOk=null, closable=true } = {}) {
       modalContent.innerHTML = html;
       modalBackdrop.style.display = 'flex';
       modalBackdrop.setAttribute('aria-hidden','false');
       modalOk.style.display = showOk ? 'inline-block' : 'none';
-      modalOk.onclick = function(){ if(onOk) onOk(); closeModal(); };
       modalClose.style.display = closable ? 'inline-block' : 'none';
+      // wire OK
+      modalOk.onclick = () => {
+        if (typeof onOk === 'function') onOk();
+        closeModal();
+      };
     }
-    function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); modalContent.innerHTML = ''; modalOk.onclick = null; }
-
-    function showModalLoading(){
-      openModal(`<div style="text-align:center"><div class="spinner"></div><div class="muted">Searching for a nearby technician — this may take a few seconds...</div></div>`, { showOk:false, closable:false });
-    }
-
-    function showModalAssigned(technician, clientName, jobId, estimatedDaysVal){
-      const html = `
-        <h3>Job matching successful ✅</h3>
-        <div class="muted">Your job was created and a technician was matched.</div>
-        <div style="height:12px"></div>
-        <div class="tech-card">
-          <img src="${technician.avatar_url || 'https://i.postimg.cc/7PWQ7P1j/default-avatar.png'}" alt="avatar" class="tech-avatar">
-          <div>
-            <div style="font-weight:800;font-size:16px">${technician.fullname || technician.username || 'Technician'}</div>
-            <div class="small">${technician.username ? ('@' + technician.username) : ''}</div>
-            <div style="margin-top:6px" class="small">Job ID: <strong>${jobId}</strong></div>
-          </div>
-        </div>
-        <div class="muted" style="margin-top:8px">Press OK to see assignment countdown and chat.</div>
-      `;
-      openModal(html, { showOk:true, onOk: ()=> {
-        // show assignment modal with countdown
-        showAssignmentModal({ estimated_days: estimatedDaysVal }, jobId, technician && (technician.id || technician.user_id || null));
-      }});
+    function closeModal() {
+      modalBackdrop.style.display = 'none';
+      modalBackdrop.setAttribute('aria-hidden','true');
+      modalContent.innerHTML = '';
+      modalOk.onclick = null;
     }
 
-    function showAssignmentModal(job, jobId, techId){
-      const days = Number(job.estimated_days || 1) || 1;
-      const endTs = Date.now() + days * 24*60*60*1000;
-      const html = `
-        <h3>Job Assignment</h3>
-        <div class="muted">Countdown to client's estimated finish time:</div>
-        <div id="assignmentCountdown" style="font-weight:800; font-size:18px; text-align:center; margin-top:8px; padding:8px 0; background:#f8fafc; border-radius:8px;">Calculating…</div>
-        <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">
-          <button id="goChat" class="btn">Go to chat</button>
-          <button id="closeAssign" class="btn secondary">Close</button>
-        </div>
-      `;
+    function showLoadingModal(message = 'Searching for a nearby technician — please wait...') {
+      const html = `<div style="text-align:center"><div class="spinner" role="status" aria-hidden="true"></div><div class="muted" style="margin-top:8px">${message}</div></div>`;
+      openModal(html, { showOk:false, closable:false });
+    }
+
+    function showSuccessModal(technicianName, jobId, techId) {
+      // success modal shows just technician name (per request)
+      const html = `<div style="text-align:center">
+        <div class="success-icon">✓</div>
+        <h3 style="margin-top:6px">Assignment successful</h3>
+        <div class="muted" style="margin-top:10px">Technician: <strong>${escapeHtml(technicianName || 'Technician')}</strong></div>
+        <div style="margin-top:10px" class="muted">Press OK to open chat</div>
+      </div>`;
+      openModal(html, { showOk:true, onOk: () => {
+        // redirect to chat with jobId & techId
+        const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+        window.location.href = 'chat.html?' + qs;
+      }, closable:false });
+    }
+
+    function showNotAssignedModal() {
+      const html = `<h3>No technician available right now</h3>
+        <div class="muted" style="margin-top:8px">We created your job but couldn't assign a technician at this moment.</div>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+          <button id="na-ok" class="btn">OK</button>
+        </div>`;
       openModal(html, { showOk:false, closable:true });
-      const cdEl = document.getElementById('assignmentCountdown');
-      let id = null;
-      function update(){
-        const now = Date.now();
-        let diff = Math.max(0, endTs - now);
-        const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
-        const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
-        const m = Math.floor(diff / (60*1000)); diff %= 60*1000;
-        const s = Math.floor(diff / 1000);
-        cdEl.innerText = `${d}d ${h}h ${m}m ${s}s`;
-        if(endTs <= now){ clearInterval(id); cdEl.innerText = 'Completed (estimated)'; }
-      }
-      update();
-      id = setInterval(update, 1000);
-
-      document.getElementById('goChat').addEventListener('click', ()=> {
-        const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-        window.location.href = 'chat.html?' + qs;
-      });
-      document.getElementById('closeAssign').addEventListener('click', ()=> { clearInterval(id); closeModal(); });
-      // auto redirect after brief delay to chat (client asked)
-      setTimeout(()=> {
-        const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-        window.location.href = 'chat.html?' + qs;
-      }, 900);
+      document.getElementById('na-ok').addEventListener('click', closeModal);
     }
 
-    function showModalNotAssigned(body){
-      openModal(`<h3>Job created — no immediate match</h3><div class="muted">We created your job but no available technician could be assigned right now.</div><div style="height:10px"></div><pre style="background:#fff;border:1px solid #eef3fb;padding:8px;border-radius:6px">${JSON.stringify(body,null,2)}</pre>`, { showOk:false, closable:true });
+    function showErrorModal(title, msg) {
+      const html = `<h3>${escapeHtml(title || 'Error')}</h3>
+      <div class="muted" style="margin-top:8px">${escapeHtml(msg || 'An error occurred')}</div>
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+        <button id="err-ok" class="btn">OK</button>
+      </div>`;
+      openModal(html, { showOk:false, closable:true });
+      document.getElementById('err-ok').addEventListener('click', closeModal);
     }
 
-    function showModalError(msg, raw){
-      openModal(`<h3>Error</h3><div class="muted">${msg}</div><div style="height:8px"></div><pre style="background:#fff;border:1px solid #fee;padding:8px;border-radius:6px">${raw ? JSON.stringify(raw,null,2) : ''}</pre>`, { showOk:false, closable:true });
+    // small escape helper to avoid injection if backend returns strings
+    function escapeHtml(s){
+      if(!s && s !== 0) return '';
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
 
-    // job type toggle
-    jobType.addEventListener('change', ()=> {
+    // modal close behaviour
+    modalClose.addEventListener('click', () => { closeModal(); });
+
+    // ======= Form behaviour =======
+    jobType.addEventListener('change', () => {
       const v = jobType.value;
-      conduitFields.classList.toggle('hidden', v!=='conduit');
-      solarFields.classList.toggle('hidden', v!=='solar');
-      otherFields.classList.toggle('hidden', v!=='other');
+      conduitFields.classList.toggle('hidden', v !== 'conduit');
+      solarFields.classList.toggle('hidden', v !== 'solar');
+      otherFields.classList.toggle('hidden', v !== 'other');
     });
 
-    // price calculation (same logic as before)
     function calculateEstimateLocal(){
-      const v = jobType.value; let total = 0; let breakdown = [];
+      const v = jobType.value;
+      let total = 0;
+      let breakdown = [];
+
       if(v === 'conduit'){
         const rooms = Math.max(1, Number(conduitRooms.value || 1));
         const base = PRICES.conduit_per_room * rooms;
@@ -267,75 +322,101 @@
         if(conduitWiringAdd.checked){ const add = PRICES.conduit_wiring_add_per_room * rooms; total += add; breakdown.push(`Extra wiring ${rooms}×₦${PRICES.conduit_wiring_add_per_room.toLocaleString()} = ₦${add.toLocaleString()}`); }
         if(conduitFittings.checked){ const fit = PRICES.conduit_fittings_per_room * rooms; total += fit; breakdown.push(`Fittings ${rooms}×₦${PRICES.conduit_fittings_per_room.toLocaleString()} = ₦${fit.toLocaleString()}`); }
       } else if(v === 'solar'){
-        let base = PRICES.solar_base_bungalow; const b = solarBuilding.value;
-        if(b === 'bungalow'){ base = PRICES.solar_base_bungalow; breakdown.push(`Bungalow base ₦${base.toLocaleString()}`); }
-        else if(b === 'one_story'){ base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey; breakdown.push(`1 storey added`); }
-        else if(b === 'two_plus'){ base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey * 2; breakdown.push(`2+ storey added`); }
+        let base = PRICES.solar_base_bungalow;
+        const b = solarBuilding.value;
+        if(b === 'bungalow') { base = PRICES.solar_base_bungalow; breakdown.push(`Bungalow base ₦${base.toLocaleString()}`); }
+        else if(b === 'one_story') { base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey; breakdown.push(`1 storey: base + ₦${PRICES.solar_extra_per_storey.toLocaleString()}`); }
+        else if(b === 'two_plus') { base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey * 2; breakdown.push(`2+ storey: base + ₦${(PRICES.solar_extra_per_storey*2).toLocaleString()}`); }
         total += base;
         if(solarComplex.checked){ total += PRICES.solar_complex; breakdown.push(`Complex roof = ₦${PRICES.solar_complex.toLocaleString()}`); }
       } else {
-        total = 0; breakdown.push('Custom job — enter price or wait for negotiation.');
+        total = 0;
+        breakdown.push(`Custom job — client to set price at checkout/negotiation.`);
       }
+
       return { total, breakdown };
     }
 
-    calcBtn.addEventListener('click', (e)=> {
+    calcBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      const user = loadUser();
-      if(!user){ showModalError('Not logged in', 'Please login as a client'); return; }
       const res = calculateEstimateLocal();
       estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
     });
 
-    // try to fetch prices from backend (non-blocking)
-    async function tryLoadPrices(){
+    // attempt to load backend prices (silent, non-blocking)
+    (async function loadBackendPrices(){
       try{
-        const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
-        if(!resp.ok) return;
-        const json = await resp.json().catch(()=>null);
-        const backendPrices = (json && json.prices) ? json.prices : json;
-        if(backendPrices && typeof backendPrices === 'object'){
-          for(const k in backendPrices){
-            if(Object.prototype.hasOwnProperty.call(PRICES,k) && typeof backendPrices[k] === 'number') PRICES[k] = backendPrices[k];
+        const r = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
+        if(!r.ok) return;
+        const j = await r.json().catch(()=>null);
+        const backend = j && j.prices ? j.prices : j;
+        if(backend && typeof backend === 'object'){
+          for(const k in backend){
+            if(Object.prototype.hasOwnProperty.call(PRICES, k) && typeof backend[k] === 'number') PRICES[k] = backend[k];
           }
         }
       }catch(e){}
+    })();
+
+    // store / try geolocation (best-effort)
+    async function tryGeolocationSave(){
+      if(!navigator.geolocation) return;
+      try{
+        const pos = await new Promise((resolve,reject)=>{
+          const t = setTimeout(()=> reject(new Error('geolocation timeout')), 4500);
+          navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge:60000, timeout:4500 });
+        });
+        try{ localStorage.setItem('wc_last_lat', String(pos.coords.latitude)); localStorage.setItem('wc_last_lng', String(pos.coords.longitude)); }catch(e){}
+      }catch(e){}
     }
-    tryLoadPrices();
 
-    // load local user
-    function loadUser(){ try { const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
+    // get local (logged-in) user (assumes you store wc_user on login)
+    function loadUser(){
+      try { const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
+    }
 
-    // submit booking (adds new fields workers_needed and estimated_days)
-    submitBtn.addEventListener('click', async (ev)=>{
+    // Submit booking (clean behaviour)
+    submitBtn.addEventListener('click', async (ev) => {
       ev.preventDefault();
       const user = loadUser();
-      if(!user){ showModalError('Login required', 'Please login as a client to book.'); return; }
+      if(!user){
+        showErrorModal('Login required', 'Please login as a client to create a booking.');
+        return;
+      }
 
       const jt = jobType.value;
       let job_type = jt;
       let descriptionText = description.value || '';
-      if(jt === 'conduit'){ const rooms = Math.max(1, Number(conduitRooms.value || 1)); job_type = 'conduit'; descriptionText = `Conduit wiring — rooms: ${rooms}. ` + descriptionText; }
-      else if(jt === 'solar'){ job_type = 'solar'; descriptionText = `Solar install — building: ${solarBuilding.value}. ` + descriptionText; }
-      else job_type = otherName.value || 'other';
+      if(jt === 'conduit'){
+        const rooms = Math.max(1, Number(conduitRooms.value || 1));
+        job_type = 'conduit';
+        descriptionText = `Conduit wiring — rooms: ${rooms}. ` + descriptionText;
+      } else if(jt === 'solar'){
+        job_type = 'solar';
+        descriptionText = `Solar install — building: ${solarBuilding.value}. ` + descriptionText;
+      } else {
+        job_type = otherName.value || 'other';
+      }
 
       const est = calculateEstimateLocal();
       let price = est.total;
       if(price === 0 && jt === 'other'){
-        const pRaw = prompt('Enter estimated price in Naira (no commas):', '50000');
-        price = Number(pRaw || 0) || 0;
+        const p = Number(prompt('Enter your estimated price in Naira (₦):', '50000')) || 0;
+        price = p;
       }
 
-      // geolocation best-effort
-      try{ await tryGeolocationSave(); }catch(e){}
+      // best-effort geolocation (does not block)
+      await tryGeolocationSave();
       const latLocal = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
       const lngLocal = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
 
+      // gather inputs including State/LGA/City
       const payload = {
         clientId: user.id,
-        state: user.state || 'unknown',
-        city: user.city || null,
+        state: (stateInput.value && stateInput.value.trim()) ? stateInput.value.trim() : (user.state || null),
+        lga: (lgaInput.value && lgaInput.value.trim()) ? lgaInput.value.trim() : null,
+        city: (cityInput.value && cityInput.value.trim()) ? cityInput.value.trim() : (user.city || null),
         address: null,
         lat: Number.isFinite(latLocal) ? latLocal : null,
         lng: Number.isFinite(lngLocal) ? lngLocal : null,
@@ -347,85 +428,91 @@
       };
 
       // show loading modal
-      showModalLoading();
-      diag.textContent = `POST ${useAssign.checked ? '/api/book-assign' : '/api/book'}\nPAYLOAD:\n${JSON.stringify(payload, null, 2)}\nSending...`;
+      showLoadingModal('Searching for a nearby technician — please wait...');
 
-      try{
+      try {
         const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
-        const controller = new AbortController(); const timeout = setTimeout(()=> controller.abort(), 15000);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(()=> controller.abort(), 15000);
+
         const resp = await fetch(API_BASE + endpoint, {
-          method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload), signal: controller.signal
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
         });
-        clearTimeout(timeout);
+        clearTimeout(timeoutId);
+
         const text = await resp.text().catch(()=>null);
         let body = null;
-        try{ body = text ? JSON.parse(text) : null; } catch(e){ body = text; }
+        try { body = text ? JSON.parse(text) : null; } catch(e){ body = text; }
 
-        diag.textContent = `HTTP ${resp.status} ${resp.statusText}\nRESPONSE:\n${JSON.stringify(body, null, 2)}`;
+        if(!resp.ok){
+          closeModal();
+          showErrorModal('Server error', (body && body.message) ? body.message : ('HTTP ' + resp.status));
+          return;
+        }
 
-        if(!resp.ok){ showModalError('Server error creating booking', body || `HTTP ${resp.status}`); return; }
-
+        // success handling
         if(body && body.success && body.jobId){
-          // store booking locally
-          try{ const existing = JSON.parse(localStorage.getItem('wc_bookings')||'[]'); existing.unshift({ id: body.jobId, jobType: job_type, description: payload.description, estimate: price, createdAt: new Date().toISOString(), assigned: !!body.assigned, technician: body.technician||null }); localStorage.setItem('wc_bookings', JSON.stringify(existing)); } catch(e){}
+          // if assigned and technician info returned
           if(body.assigned === true && body.technician){
-            // show assigned modal -> OK -> assignment modal with countdown -> redirect to chat
+            // show success modal with only technician name; OK -> chat
             closeModal();
-            showModalAssigned(body.technician, user.fullname || user.username || 'Client', body.jobId, payload.estimated_days);
-            // the assigned modal opens; its OK handler shows assignment modal and redirects
-          } else if(body.assigned === true && !body.technician){
-            // assigned but no technician details
-            closeModal();
-            showModalAssigned({ username: 'Assigned' }, user.fullname || user.username || 'Client', body.jobId, payload.estimated_days);
-          } else {
-            closeModal();
-            showModalNotAssigned(body);
+            const techName = body.technician.fullname || body.technician.username || body.technician.name || 'Technician';
+            const techId = body.technician.id || body.technician.user_id || body.technician.techId || null;
+            showSuccessModal(techName, body.jobId, techId);
+            return;
           }
+
+          // assigned but no technician details
+          if(body.assigned === true && !body.technician){
+            closeModal();
+            showSuccessModal('Assigned', body.jobId, null);
+            return;
+          }
+
+          // not assigned
+          closeModal();
+          showNotAssignedModal();
+          return;
         } else {
           closeModal();
-          showModalError('Unexpected response', body);
+          showErrorModal('Unexpected response', 'Server returned an unexpected response.');
+          return;
         }
-      } catch(err){
+      } catch(err) {
+        closeModal();
         const isAbort = err && err.name === 'AbortError';
-        showModalError(isAbort ? 'Request timed out' : 'Network error', String(err));
-        diag.textContent += '\nNETWORK ERROR:\n' + String(err);
+        showErrorModal(isAbort ? 'Request timed out' : 'Network error', String(err));
+        return;
       }
     });
 
-    // geolocation store helper
-    async function tryGeolocationSave(){
-      if(!navigator.geolocation) return;
-      try{
-        const pos = await new Promise((resolve,reject)=>{
-          const t = setTimeout(()=> reject(new Error('geolocation timeout')), 4500);
-          navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge:60000, timeout:4500 });
-        });
-        try{ localStorage.setItem('wc_last_lat', String(pos.coords.latitude)); localStorage.setItem('wc_last_lng', String(pos.coords.longitude)); }catch(e){}
-      }catch(e){ /* ignore */ }
-    }
-
-    // init
+    // init: pre-fill state/city if user exists, and price estimate pre-calc
     (function init(){
-      const uRaw = localStorage.getItem('wc_user');
-      if(!uRaw){ alert('Please login as client to book. Redirecting to login.'); window.location.href = 'login.html'; return; }
-      const user = JSON.parse(uRaw);
-      if(user.role !== 'client'){ alert('Only clients can access booking. Redirecting.'); window.location.href = 'dashboard.html'; return; }
-      userGreeting.textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`;
-      try{ if(user.state) document.getElementById('stateInput') && (document.getElementById('stateInput').value = user.state); } catch(e){}
-      // try load backend prices (non-blocking)
-      (async ()=> {
-        try{
-          const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
-          if(resp.ok){ const json = await resp.json().catch(()=>null); const backendPrices = (json && json.prices) ? json.prices : json; if(backendPrices){ for(const k in backendPrices) if(Object.prototype.hasOwnProperty.call(PRICES,k) && typeof backendPrices[k] === 'number') PRICES[k] = backendPrices[k]; } }
-        }catch(e){}
-        const res = calculateEstimateLocal(); estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
-        priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
-      })();
+      const u = loadUser();
+      if(!u){
+        // we don't force redirect here, but show placeholder greeting
+        userGreeting.textContent = 'Not signed in';
+      } else {
+        userGreeting.textContent = `${u.fullname || u.username} ${u.city ? ('— ' + u.city) : ''}`;
+        if(u.state && !stateInput.value) stateInput.value = u.state;
+        if(u.city && !cityInput.value) cityInput.value = u.city;
+      }
+      // show initial estimate
+      const r = calculateEstimateLocal();
+      estimateBox.innerHTML = `<strong>Estimate: ₦${r.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${r.breakdown.join('<br>')}</div>`;
+      priceDisplay.textContent = r.total > 0 ? r.total.toLocaleString() : '—';
     })();
 
-    // modal close handlers
-    modalClose.addEventListener('click', closeModal);
-    modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
+    // close modal when clicking outside content area
+    modalBackdrop.addEventListener('click', (e) => {
+      if(e.target === modalBackdrop) {
+        // only allow close when modal is closable (we hide Close/OK when not closable)
+        closeModal();
+      }
+    });
   </script>
 </body>
 </html>
