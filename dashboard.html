@@ -1,468 +1,303 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="author" content="Mr Dubem" />
-  <meta name="description" content="WireConnect Frontend" />
-  <meta name="keywords" content="WireConnect, technicians, jobs" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>GTAN</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — Dashboard</title>
   <style>
-    /* reset */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: Georgia, "Times New Roman", Times, serif; -webkit-text-size-adjust: 100%; }
-
-    /* header logo (covers top) */
-    :root { --header-h: 110px; } /* slightly reduced so more space on mobile */
-    .bend {
-      position: fixed; top: 0; left: 0; right: 0;
-      height: var(--header-h); z-index: 1000;
-      background: #fff; border-bottom: 1px solid #000;
-      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    :root{
+      --bg:#f6f8fb;
+      --accent:#0b5cff;
+      --muted:#6b7280;
+      --card:#ffffff;
     }
-    .bend figure { width:100%; height:100%; margin:0; }
-    .bend figure img { width:100%; height:100%; object-fit: covr; display:block; }
-
-    /* push page content below header */
-    main { padding-top: var(--header-h); min-height: calc(100vh - var(--header-h)); }
-
-    /* motto row and online indicator */
-    .brief{
-      color:black;
+    html,body{height:100%;margin:0}
+    body{font-family:Inter, "Segoe UI", Roboto, Arial; background:var(--bg); color:#111827}
+    .container{max-width:1100px;margin:0 auto}
+    /* banner covers the whole top */
+    .banner{
+      width:100%;
+      height:140px;
+      background:linear-gradient(135deg,#0b5cff,#55a7ff);
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding: 14px 14px;
-      font-weight:bold;
-      font-style:italic;
-    }
-    .brief .left { display:flex; align-items:center; gap:10px; min-width:0; }
-    .brief .right { display:flex; align-items:center; gap:8px; }
-
-    /* TITLE: reduced to fit phones (this was main overflow) */
-    .sort { color: rgba(0,0,200,1); padding: 8px 12px; margin-bottom: 6px; text-align:left; }
-    .sort .dent {
-      /* reduced: min 30px, scale with viewport, max 56px */
-      font-size: clamp(30px, 8vw, 56px);
-      line-height: 1;
-      font-weight: 700;
-      color: rgba(0,0,200,1);
-      word-break: break-word;
-    }
-
-    /* paragraph text responsive */
-    .fit { padding: 12px 16px; font-size: clamp(15px, 3.5vw, 20px); line-height: 1.6; color:#111; }
-
-    /* BUTTONS: neat, identical borders and size
-       ----- ONLY BUTTON STYLES UPDATED BELOW -----
-    */
-    .audits {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 18px;
-      padding: 18px 12px;
-      flex-wrap: wrap;
-    }
-
-    .audit p, .audits p, .auditss p { margin: 0; width: auto; display:flex; align-items:center; justify-content:center; }
-
-.audit{
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 18px;
-      padding: 18px 2px;
-      flex-wrap: wrap;
-    }
-
-    .audit p{ margin: 0; width: auto; display:flex; align-items:center; justify-content:center; }
-
- .too{ display:inline-flex;
-      align-items:center;
       justify-content:center;
-      text-decoration:none;
-      border-radius: 30px;
-      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
-      color:#ffffff;
-      padding:20px 10px;
-      height: 10px;
-      min-width: 180px;
-      border: 4px solid #000;           /* bold black border like screenshot */
-      font-weight:800;
-      font-size: 18px;
-      line-height:1;
-      text-align:center;
-      white-space: normal;
-      word-break: break-word;
-      /* subtle inner shadow to mimic the "pressed" look */
-      box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
+      overflow:hidden;
+      border-bottom-left-radius:12px;
+      border-bottom-right-radius:12px;
+      box-shadow:0 8px 24px rgba(11,92,255,0.08);
     }
-
-    /* NEW BUTTON STYLE: looks like your screenshot */
-    .do{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      text-decoration:none;
-      border-radius: 30px;
-      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
-      color:#ffffff;
-      padding:40px 40px;
-      height: 45px;
-      min-width: 500px;
-      border: 4px solid #000;           /* bold black border like screenshot */
-      font-weight:800;
-      font-size: 18px;
-      line-height:1;
-      text-align:center;
-      white-space: normal;
-      word-break: break-word;
-      /* subtle inner shadow to mimic the "pressed" look */
-      box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
+    .banner img{width:100%;height:100%;object-fit:cover;display:block}
+    /* small top row below banner for title / menu */
+    .top-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
+    .title{font-weight:700;font-size:18px;margin:0;padding-left:6px}
+    .menu-btn{background:#0b5cff;color:#fff;padding:8px 12px;border-radius:10px;border:0;cursor:pointer}
+    main{padding:16px}
+    .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 8px 30px rgba(16,24,40,0.04)}
+    .section-title{font-weight:700;margin-bottom:8px}
+    .muted{color:var(--muted)}
+    /* slide-over (right) full-screen overlay */
+    .overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;
+      z-index:1400;
     }
-     .to {
-      display:inline-flex;
-      align-items:center;
-      justify-content:centr;
-      text-decoration:none;
-      border-radius: 30px;
-      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
-      color:#ffffff;
-      padding:10px 10px;
-      height: 45px;
-      min-width: 180px;
-      border: 4px solid #000;           /* bold black border like screenshot */
-      font-weight:800;
-      font-size: 18px;
-      line-height:1;
-      text-align:center;
-      white-space: normal;
-      word-break: break-word;
-      /* subtle inner shadow to mimic the "pressed" look */
-      box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
+    .panel{
+      position:fixed;right:0;top:0;height:100vh;width:100%;max-width:420px;background:#fff;
+      box-shadow:-10px 0 40px rgba(2,6,23,0.16);
+      transform:translateX(100%);transition:transform .22s ease;overflow:auto;
+      z-index:1500;
+      -webkit-overflow-scrolling: touch;
+      pointer-events:auto;
     }
-.doo{color:blue;
-  text-decoration:none;
-  font-weight:bold;
-}
-    /* small responsive tweaks for tiny phones */
-    @media (max-width:480px){
-      .do, .to { min-width: 46%; height:48px; font-size:15px; border-width:3px; border-radius:20px; padding:2px 56px; }
-      .brief { padding: 12px; }
-      .fit { padding: 10px 12px; }
+    .panel.open{transform:translateX(0)}
+    .panel-header{display:flex;justify-content:space-between;align-items:center;padding:14px;border-bottom:1px solid #eef2f7}
+    .panel-body{padding:14px}
+    .panel .link{display:block;padding:10px;border-radius:8px;margin-bottom:10px;background:#fafafa;border:1px solid #f1f5f9;color:#111;text-decoration:none}
+    .panel .action{display:block;padding:12px;border-radius:8px;background:var(--accent);color:#fff;text-align:center;border:0;margin-bottom:10px;cursor:pointer}
+    .panel .muted{font-size:13px;color:var(--muted)}
+    /* responsive */
+    @media(min-width:900px){
+      .container{padding:18px}
+      .banner{height:160px}
+      .panel{max-width:420px}
     }
-
-    /* leaderboard small buttons: keep the same look but smaller height */
-    .auditss { display:flex; justify-content:center; gap:14px; padding: 18px 10px; }
-    .auditss .to { min-width: 140px; height:44px; font-size:15px; }
-
-    /* match small menu book button to same look */
-    .menu-dropdown .book-btn {
-      display:block;
-      margin-top:6px;
-      background: linear-gradient(#1154ff,#0738d6);
-      color:#fff;
-      padding:10px 12px;
-      text-align:center;
-      border-radius:10px;
-      text-decoration:none;
-      font-weight:800;
-      border: 3px solid #000;
-      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(0,0,0,0.06);
+    @media(max-width:520px){
+      .banner{height:120px}
     }
-
-    /* keep regular menu links visible but not changed */
-    .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
-
-    /* keep existing button classes for Learn More, etc. */
-    .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
-    .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
-    .bond { padding:10px; }
-
-    /* aside */
-    aside { padding: 10px 14px 28px 14px; }
-
-    /* chat bubble */
-    .AI { position: fixed; right: 12px; bottom: 12px; z-index: 1200; }
-    .AI img { width:64px; height:auto; border-radius:6px; display:block; }
-
-    /* hamburger menu */
-    .hamburger-container {
-      position: fixed; top: calc(var(--header-h) - 36px); right: 12px; z-index: 2000;
-    }
-    .hamburger {
-      font-size: 26px; padding:6px 10px; border-radius:8px; background:#fff; border:1px solid #000; cursor:pointer;
-    }
-    .menu-dropdown {
-      display:none; position:absolute; right:0; margin-top:8px; width:260px;
-      background:#fff; border:1px solid #000; border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
-    }
-
-    /* toggle switch styles (kept) */
-    .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
-    .status-note { font-size:12px; color:#444; margin-top:6px; }
-    .switch { position:relative; width:54px; height:30px; display:inline-block; }
-    .switch input { display:none; }
-    .slider { position:absolute; inset:0; background:#999; border-radius:30px; transition:.25s; }
-    .slider:before { content:''; position:absolute; width:22px; height:22px; left:4px; bottom:4px; background:#fff; border-radius:50%; transition:.25s; box-shadow:0 2px 5px rgba(0,0,0,.2); }
-    input:checked + .slider { background:#28a745; }
-    input:checked + .slider:before { transform: translateX(24px); }
-
-    /* online indicator */
-    .online-indicator { display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#333; }
-    .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
-    .indicator-online { background:#28a745; box-shadow:0 0 8px rgba(40,167,69,.25); }
-    .indicator-offline { background:gray; }
-
-    /* toast */
-    .toast { position: fixed; top: 12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
-
-    /* ensure images can't overflow horizontally */
-    img { max-width:100%; height:auto; display:block; }
   </style>
 </head>
-<body data-user-id="">
-  <!-- header (logo covers area) -->
-  <header class="bend">
-    <figure><img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo"></figure>
-  </header>
+<body>
+  <div class="container">
+    <!-- banner (covers whole top) -->
+    <div class="banner" aria-hidden="true">
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect banner">
+    </div>
 
-  <!-- hamburger -->
-  <div class="hamburger-container" aria-expanded="false">
-    <button id="hamburgerBtn" class="hamburger" aria-controls="menuDropdown" aria-expanded="false">☰</button>
-    <div id="menuDropdown" class="menu-dropdown" role="menu" aria-hidden="true">
-      <a class="menu-link" href="profile.html">Profile</a>
-      <a class="menu-link" href="settings.html">Settings</a>
-      <a class="menu-link" href="kyc.html">KYC</a>
-      <a class="book-btn" href="book.html">Book Job</a>
+    <!-- top row: title + menu button (menu will open from right and cover screen) -->
+    <div class="top-row" role="region" aria-label="Top controls">
+      <h1 class="title" id="welcomeTitle">WireConnect — Dashboard</h1>
+      <button id="openMenu" class="menu-btn" aria-haspopup="true" aria-expanded="false">☰ Menu</button>
+    </div>
 
-      <div class="status-toggle">
-        <span>Status:</span>
-        <label class="switch" title="Toggle online / offline">
-          <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
-          <span class="slider"></span>
-        </label>
+    <main>
+      <section class="card">
+        <div class="section-title">Announcements</div>
+        <div class="muted">No announcements yet.</div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">Articles & News</div>
+        <div class="muted">No articles published.</div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">Top Technicians</div>
+        <div><strong id="leaderName">Ezeh Bonk</strong><div class="muted">Count: 0</div></div>
+      </section>
+
+      <!-- other page content continues below -->
+      <section class="card">
+        <div class="section-title">Recent Activity</div>
+        <div class="muted">No activity yet.</div>
+      </section>
+    </main>
+  </div>
+
+  <!-- overlay + right panel -->
+  <div id="overlay" class="overlay" tabindex="-1" aria-hidden="true"></div>
+
+  <aside id="panel" class="panel" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="panel-header">
+      <div style="font-weight:700">Menu</div>
+      <div>
+        <button id="closePanel" style="background:#f1f5f9;border:0;padding:8px 10px;border-radius:8px;cursor:pointer">Close</button>
       </div>
-      <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
+    </div>
+    <div class="panel-body">
+      <!-- LOGOUT link added ABOVE Book Job as requested -->
+      <a href="#" id="logoutLink" class="link" style="background:#fff;border:1px solid #f1f5f9;color:#d23b3b;font-weight:700">Logout</a>
+
+      <!-- Book Job (below logout) -->
+      <a href="book.html" id="menuBook" class="link" style="background:linear-gradient(90deg,#0b5cff,#55a7ff);color:#fff;border:0">Book Job</a>
+
+      <button id="goOnlineBtn" class="action">Go Online / Go Offline</button>
+
+      <a href="profile.html" class="link" id="menuProfile">Profile & KYC</a>
+
+      <a href="#" class="link" id="menuBookings">My Bookings</a>
+
+      <a href="#" class="link" id="menuAnnouncements">Announcements</a>
+
+      <a href="#" class="link" id="menuArticles">Articles & News</a>
+
+      <hr style="margin:12px 0">
+
+      <button id="openSettings" class="link" style="background:#fff;text-align:left">Settings</button>
+
+      <div style="margin-top:18px">
+        <a href="login.html" class="link">Sign out (alt)</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- settings modal (simple) -->
+  <div id="settingsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1600;align-items:center;justify-content:center">
+    <div style="background:#fff;padding:18px;border-radius:10px;max-width:420px;margin:20px;box-shadow:0 16px 40px rgba(2,6,23,0.25)">
+      <h3>Settings</h3>
+      <div style="margin-top:8px">
+        <a href="#" id="changePW">Change password</a><br/>
+        <a href="#" id="twoFA">Two-factor auth (not implemented)</a><br/>
+        <a href="forgot_password.html" id="forgotPW" style="color:var(--accent)">Forgot password?</a>
+      </div>
+      <div style="margin-top:12px;text-align:right">
+        <button id="closeSettings" style="background:#eef2ff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer">Close</button>
+      </div>
     </div>
   </div>
 
-  <main>
-    <p class="brief">
-      <span class="left">Motto: Let Their Be Light 💥💥</span>
-      <span class="right">
-        <span class="online-indicator" id="onlineIndicatorContainer" aria-live="polite">
-          <span class="indicator-dot indicator-offline" id="indicatorDot"></span>
-          <span id="indicatorText">Offline</span>
-        </span>
-      </span>
-    </p>
-
-    <div class="sort">
-      <div class="dent">WireConnect Network</div>
-    </div>
-
-    <section class="fit">
-      <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
-    </section>
-
-    <div class="audit">
-      <p><a class="do" href="#">Book A Job</a></p>
-      <p><a class="do" href="#">View All Jobs</a></p>
-    </div>
-
-    <div class="audits">
-      <p><a class="too" href="#">Do Kyc</a></p>
-      <p><a class="too" href="#">Customer Services</a></p>
-    </div>
-
-    <div class="auditss">
-      <p><a class="to" href="#">Client Leaderboard</a></p>
-      <p><a class="to" href="#">Technician Leaderboard</a></p>
-    </div>
-
-    <article class="image">
-      <figure class="images"><img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized"></figure>
-      <p class="imagecap">Distributed Network</p>
-      <p style="padding:0 12px 12px 12px;">Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved. Wire Connect avoids this risk by operating through a distributed service network, designed for reliability, transparency, and uninterrupted operations.</p>
-
-      <figure class="images"><img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way"></figure>
-      <p class="imagecap">Your Secure Way to Services</p>
-      <p style="padding:0 12px 12px 12px;">The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a feature — verified professionals accessible through your requests.</p>
-
-      <figure class="images"><img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Hub"></figure>
-      <p class="imagecap">Wire Connect Hub</p>
-      <p class="bond" style="padding:0 12px 12px 12px;">Empowering the Next Generation of Technicians. The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts.</p>
-    </article>
-
-    <aside>
-      <figure style="margin-bottom:10px;"><img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="meet image" style="max-width:280px;margin:auto;"></figure>
-      <h2 style="padding:0 12px 8px 12px;">Meet the WireConnect Network</h2>
-      <p style="padding:0 12px;"><strong>The WireConnect Network</strong> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
-
-      <ul style="margin:12px;padding-left:18px;">
-        <li><strong>Service with Purpose:</strong> A portion of every connection supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
-        <li><strong>Wire Connect Hub:</strong> A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
-        <li><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
-      </ul>
-
-      <a class="doo" href="#" style="display:inline-block; margin:6px 12px;">Learn More</a>
-    </aside>
-
-    <aside class="AI"><a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg" alt="chat"></a></aside>
-  </main>
-
-  <div class="toast" id="toast"></div>
-
   <script>
-    // backend base
-    const API_BASE = 'https://wireconnet-1.onrender.com';
+    // DOM refs
+    const openMenu = document.getElementById('openMenu');
+    const panel = document.getElementById('panel');
+    const overlay = document.getElementById('overlay');
+    const closePanel = document.getElementById('closePanel');
+    const settingsModal = document.getElementById('settingsModal');
+    const logoutLink = document.getElementById('logoutLink');
+    const menuBook = document.getElementById('menuBook');
+    const welcomeTitle = document.getElementById('welcomeTitle');
+    const leaderboardName = document.getElementById('leaderName');
 
-    // UI elements
-    const hamburgerBtn = document.getElementById('hamburgerBtn');
-    const menuDropdown = document.getElementById('menuDropdown');
-    const statusSwitch = document.getElementById('statusSwitch');
-    const indicatorDot = document.getElementById('indicatorDot');
-    const indicatorText = document.getElementById('indicatorText');
-    const toastEl = document.getElementById('toast');
-
-    // hamburger toggle
-    (function(){
-      const btn = hamburgerBtn, menu = menuDropdown;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const shown = menu.style.display === 'block';
-        menu.style.display = shown ? 'none' : 'block';
-        btn.setAttribute('aria-expanded', String(!shown));
-        menu.setAttribute('aria-hidden', String(shown));
-      });
-      document.addEventListener('click', (e) => {
-        const container = document.querySelector('.hamburger-container');
-        if(!container.contains(e.target)){
-          menu.style.display = 'none';
-          btn.setAttribute('aria-expanded', 'false');
-          menu.setAttribute('aria-hidden', 'true');
-        }
-      });
-    })();
-
-    // small toast
-    function showToast(msg, ms = 3000){
-      toastEl.innerText = msg;
-      toastEl.style.display = 'block';
-      clearTimeout(showToast._t);
-      showToast._t = setTimeout(()=> toastEl.style.display = 'none', ms);
+    // open / close panel
+    function openPanel(){
+      panel.classList.add('open');
+      overlay.style.display = 'block';
+      panel.setAttribute('aria-hidden','false');
+      overlay.setAttribute('aria-hidden','false');
+      openMenu.setAttribute('aria-expanded','true');
+      // lock scroll
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    }
+    function closePanelFn(){
+      panel.classList.remove('open');
+      overlay.style.display = 'none';
+      panel.setAttribute('aria-hidden','true');
+      overlay.setAttribute('aria-hidden','true');
+      openMenu.setAttribute('aria-expanded','false');
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
     }
 
-    function setIndicator(online){
-      if(online){
-        indicatorDot.classList.remove('indicator-offline');
-        indicatorDot.classList.add('indicator-online');
-        indicatorText.innerText = 'Online';
-      } else {
-        indicatorDot.classList.remove('indicator-online');
-        indicatorDot.classList.add('indicator-offline');
-        indicatorText.innerText = 'Offline';
-      }
-    }
+    openMenu.addEventListener('click', openPanel);
+    closePanel.addEventListener('click', closePanelFn);
+    overlay.addEventListener('click', closePanelFn);
 
-    function getUserId(){
-      const id = document.body.getAttribute('data-user-id') || localStorage.getItem('userId');
-      return id && id.trim() !== '' ? id : null;
-    }
-
-    function storeLastKnownOnline(userId, online){
-      if(!userId) return;
-      try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){}
-    }
-    function readLastKnownOnline(userId){
-      if(!userId) return null;
-      try { const v = localStorage.getItem('techOnline_' + userId); return v === null ? null : v === '1'; } catch(e){ return null; }
-    }
-
-    async function sendStatusToBackend(userId, online, lat = null, lng = null){
-      const url = API_BASE + '/api/tech/status';
-      const controller = new AbortController();
-      const timeout = setTimeout(()=> controller.abort(), 12000);
+    // show user fullname in header if available
+    (function loadUser(){
       try {
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({ techId: userId, online: !!online, lat: lat, lng: lng })
-        });
-        clearTimeout(timeout);
-        const json = await resp.json().catch(()=> null);
-        if(!resp.ok) return { success:false, message: (json && json.message) ? json.message : ('HTTP ' + resp.status) };
-        return json;
-      } catch(err){
-        clearTimeout(timeout);
-        if(err.name === 'AbortError') return { success:false, message:'Request timed out' };
-        return { success:false, message: err.message || 'Network error' };
+        const raw = localStorage.getItem('wc_user') || localStorage.getItem('user');
+        if(raw){
+          const u = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const name = u.fullname || u.username || u.email || u.phone || 'Welcome';
+          welcomeTitle.textContent = 'Welcome back — ' + name;
+        } else if(localStorage.getItem('userId')){
+          welcomeTitle.textContent = 'Welcome back';
+        }
+      } catch(e){
+        console.warn('loadUser error', e);
       }
-    }
-
-    async function handleSwitchToggle(e){
-      const checked = e.target.checked;
-      const userId = getUserId();
-      if(!userId){
-        if(statusSwitch) statusSwitch.checked = !checked;
-        showToast('No user id found. Set body[data-user-id] or localStorage.userId to enable status updates.', 5000);
-        return;
-      }
-
-      let lat = null, lng = null;
-      if(navigator.geolocation){
-        try{
-          const pos = await new Promise((resolve, reject) => {
-            const t = setTimeout(()=> reject(new Error('geolocation timeout')), 4500);
-            navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge: 10000, timeout:4500 });
-          });
-          lat = pos.coords.latitude; lng = pos.coords.longitude;
-        }catch(err){ console.warn('geolocation unavailable', err); }
-      }
-
-      setIndicator(checked);
-      if(statusSwitch) statusSwitch.disabled = true;
-      showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
-
-      const result = await sendStatusToBackend(userId, checked, lat, lng);
-      if(statusSwitch) statusSwitch.disabled = false;
-
-      if(result && result.success){
-        storeLastKnownOnline(userId, checked);
-        showToast('Status updated');
-      } else {
-        const prev = !checked;
-        if(statusSwitch) statusSwitch.checked = prev;
-        setIndicator(prev);
-        const msg = (result && result.message) ? result.message : 'Failed to update status';
-        showToast('Error: ' + msg, 6000);
-        alert('Could not update status: ' + msg);
-      }
-    }
-
-    if(document.getElementById('statusSwitch')){
-      document.getElementById('statusSwitch').addEventListener('change', handleSwitchToggle);
-    }
-
-    (function initFromLocal(){
-      const userId = getUserId();
-      const ss = document.getElementById('statusSwitch');
-      if(!userId){ setIndicator(false); if(ss) ss.checked=false; return; }
-      const known = readLastKnownOnline(userId);
-      if(known === null){ setIndicator(false); if(ss) ss.checked=false; } else { if(ss) ss.checked = !!known; setIndicator(!!known); }
     })();
 
-    document.addEventListener('keydown', (e)=> {
-      if(e.key === 'Escape') {
-        const menu = document.getElementById('menuDropdown');
-        const btn = document.getElementById('hamburgerBtn');
-        if(menu) menu.style.display = 'none';
-        if(btn) btn.setAttribute('aria-expanded', false);
-        if(menu) menu.setAttribute('aria-hidden', true);
+    // availability toggle (client-side demo + optional backend call)
+    const goBtn = document.getElementById('goOnlineBtn');
+    let online = localStorage.getItem('wc_online') === '1';
+
+    function setOnlineUI(){
+      goBtn.textContent = online ? 'Go Offline' : 'Go Online';
+      goBtn.style.background = online ? '#fff' : 'linear-gradient(90deg,#0b5cff,#55a7ff)';
+      goBtn.style.color = online ? '#0b5cff' : '#fff';
+      goBtn.style.border = online ? '1px solid #e6eef9' : '0';
+    }
+    setOnlineUI();
+
+    // optional: notify backend about status (send techId if present)
+    async function notifyBackendStatus(isOnline){
+      const techId = localStorage.getItem('userId') || (function(){
+        try { const u = JSON.parse(localStorage.getItem('wc_user')||'null'); return u && u.id ? u.id : null; } catch(e){ return null; }
+      })();
+      if(!techId) return; // nothing to send if no id
+
+      try{
+        await fetch('https://wireconnet-1.onrender.com/api/tech/status', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ techId, online: !!isOnline })
+        });
+      }catch(e){
+        console.warn('notify backend failed', e);
+      }
+    }
+
+    goBtn.addEventListener('click', async ()=> {
+      online = !online;
+      // save locally
+      localStorage.setItem('wc_online', online ? '1' : '0');
+      setOnlineUI();
+      // attempt to notify backend (non-blocking)
+      notifyBackendStatus(online).then(()=>{/*ok*/}).catch(()=>{/*ignore*/});
+    });
+
+    // settings open/close
+    document.getElementById('openSettings').addEventListener('click', ()=>{
+      settingsModal.style.display = 'flex';
+      settingsModal.querySelector('div').focus?.();
+    });
+    document.getElementById('closeSettings').addEventListener('click', ()=> settingsModal.style.display = 'none');
+
+    // LOGOUT behavior added: clear session keys and redirect to login.html
+    logoutLink.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      // clear session / login-related keys
+      try {
+        localStorage.removeItem('wc_user');
+        localStorage.removeItem('wc_token');
+        localStorage.removeItem('wc_online');
+        localStorage.removeItem('userId');
+        // also remove any other keys you use for session
+        // localStorage.removeItem('some_other_key');
+
+        // close panel then redirect
+        closePanelFn();
+        // small delay so panel closes visually
+        setTimeout(()=> {
+          window.location.href = 'login.html';
+        }, 120);
+      } catch(err){
+        console.warn('logout error', err);
+        window.location.href = 'login.html';
+      }
+    });
+
+    // For safety: "Sign out (alt)" link also clears on click (keeps behavior consistent)
+    const altSignOut = document.querySelector('.panel-body a[href="login.html"]');
+    if(altSignOut){
+      altSignOut.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        try {
+          localStorage.removeItem('wc_user');
+          localStorage.removeItem('wc_token');
+          localStorage.removeItem('wc_online');
+          localStorage.removeItem('userId');
+        } catch(e){}
+        window.location.href = 'login.html';
+      });
+    }
+
+    // Ensure keyboard ESC closes panel/modal
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape'){
+        if(settingsModal.style.display === 'flex'){ settingsModal.style.display = 'none'; }
+        if(panel.classList.contains('open')){ closePanelFn(); }
       }
     });
   </script>
