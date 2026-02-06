@@ -3,16 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — Book Job (Debug)</title>
+  <title>WireConnect — Book Job</title>
   <style>
     :root{
-      --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280; --shadow:0 8px 30px rgba(16,24,40,0.06);
+      --bg:#f6f8fb;
+      --card:#fff;
+      --accent:#0b5cff;
+      --muted:#6b7280;
+      --shadow: 0 8px 30px rgba(16,24,40,0.06);
+      --radius:12px;
     }
     html,body{height:100%;margin:0}
-    body{ font-family:Inter, Arial, sans-serif; background:var(--bg); color:#111827; display:flex; justify-content:center; padding:18px; }
-    .wrap{ width:100%; max-width:980px; background:var(--card); border-radius:12px; padding:0; box-shadow:var(--shadow); box-sizing:border-box; overflow:hidden; position:relative; }
+    body{
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:#111827;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:18px;
+    }
+
+    .wrap{
+      width:100%;
+      max-width:980px;
+      background:var(--card);
+      border-radius:12px;
+      padding:0;
+      box-shadow:var(--shadow);
+      box-sizing:border-box;
+      overflow:hidden;
+    }
 
     .header-logo img{ width:100%; height:120px; object-fit:cover; display:block; }
+
     .content { padding:18px; }
     h1{ margin:0; font-size:20px; font-weight:800; font-style:italic; }
     .muted{ color:var(--muted); font-size:13px; }
@@ -20,57 +44,58 @@
     input, select, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #eef3fb; box-sizing:border-box; margin-bottom:8px; font-size:14px; }
     textarea{ font-family:inherit; min-height:100px; }
 
-    .controls { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
-    .btn{ background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:800 }
-    .btn-ghost{ background:transparent; border:1px solid #e6eef9; padding:8px 12px; border-radius:8px; cursor:pointer }
+    .controls { display:flex; gap:12px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+    .btn-primary{
+      background:var(--accent);
+      color:#fff;
+      border:0;
+      padding:12px 18px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:16px;
+      box-shadow: 0 10px 24px rgba(11,92,255,0.12);
+    }
+    .btn-secondary{
+      background:transparent;
+      color:#111;
+      border:2px solid #e6eef9;
+      padding:10px 14px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:800;
+    }
+
     .estimate{ background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:8px; font-weight:700 }
     .small{ font-size:13px; color:var(--muted) }
 
-    /* modal styles */
+    /* modal */
     .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:9999; }
     .modal{ width:92%; max-width:560px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 48px rgba(2,6,23,0.4); text-align:center; }
-    .spinner{ width:64px; height:64px; border-radius:50%; border:8px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:10px auto }
+    .spinner{ width:56px; height:56px; border-radius:50%; border:8px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:10px auto }
     @keyframes spin{ to{ transform:rotate(360deg) } }
     .tech-card{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; border:1px solid #eef6ff; background:#fbfeff; margin-top:10px }
     .tech-avatar{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#f0f3ff }
-    .modal h3{ margin:0 0 8px; font-size:18px }
-    .modal .muted{ color:#374151; margin-bottom:8px; }
 
-    /* DEBUG panel */
-    .debug-toggle { position:fixed; right:18px; bottom:18px; z-index:5000; }
-    .debug-toggle button { background:#111; color:#fff; border:0; padding:10px 12px; border-radius:8px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.18); }
-    .debug-panel {
-      position:fixed;
-      right:18px;
-      bottom:64px;
-      width:420px;
-      max-width:calc(100% - 36px);
-      max-height:60vh;
-      overflow:auto;
-      background:#0b1220;
-      color:#e6f0ff;
-      border-radius:12px;
-      padding:12px;
-      box-shadow:0 16px 48px rgba(2,6,23,0.5);
-      z-index:5000;
-      font-family:monospace;
-      font-size:13px;
-      display:none;
-    }
-    .debug-panel pre { white-space:pre-wrap; word-break:break-word; color:#dbeafe; background:transparent; border:none; padding:6px 0; margin:0; }
-    .debug-actions { display:flex; gap:8px; margin-top:8px; justify-content:flex-end; }
-    .debug-actions button{ background:#fff; color:#111; border-radius:8px; padding:6px 8px; border:0; cursor:pointer; font-weight:700; }
-
-    @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} .debug-panel{ width:92vw; right:8px; left:8px; } }
+    /* responsive */
+    @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="header-logo"><img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo"></div>
+    <div class="header-logo">
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+    </div>
+
     <div class="content">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div><h1>Book a Job</h1><div class="muted" id="userGreeting">—</div></div>
-        <div style="align-self:flex-start"><a href="dashboard.html" style="text-decoration:none;color:var(--accent);font-weight:800">← Back to dashboard</a></div>
+        <div>
+          <h1>Book a Job</h1>
+          <div class="muted" id="userGreeting">—</div>
+        </div>
+        <div style="align-self:flex-start">
+          <a href="dashboard.html" style="text-decoration:none;color:var(--accent);font-weight:800">← Back to dashboard</a>
+        </div>
       </div>
 
       <!-- booking form -->
@@ -92,7 +117,11 @@
 
       <div id="solarFields" class="hidden" style="margin-top:8px">
         <label>Building type</label>
-        <select id="solarBuilding"><option value="bungalow">Bungalow (base)</option><option value="one_story">1 storey</option><option value="two_plus">2+ storey</option></select>
+        <select id="solarBuilding">
+          <option value="bungalow">Bungalow (base)</option>
+          <option value="one_story">1 storey</option>
+          <option value="two_plus">2+ storey</option>
+        </select>
         <label><input id="solarComplex" type="checkbox"> Complex roof / high access (+₦50,000)</label>
       </div>
 
@@ -101,7 +130,7 @@
         <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
       </div>
 
-      <!-- NEW inputs: State, LGA, Town/City, workers, estimated days -->
+      <!-- Location + job meta -->
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
         <div>
           <label>State *</label>
@@ -132,12 +161,16 @@
       <textarea id="description" rows="5" placeholder="Describe the job — location, constraints, etc."></textarea>
 
       <div class="controls">
-        <button id="calcBtn" class="btn" title="Estimate price">Calculate estimate</button>
-        <button id="submitBtn" class="btn-ghost" title="Submit booking">Submit booking</button>
+        <button id="calcBtn" class="btn-secondary" title="Estimate price">Calculate estimate</button>
+
+        <!-- Make sure Submit is clearly visible and primary -->
+        <button id="submitBtn" class="btn-primary" title="Submit booking">Submit booking</button>
+
         <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
           <div style="background:#f3f8ff; border-radius:8px; padding:10px 12px; border:1px solid #eef3fb; color:var(--muted)">₦</div>
           <div id="priceDisplay" style="font-weight:800;font-size:16px">—</div>
         </div>
+
         <label style="margin-left:12px;align-self:center"><input id="useAssign" type="checkbox"> use /api/book-assign</label>
       </div>
 
@@ -146,42 +179,21 @@
     </div>
   </div>
 
-  <!-- modal -->
+  <!-- modal (loading / assigned / not assigned / error) -->
   <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal" role="document" aria-labelledby="modalTitle">
       <div id="modalContent"></div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button id="modalClose" class="btn-ghost" style="display:none">Close</button>
-        <button id="modalOk" class="btn" style="display:none">OK</button>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+        <button id="modalClose" class="btn-secondary" style="display:none">Close</button>
+        <button id="modalOk" class="btn-primary" style="display:none">OK</button>
       </div>
     </div>
   </div>
 
-  <!-- debug toggle & panel -->
-  <div class="debug-toggle">
-    <button id="debugToggleBtn">Debug</button>
-  </div>
-  <div id="debugPanel" class="debug-panel" aria-hidden="true">
-    <div style="font-weight:800;margin-bottom:8px">Network Debug</div>
-    <div><strong>Last Request URL:</strong><pre id="dbg_url">—</pre></div>
-    <div><strong>Payload sent:</strong><pre id="dbg_payload">—</pre></div>
-    <div><strong>Response status:</strong><pre id="dbg_status">—</pre></div>
-    <div><strong>Response headers / info:</strong><pre id="dbg_headers">—</pre></div>
-    <div><strong>Raw response text:</strong><pre id="dbg_raw">—</pre></div>
-    <div><strong>Parsed JSON:</strong><pre id="dbg_json">—</pre></div>
-    <div><strong>Client error (if any):</strong><pre id="dbg_error">—</pre></div>
-
-    <div class="debug-actions">
-      <button id="dbgClear">Clear</button>
-      <button id="dbgCopy">Copy debug JSON</button>
-    </div>
-  </div>
-
   <script>
-    // ---------- Config ----------
     const API_BASE = 'https://wireconnet-1.onrender.com';
 
-    // ---------- DOM ----------
+    // DOM refs
     const jobType = document.getElementById('jobType');
     const conduitFields = document.getElementById('conduitFields');
     const solarFields = document.getElementById('solarFields');
@@ -212,86 +224,82 @@
     const modalClose = document.getElementById('modalClose');
     const modalOk = document.getElementById('modalOk');
 
-    const debugToggleBtn = document.getElementById('debugToggleBtn');
-    const debugPanel = document.getElementById('debugPanel');
-    const dbg_url = document.getElementById('dbg_url');
-    const dbg_payload = document.getElementById('dbg_payload');
-    const dbg_status = document.getElementById('dbg_status');
-    const dbg_headers = document.getElementById('dbg_headers');
-    const dbg_raw = document.getElementById('dbg_raw');
-    const dbg_json = document.getElementById('dbg_json');
-    const dbg_error = document.getElementById('dbg_error');
-    const dbgClear = document.getElementById('dbgClear');
-    const dbgCopy = document.getElementById('dbgCopy');
-
-    // ---------- Pricing ----------
+    // pricing defaults
     let PRICES = {
-      conduit_per_room: 25000, conduit_db:15000, conduit_nepa:50000,
-      conduit_wiring_add_per_room:5000, conduit_fittings_per_room:15000,
-      solar_base_bungalow:170000, solar_extra_per_storey:30000, solar_complex:50000
+      conduit_per_room: 25000,
+      conduit_db: 15000,
+      conduit_nepa: 50000,
+      conduit_wiring_add_per_room: 5000,
+      conduit_fittings_per_room: 15000,
+      solar_base_bungalow: 170000,
+      solar_extra_per_storey: 30000,
+      solar_complex: 50000
     };
 
-    // ---------- Utilities ----------
-    function openModal(html, { showOk=false, onOk=null, closable=true } = {}){
-      modalContent.innerHTML = html;
+    function openModal(innerHtml, { showOk=false, okText='OK', onOk=null, closable=true, showClose=true } = {}){
+      modalContent.innerHTML = innerHtml;
       modalBackdrop.style.display = 'flex';
       modalBackdrop.setAttribute('aria-hidden','false');
       modalOk.style.display = showOk ? 'inline-block' : 'none';
-      modalOk.onclick = function(){ if(onOk) onOk(); closeModal(); };
-      modalClose.style.display = closable ? 'inline-block' : 'none';
+      modalOk.textContent = okText || 'OK';
+      if(showOk){
+        modalOk.onclick = function(){ if(onOk) onOk(); closeModal(); };
+      } else {
+        modalOk.onclick = null;
+      }
+      modalClose.style.display = showClose && closable ? 'inline-block' : 'none';
       modalClose.onclick = closeModal;
     }
-    function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); modalContent.innerHTML = ''; modalOk.onclick = null; }
-
-    function showLoadingModal(msg = 'Searching for a technician...'){ openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>${escapeHtml(msg)}</h3><div class="muted">Please wait while we query availability.</div></div>`, { showOk:false, closable:false }); }
-    function showAssignedModal(techName, jobId, techId){ openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${escapeHtml(techName || 'Technician assigned')}</div><div class="muted" style="margin-top:8px">Press OK to open chat with the technician.</div>`, { showOk:true, onOk: ()=> { const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : ''); window.location.href = 'chat.html?' + qs; }, closable:true }); }
-    function showNoTechModal(){ openModal(`<h3>No technician available</h3><div class="muted">We created your job but couldn't assign a technician right now. We'll keep trying.</div>`, { showOk:false, closable:true }); }
-    function showErrorModal(title, details){ const safe = details ? `<pre style="text-align:left;max-height:240px;overflow:auto;background:#fff;border:1px solid #fee;padding:8px;border-radius:6px;color:#111">${escapeHtml(typeof details === 'string' ? details : JSON.stringify(details, null, 2))}</pre>` : ''; openModal(`<h3>${escapeHtml(title)}</h3><div class="muted">${safe}</div>`, { showOk:false, closable:true }); }
-
-    function escapeHtml(s){ if(!s && s !== 0) return ''; return String(s).replace(/[&<>"'`=\/]/g, function(ch){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[ch]; }); }
-
-    // ---------- Debug helpers ----------
-    function dbgClearAll(){
-      dbg_url.textContent = '—';
-      dbg_payload.textContent = '—';
-      dbg_status.textContent = '—';
-      dbg_headers.textContent = '—';
-      dbg_raw.textContent = '—';
-      dbg_json.textContent = '—';
-      dbg_error.textContent = '—';
-    }
-    dbgClear.addEventListener('click', dbgClearAll);
-    debugToggleBtn.addEventListener('click', ()=> {
-      const shown = debugPanel.style.display === 'block';
-      debugPanel.style.display = shown ? 'none' : 'block';
-      debugToggleBtn.textContent = shown ? 'Debug' : 'Hide';
-    });
-    dbgCopy.addEventListener('click', ()=>{
-      const dump = {
-        url: dbg_url.textContent,
-        payload: safeParse(dbg_payload.textContent),
-        status: dbg_status.textContent,
-        headers: dbg_headers.textContent,
-        raw: dbg_raw.textContent,
-        json: safeParse(dbg_json.textContent),
-        error: dbg_error.textContent
-      };
-      navigator.clipboard?.writeText(JSON.stringify(dump, null, 2)).then(()=> alert('Debug JSON copied')).catch(()=> alert('Could not copy'));
-    });
-
-    function safeParse(txt){
-      try{ return JSON.parse(txt); }catch(e){ return txt; }
+    function closeModal(){
+      modalBackdrop.style.display = 'none';
+      modalBackdrop.setAttribute('aria-hidden','true');
+      modalContent.innerHTML = '';
+      modalOk.onclick = null;
+      modalClose.onclick = null;
     }
 
-    // ---------- Job type toggle ----------
+    // show loading
+    function showLoading(text='Searching for a technician...'){
+      openModal(`<div><div class="spinner" aria-hidden="true"></div><h3 style="margin:10px 0">${escapeHtml(text)}</h3><div class="muted">This usually takes a few seconds.</div></div>`, { showOk:false, closable:false, showClose:false });
+    }
+
+    function showAssignedModal(techName, jobId, techId, estimatedDaysVal){
+      const safeName = techName ? escapeHtml(techName) : 'Technician';
+      const html = `
+        <h3>Job matched ✅</h3>
+        <div style="margin-top:8px;font-weight:800;font-size:16px">${safeName}</div>
+        <div class="muted" style="margin-top:8px">A technician has been assigned. Press OK to open chat (or you will be redirected automatically).</div>
+      `;
+      // auto-redirect after short delay too
+      openModal(html, { showOk:true, onOk: ()=> { redirectToChat(jobId, techId); }, closable:true, showClose:true });
+      setTimeout(()=> {
+        // If still open, redirect
+        if(modalBackdrop.style.display === 'flex'){
+          redirectToChat(jobId, techId);
+        }
+      }, 1200);
+    }
+
+    function showNoTechModal(){
+      openModal(`<h3>No technician available</h3><div class="muted" style="margin-top:8px">We created your job but couldn't assign a technician right now. We'll keep trying and notify you if someone becomes available.</div>`, { showOk:false, closable:true, showClose:true });
+    }
+
+    function showErrorModal(title, details){
+      const detailsHtml = details ? `<div style="margin-top:8px;color:#111;text-align:left;white-space:pre-wrap">${escapeHtml(String(details))}</div>` : '';
+      openModal(`<h3>${escapeHtml(title)}</h3><div class="muted">${detailsHtml}</div>`, { showOk:false, closable:true, showClose:true });
+    }
+
+    function escapeHtml(str){ if(!str && str !== 0) return ''; return String(str).replace(/[&<>"'`=\/]/g, function(ch){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[ch]; }); }
+
+    // job type toggle
     jobType.addEventListener('change', ()=> {
       const v = jobType.value;
-      conduitFields.classList.toggle('hidden', v!=='conduit');
-      solarFields.classList.toggle('hidden', v!=='solar');
-      otherFields.classList.toggle('hidden', v!=='other');
+      conduitFields.classList.toggle('hidden', v !== 'conduit');
+      solarFields.classList.toggle('hidden', v !== 'solar');
+      otherFields.classList.toggle('hidden', v !== 'other');
     });
 
-    // ---------- Price calc ----------
+    // estimate logic
     function calculateEstimateLocal(){
       const v = jobType.value; let total = 0; let breakdown = [];
       if(v === 'conduit'){
@@ -303,7 +311,8 @@
         if(conduitWiringAdd.checked){ const add = PRICES.conduit_wiring_add_per_room * rooms; total += add; breakdown.push(`Extra wiring ${rooms}×₦${PRICES.conduit_wiring_add_per_room.toLocaleString()} = ₦${add.toLocaleString()}`); }
         if(conduitFittings.checked){ const fit = PRICES.conduit_fittings_per_room * rooms; total += fit; breakdown.push(`Fittings ${rooms}×₦${PRICES.conduit_fittings_per_room.toLocaleString()} = ₦${fit.toLocaleString()}`); }
       } else if(v === 'solar'){
-        let base = PRICES.solar_base_bungalow; const b = solarBuilding.value;
+        let base = PRICES.solar_base_bungalow;
+        const b = solarBuilding.value;
         if(b === 'bungalow'){ base = PRICES.solar_base_bungalow; breakdown.push(`Bungalow base ₦${base.toLocaleString()}`); }
         else if(b === 'one_story'){ base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey; breakdown.push(`1 storey added`); }
         else if(b === 'two_plus'){ base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey * 2; breakdown.push(`2+ storey added`); }
@@ -314,15 +323,18 @@
       }
       return { total, breakdown };
     }
-    calcBtn.addEventListener('click', (e)=> {
+
+    calcBtn.addEventListener('click', (e) => {
       e.preventDefault();
       const res = calculateEstimateLocal();
       estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
     });
 
-    // ---------- Local user and geo ----------
-    function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
+    // Local user helper
+    function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+
+    // Geo store helper (best-effort)
     async function tryGeolocationSave(){
       if(!navigator.geolocation) return;
       try{
@@ -334,37 +346,38 @@
       }catch(e){ /* ignore */ }
     }
 
-    // ---------- MAIN: submit booking with detailed debug ----------
-    submitBtn.addEventListener('click', async (ev)=>{
-      ev.preventDefault();
+    // redirect to chat
+    function redirectToChat(jobId, techId){
+      if(!jobId) window.location.href = 'chat.html';
+      const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
+      window.location.href = 'chat.html?' + qs;
+    }
 
-      // clear debug display
-      dbgClearAll();
+    // submit booking
+    submitBtn.addEventListener('click', async (ev) => {
+      ev.preventDefault();
 
       const user = loadUser();
       if(!user || !user.id){
-        showErrorModal('Login required', 'Please login as a client to create a booking.');
-        dbg_error.textContent = 'Missing wc_user in localStorage or user.id';
+        showErrorModal('Login required', 'Please login as a client to book a job.');
         return;
       }
 
       const state = (stateInput.value || '').trim();
       if(!state){
-        showErrorModal('State required', 'Please enter the state where the job will take place.');
-        dbg_error.textContent = 'Missing state in form';
+        showErrorModal('State required', 'Please enter the state for the job.');
         return;
       }
 
-      const jt = jobType.value;
-      let job_type = jt;
-      let descriptionText = description.value || '';
-      if(jt === 'conduit'){ const rooms = Math.max(1, Number(conduitRooms.value || 1)); job_type = 'conduit'; descriptionText = `Conduit wiring — rooms: ${rooms}. ` + descriptionText; }
-      else if(jt === 'solar'){ job_type = 'solar'; descriptionText = `Solar install — building: ${solarBuilding.value}. ` + descriptionText; }
-      else job_type = otherName.value || 'other';
+      let job_type = jobType.value;
+      let descriptionText = (description.value || '').trim();
+      if(job_type === 'conduit'){ const rooms = Math.max(1, Number(conduitRooms.value || 1)); descriptionText = `Conduit wiring — rooms: ${rooms}. ` + descriptionText; }
+      else if(job_type === 'solar'){ descriptionText = `Solar install — building: ${solarBuilding.value}. ` + descriptionText; }
+      else if(job_type === 'other'){ job_type = (otherName.value || 'other').trim(); }
 
       const est = calculateEstimateLocal();
       let price = est.total;
-      if(price === 0 && jt === 'other'){
+      if(price === 0 && job_type === 'other'){
         const pRaw = prompt('Enter estimated price in Naira (no commas):', '50000');
         price = Number(pRaw || 0) || 0;
       }
@@ -377,7 +390,6 @@
         clientId: user.id,
         state: state,
         city: (cityInput.value || '').trim() || (user.city || null),
-        lga: (lgaInput.value || '').trim() || (user.lga || null),
         address: null,
         lat: Number.isFinite(latLocal) ? latLocal : null,
         lng: Number.isFinite(lngLocal) ? lngLocal : null,
@@ -388,19 +400,13 @@
         estimated_days: Number(estimatedDays.value) || 1
       };
 
-      // Show debug info for request
-      dbg_url.textContent = API_BASE + (useAssign.checked ? '/api/book-assign' : '/api/book');
-      dbg_payload.textContent = JSON.stringify(payload, null, 2);
-      debugPanel.style.display = 'block';
-      debugToggleBtn.textContent = 'Hide';
+      // show loading modal
+      showLoading('Searching for a technician...');
 
-      // show modal loading
-      showLoadingModal('Searching for a technician...');
-
-      try{
+      try {
         const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
         const controller = new AbortController();
-        const timeout = setTimeout(()=> controller.abort(), 20000);
+        const to = setTimeout(()=> controller.abort(), 20000);
 
         const resp = await fetch(API_BASE + endpoint, {
           method: 'POST',
@@ -408,103 +414,79 @@
           body: JSON.stringify(payload),
           signal: controller.signal
         });
-        clearTimeout(timeout);
+        clearTimeout(to);
 
-        // gather status & headers (note: header enumeration limited by CORS)
-        dbg_status.textContent = `${resp.status} ${resp.statusText}`;
-        try{
-          const hdrs = {};
-          for (const pair of resp.headers.entries()) { hdrs[pair[0]] = pair[1]; }
-          dbg_headers.textContent = JSON.stringify(hdrs, null, 2);
-        }catch(e){ dbg_headers.textContent = 'Could not read headers: ' + String(e); }
-
-        const raw = await resp.text().catch(()=>null);
-        dbg_raw.textContent = raw || '—';
+        const text = await resp.text().catch(()=>null);
         let body = null;
-        try { body = raw ? JSON.parse(raw) : null; dbg_json.textContent = JSON.stringify(body, null, 2); } catch(e) { dbg_json.textContent = 'Response not JSON'; }
+        try{ body = text ? JSON.parse(text) : null; }catch(e){ body = null; }
 
+        // server error
         if(!resp.ok){
           closeModal();
-          showErrorModal('Server error while creating booking', body && body.message ? body.message : (`HTTP ${resp.status}`));
-          dbg_error.textContent = `Non-OK response: ${resp.status} ${resp.statusText} — ${raw || ''}`;
-          console.error('Booking failed', resp.status, body || raw);
+          const msg = (body && body.message) ? body.message : (`HTTP ${resp.status} ${resp.statusText}`);
+          showErrorModal('Server error creating booking', msg);
           return;
         }
 
-        // resp.ok and body parsed
-        if(!body || typeof body !== 'object'){
-          closeModal();
-          showErrorModal('Unexpected server response', raw || 'No JSON body');
-          dbg_error.textContent = 'Response OK but body not JSON or empty';
-          return;
-        }
+        // success response
+        // body.success === true and body.jobId may be present
+        const jobId = (body && (body.jobId || (body.job && body.job.id))) || null;
+        const assignedFlag = !!(body && (body.assigned === true || body.message && /assigned/i.test(String(body.message))));
 
-        // Normal success path
-        if(body.success){
-          const jobId = body.jobId || (body.job && body.job.id) || null;
-          const assigned = !!body.assigned;
-          if(assigned){
-            // if technician object present, use it
-            let tech = null;
-            if(body.technician && typeof body.technician === 'object') tech = body.technician;
-            if(!tech && jobId){
-              // try to fetch job status (robust)
-              try{
-                const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
-                const sraw = await sresp.text().catch(()=>null);
-                let sbody = null;
-                try{ sbody = sraw ? JSON.parse(sraw) : null; } catch(e){}
-                dbg_json.textContent = JSON.stringify({ initial: body, job_status: sbody || sraw }, null, 2);
-                if(sresp.ok && sbody && sbody.job && sbody.job.assigned_tech_id){
-                  const techId = sbody.job.assigned_tech_id;
-                  // fetch tech profile
+        if(assignedFlag){
+          // try to obtain technician name (either in body.technician or via job status + user endpoint)
+          let tech = (body && body.technician) ? body.technician : null;
+          if(!tech && jobId){
+            // fetch job status to get assigned_tech_id
+            try{
+              const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+              if(sresp.ok){
+                const sbody = await sresp.json().catch(()=>null);
+                const techId = sbody && sbody.job && sbody.job.assigned_tech_id ? sbody.job.assigned_tech_id : null;
+                if(techId){
+                  // try to fetch technician profile
                   try{
                     const tresp = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId));
-                    const traw = await tresp.text().catch(()=>null);
-                    let tjson = null;
-                    try{ tjson = traw ? JSON.parse(traw) : null; } catch(e){}
-                    dbg_json.textContent = JSON.stringify({ initial: body, job_status: sbody, tech_fetch: tjson || traw }, null, 2);
-                    if(tresp.ok && tjson && (tjson.id || tjson.success)){
-                      tech = tjson;
+                    if(tresp.ok){
+                      const tjson = await tresp.json().catch(()=>null);
+                      // backend /api/user/:id returns success:true + user fields OR returns user fields directly in some designs; handle both
+                      if(tjson && (tjson.fullname || tjson.username || tjson.id)) tech = tjson;
                     }
-                  }catch(e){ dbg_error.textContent = 'Tech fetch failed: ' + String(e); }
+                  }catch(e){}
                 }
-              }catch(e){ dbg_error.textContent = 'Post-assign job fetch error: ' + String(e); }
-            }
-
-            closeModal();
-            const techName = (tech && (tech.fullname || tech.username || tech.name)) || 'Assigned technician';
-            showAssignedModal(techName, jobId, tech && (tech.id || tech.user_id) ? (tech.id || tech.user_id) : null);
-            return;
-          } else {
-            closeModal();
-            dbg_status.textContent += ' — assigned:false';
-            showNoTechModal();
-            return;
+              }
+            }catch(e){}
           }
-        } else {
+
           closeModal();
-          dbg_error.textContent = 'success:false from server';
-          showErrorModal('Server reported failure', body.message || JSON.stringify(body));
+          const techName = (tech && (tech.fullname || tech.username || tech.name)) ? (tech.fullname || tech.username || tech.name) : 'Assigned technician';
+          const techId = tech && (tech.id || tech.user_id) ? (tech.id || tech.user_id) : null;
+          showAssignedModal(techName, jobId, techId, payload.estimated_days);
+          return;
+        } else {
+          // not assigned immediately
+          closeModal();
+          showNoTechModal();
           return;
         }
-
-      }catch(err){
+      } catch(err) {
         closeModal();
         const isAbort = err && err.name === 'AbortError';
-        dbg_error.textContent = (isAbort ? 'Request timed out' : String(err)) + '\n' + (err && err.stack ? err.stack : '');
         showErrorModal(isAbort ? 'Request timed out' : 'Network error', String(err));
-        console.error('Booking exception', err);
+        console.error('Booking error:', err);
       }
     });
 
-    // ---------- Init ----------
+    // init: load user and prices
     (function init(){
       const uRaw = localStorage.getItem('wc_user');
       if(uRaw){
-        try { const user = JSON.parse(uRaw); document.getElementById('userGreeting').textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`; } catch(e){}
+        try{ const user = JSON.parse(uRaw); document.getElementById('userGreeting').textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`; }catch(e){}
+      } else {
+        // keep greeting as — (do not auto-navigate away)
       }
 
+      // attempt to fetch prices (non-blocking)
       (async ()=>{
         try{
           const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
@@ -518,19 +500,15 @@
             }
           }
         }catch(e){}
-        const res = calculateEstimateLocal(); estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
+        const res = calculateEstimateLocal();
+        estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
         priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
       })();
     })();
 
-    // close modal if backdrop clicked
+    // close modal on backdrop click
     modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
 
-    // expose a short debug helper on window for console use
-    window.__wc_debug = {
-      setPayload: (p)=> { dbg_payload.textContent = JSON.stringify(p, null, 2); debugPanel.style.display = 'block'; },
-      clear: dbgClearAll
-    };
   </script>
 </body>
 </html>
