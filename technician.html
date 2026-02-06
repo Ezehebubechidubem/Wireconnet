@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="author" content="Mr Dubem" />
+  <meta name="description" content="WireConnect Technician Dashboard" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>WireConnect — Technician Dashboard</title>
+  <style>
+    /* reset */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: Georgia, "Times New Roman", Times, serif; -webkit-text-size-adjust: 100%; }
+
+    /* header logo (covers top) */
+    :root { --header-h: 110px; } /* slightly reduced so more space on mobile */
+    .bend {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--header-h); z-index: 1000;
+      background: #fff; border-bottom: 1px solid #000;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .bend figure { width:100%; height:100%; margin:0; }
+    .bend figure img { width:100%; height:100%; object-fit: cover; display:block; }
+
+    /* push page content below header */
+    main { padding-top: var(--header-h); min-height: calc(100vh - var(--header-h)); }
+
+    /* motto row and online indicator */
+    .brief{
+      color:black;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 14px;
+      font-weight:bold;
+      font-style:italic;
+    }
+    .brief .left { display:flex; align-items:center; gap:10px; min-width:0; }
+    .brief .right { display:flex; align-items:center; gap:8px; }
+
+    .sort { color: rgba(0,0,200,1); padding: 8px 12px; margin-bottom: 6px; text-align:left; }
+    .sort .dent { font-size: clamp(30px, 8vw, 56px); line-height: 1; font-weight: 700; color: rgba(0,0,200,1); word-break: break-word; }
+
+    .fit { padding: 12px 16px; font-size: clamp(15px, 3.5vw, 20px); line-height: 1.6; color:#111; }
+
+    /* Buttons style (kept) */
+    .audits { display:flex; justify-content:center; align-items:center; gap:18px; padding:18px 12px; flex-wrap:wrap; }
+    .auditss { display:flex; justify-content:center; gap:14px; padding: 18px 10px; }
+    .do, .too, .to { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; border-radius:30px; background: linear-gradient(#1154ff,#0738d6); color:#ffffff; border:4px solid #000; font-weight:800; font-size:18px; line-height:1; text-align:center; white-space:normal; word-break:break-word; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08); }
+    .do{ padding:40px 40px; height:45px; min-width:500px; }
+    .too{ padding:20px 10px; height:45px; min-width:180px; }
+    .to { padding:10px 10px; height:45px; min-width:180px; }
+
+    .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
+    .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
+    .bond { padding:10px; }
+
+    aside { padding: 10px 14px 28px 14px; }
+
+    .AI { position: fixed; right: 12px; bottom: 12px; z-index: 1200; }
+    .AI img { width:64px; height:auto; border-radius:6px; display:block; }
+
+    .hamburger-container { position: fixed; top: calc(var(--header-h) - 36px); right: 12px; z-index: 2000; }
+    .hamburger { font-size: 26px; padding:6px 10px; border-radius:8px; background:#fff; border:1px solid #000; cursor:pointer; }
+    .menu-dropdown { display:none; position:absolute; right:0; margin-top:8px; width:260px; background:#fff; border:1px solid #000; border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+
+    .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
+    .menu-dropdown .book-btn{ display:none; } /* no book button for technician */
+
+    .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
+    .status-note { font-size:12px; color:#444; margin-top:6px; }
+    .switch { position:relative; width:54px; height:30px; display:inline-block; }
+    .switch input { display:none; }
+    .slider { position:absolute; inset:0; background:#999; border-radius:30px; transition:.25s; }
+    .slider:before { content:''; position:absolute; width:22px; height:22px; left:4px; bottom:4px; background:#fff; border-radius:50%; transition:.25s; box-shadow:0 2px 5px rgba(0,0,0,.2); }
+    input:checked + .slider { background:#28a745; }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    .online-indicator { display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#333; }
+    .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
+    .indicator-online { background:#28a745; box-shadow:0 0 8px rgba(40,167,69,.25); }
+    .indicator-offline { background:gray; }
+
+    .toast { position: fixed; top: 12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
+    img { max-width:100%; height:auto; display:block; }
+
+    @media (max-width:480px){
+      .do, .to { min-width:46%; height:48px; font-size:15px; border-width:3px; border-radius:20px; padding:2px 56px; }
+    }
+  </style>
+</head>
+<body data-user-id="">
+  <!-- header (logo covers area) -->
+  <header class="bend">
+    <figure><img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo"></figure>
+  </header>
+
+  <!-- hamburger -->
+  <div class="hamburger-container" aria-expanded="false">
+    <button id="hamburgerBtn" class="hamburger" aria-controls="menuDropdown" aria-expanded="false">☰</button>
+    <div id="menuDropdown" class="menu-dropdown" role="menu" aria-hidden="true">
+      <a class="menu-link" href="profile.html">Profile</a>
+      <a class="menu-link" href="settings.html">Settings</a>
+      <a class="menu-link" href="kyc.html">KYC</a>
+
+      <!-- logout -->
+      <a id="logoutBtn" class="menu-link" href="#">Logout</a>
+
+      <!-- Book button intentionally removed for technician UI -->
+
+      <div class="status-toggle">
+        <span>Status:</span>
+        <label class="switch" title="Toggle online / offline">
+          <input type="checkbox" id="statusSwitch" aria-label="Online toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="status-note">Toggle to set your availability (sends status to backend)</div>
+    </div>
+  </div>
+
+  <main>
+    <p class="brief">
+      <span class="left">Motto: Let Their Be Light 💥💥</span>
+      <span class="right">
+        <span class="online-indicator" id="onlineIndicatorContainer" aria-live="polite">
+          <span class="indicator-dot indicator-offline" id="indicatorDot"></span>
+          <span id="indicatorText">Offline</span>
+        </span>
+      </span>
+    </p>
+
+    <div class="sort">
+      <div class="dent">WireConnect Network</div>
+    </div>
+
+    <section class="fit">
+      <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
+    </section>
+
+    <!-- Technician removes Book buttons -->
+    <div class="audits" aria-hidden="true">
+      <!-- intentionally left blank for technician -->
+    </div>
+
+    <div class="auditss">
+      <p><a class="to" href="#">Client Leaderboard</a></p>
+      <p><a class="to" href="#">Technician Leaderboard</a></p>
+    </div>
+
+    <article class="image">
+      <figure class="images"><img src="https://i.postimg.cc/904qWnn7/icon-service-1.png" alt="decentralized"></figure>
+      <p class="imagecap">Distributed Network</p>
+      <p style="padding:0 12px 12px 12px;">Centralised platforms have a single point of failure: if the system breaks, the entire network is stalled until the issue is resolved. Wire Connect avoids this risk by operating through a distributed service network, designed for reliability, transparency, and uninterrupted operations.</p>
+
+      <figure class="images"><img src="https://i.postimg.cc/Y2Gs5tzZ/icon-service-2.png" alt="Your secure way"></figure>
+      <p class="imagecap">Your Secure Way to Services</p>
+      <p style="padding:0 12px 12px 12px;">The WireConnect platform is designed for everyday use. Secure, simple, and reliable, it allows clients to find, book, and manage technicians with ease. It also integrates a feature — verified professionals accessible through your requests.</p>
+
+      <figure class="images"><img src="https://i.postimg.cc/X7vms9Dk/icon-service-3.png" alt="Hub"></figure>
+      <p class="imagecap">Wire Connect Hub</p>
+      <p class="bond" style="padding:0 12px 12px 12px;">Empowering the Next Generation of Technicians. The WireConnect Hub connects skilled professionals with active clients. It offers a fair and transparent platform for technicians to get jobs, while giving clients early access to vetted experts.</p>
+    </article>
+
+    <aside>
+      <figure style="margin-bottom:10px;"><img src="https://i.postimg.cc/hPzWS9bF/service-image-1.png" alt="meet image" style="max-width:280px;margin:auto;"></figure>
+      <h2 style="padding:0 12px 8px 12px;">Meet the WireConnect Network</h2>
+      <p style="padding:0 12px;"><strong>The WireConnect Network</strong> is more than a platform — it’s a movement. Every part of our system is designed to empower skilled technicians, build trust, and drive community growth across Africa and beyond.</p>
+
+      <ul style="margin:12px;padding-left:18px;">
+        <li><strong>Service with Purpose:</strong> A portion of every connection supports widows, the elderly, and vulnerable communities, making real impact where it’s needed most.</li>
+        <li><strong>Wire Connect Hub:</strong> A transparent platform helping skilled technicians secure jobs, giving clients early access to vetted professionals.</li>
+        <li><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
+      </ul>
+
+      <a class="do" href="#" style="display:inline-block; margin:6px 12px;">Learn More</a>
+    </aside>
+
+    <aside class="AI"><a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg" alt="chat"></a></aside>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // backend base
+    const API_BASE = 'https://wireconnet-1.onrender.com';
+
+    // DOM refs
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const menuDropdown = document.getElementById('menuDropdown');
+    const statusSwitch = document.getElementById('statusSwitch');
+    const indicatorDot = document.getElementById('indicatorDot');
+    const indicatorText = document.getElementById('indicatorText');
+    const toastEl = document.getElementById('toast');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    (function(){
+      const btn = hamburgerBtn, menu = menuDropdown;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const shown = menu.style.display === 'block';
+        menu.style.display = shown ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', String(!shown));
+        menu.setAttribute('aria-hidden', String(shown));
+      });
+      document.addEventListener('click', (e) => {
+        const container = document.querySelector('.hamburger-container');
+        if(!container.contains(e.target)){
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', 'false');
+          menu.setAttribute('aria-hidden', 'true');
+        }
+      });
+    })();
+
+    function showToast(msg, ms = 3000){
+      toastEl.innerText = msg; toastEl.style.display = 'block';
+      clearTimeout(showToast._t); showToast._t = setTimeout(()=> toastEl.style.display = 'none', ms);
+    }
+
+    function setIndicator(online){
+      if(online){
+        indicatorDot.classList.remove('indicator-offline');
+        indicatorDot.classList.add('indicator-online');
+        indicatorText.innerText = 'Online';
+      } else {
+        indicatorDot.classList.remove('indicator-online');
+        indicatorDot.classList.add('indicator-offline');
+        indicatorText.innerText = 'Offline';
+      }
+    }
+
+    function getLocalUser(){
+      try {
+        const raw = localStorage.getItem('wc_user');
+        if(raw) return JSON.parse(raw);
+      } catch(e){}
+      const id = localStorage.getItem('userId');
+      const role = localStorage.getItem('userRole');
+      if(id) return { id, role: role || null };
+      return null;
+    }
+
+    function getUserId(){ const u = getLocalUser(); if(u && u.id) return u.id; const bodyId = document.body.getAttribute('data-user-id'); return bodyId && bodyId.trim() !== '' ? bodyId : null; }
+    function getUserRole(){ const u = getLocalUser(); if(u && u.role) return u.role; return null; }
+
+    function storeLastKnownOnline(userId, online){ if(!userId) return; try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){} }
+    function readLastKnownOnline(userId){ if(!userId) return null; try { const v = localStorage.getItem('techOnline_' + userId); return v === null ? null : v === '1'; } catch(e){ return null; } }
+
+    async function sendStatusToBackend(userId, online, lat = null, lng = null){
+      const url = API_BASE + '/api/tech/status';
+      const controller = new AbortController();
+      const timeout = setTimeout(()=> controller.abort(), 12000);
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ techId: userId, online: !!online, lat: lat, lng: lng })
+        });
+        clearTimeout(timeout);
+        const json = await resp.json().catch(()=> null);
+        if(!resp.ok) return { success:false, message: (json && json.message) ? json.message : ('HTTP ' + resp.status) };
+        return json;
+      } catch(err){
+        clearTimeout(timeout);
+        if(err.name === 'AbortError') return { success:false, message:'Request timed out' };
+        return { success:false, message: err.message || 'Network error' };
+      }
+    }
+
+    function isTechnicianRole(role){
+      if(!role) return false;
+      const r = role.toString().toLowerCase();
+      return (r === 'worker' || r === 'technician' || r === 'tech');
+    }
+
+    async function handleSwitchToggle(e){
+      const checked = e.target.checked;
+      const role = getUserRole();
+      if(!isTechnicianRole(role)){
+        if(statusSwitch) statusSwitch.checked = false;
+        showToast('Availability toggle is for technicians only on this page.', 4500);
+        return;
+      }
+
+      const userId = getUserId();
+      if(!userId){
+        if(statusSwitch) statusSwitch.checked = false;
+        showToast('No user id found. Set body[data-user-id] or localStorage.userId to enable status updates.', 5000);
+        return;
+      }
+
+      let lat = null, lng = null;
+      if(navigator.geolocation){
+        try{
+          const pos = await new Promise((resolve, reject) => {
+            const t = setTimeout(()=> reject(new Error('geolocation timeout')), 4500);
+            navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge: 10000, timeout:4500 });
+          });
+          lat = pos.coords.latitude; lng = pos.coords.longitude;
+        }catch(err){ /* ignore */ }
+      }
+
+      setIndicator(checked);
+      if(statusSwitch) statusSwitch.disabled = true;
+      showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
+
+      const result = await sendStatusToBackend(userId, checked, lat, lng);
+      if(statusSwitch) statusSwitch.disabled = false;
+
+      if(result && result.success){
+        storeLastKnownOnline(userId, checked);
+        showToast('Status updated', 2000);
+      } else {
+        const prev = !checked;
+        if(statusSwitch) statusSwitch.checked = prev;
+        setIndicator(prev);
+        const msg = (result && result.message) ? result.message : 'Failed to update status';
+        showToast('Error: ' + msg, 6000);
+        console.warn('Status update failed:', result);
+      }
+    }
+
+    statusSwitch && statusSwitch.addEventListener('change', handleSwitchToggle);
+
+    (function initFromLocal(){
+      const role = getUserRole();
+      const userId = getUserId();
+      const ss = document.getElementById('statusSwitch');
+
+      if(!isTechnicianRole(role)){ setIndicator(false); if(ss) ss.checked = false; return; }
+
+      const known = readLastKnownOnline(userId);
+      if(known === null){ setIndicator(false); if(ss) ss.checked = false; } else { if(ss) ss.checked = !!known; setIndicator(!!known); }
+    })();
+
+    // logout clears session and redirects to login
+    logoutBtn && logoutBtn.addEventListener('click', function(ev){
+      ev.preventDefault();
+      try {
+        const u = getLocalUser();
+        if(u && u.id) localStorage.removeItem('techOnline_' + u.id);
+      } catch(e){}
+      localStorage.removeItem('wc_user');
+      localStorage.removeItem('wc_token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      window.location.href = 'login.html';
+    });
+
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') {
+        const menu = document.getElementById('menuDropdown');
+        const btn = document.getElementById('hamburgerBtn');
+        if(menu) menu.style.display = 'none';
+        if(btn) btn.setAttribute('aria-expanded', false);
+        if(menu) menu.setAttribute('aria-hidden', true);
+      }
+    });
+  </script>
+</body>
+</html>
