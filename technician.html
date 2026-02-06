@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="author" content="Mr Dubem" />
-  <meta name="description" content="WireConnect Technician Dashboard" />
+  <meta name="description" content="WireConnect Frontend" />
+  <meta name="keywords" content="WireConnect, technicians, jobs" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>WireConnect — Technician Dashboard</title>
+  <title>GTAN</title>
   <style>
     /* reset */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -20,7 +21,7 @@
       display:flex; align-items:center; justify-content:center; overflow:hidden;
     }
     .bend figure { width:100%; height:100%; margin:0; }
-    .bend figure img { width:100%; height:100%; object-fit: cover; display:block; }
+    .bend figure img { width:100%; height:100%; object-fit: coer; display:block; }
 
     /* push page content below header */
     main { padding-top: var(--header-h); min-height: calc(100vh - var(--header-h)); }
@@ -39,52 +40,23 @@
     .brief .left { display:flex; align-items:center; gap:10px; min-width:0; }
     .brief .right { display:flex; align-items:center; gap:8px; }
 
+    /* TITLE: reduced to fit phones (this was main overflow) */
     .sort { color: rgba(0,0,200,1); padding: 8px 12px; margin-bottom: 6px; text-align:left; }
-    .sort .dent { font-size: clamp(30px, 8vw, 56px); line-height: 1; font-weight: 700; color: rgba(0,0,200,1); word-break: break-word; }
+    .sort .dent {
+      /* reduced: min 30px, scale with viewport, max 56px */
+      font-size: clamp(30px, 8vw, 56px);
+      line-height: 1;
+      font-weight: 700;
+      color: rgba(0,0,200,1);
+      word-break: break-word;
+    }
 
+    /* paragraph text responsive */
     .fit { padding: 12px 16px; font-size: clamp(15px, 3.5vw, 20px); line-height: 1.6; color:#111; }
 
-    /* Buttons style (kept) */
-    .audits { display:flex; justify-content:center; align-items:center; gap:18px; padding:18px 12px; flex-wrap:wrap; }
-    .auditss { display:flex; justify-content:center; gap:14px; padding: 18px 10px; }
-    .do, .too, .to { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; border-radius:30px; background: linear-gradient(#1154ff,#0738d6); color:#ffffff; border:4px solid #000; font-weight:800; font-size:18px; line-height:1; text-align:center; white-space:normal; word-break:break-word; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08); }
-    .do{ padding:40px 40px; height:45px; min-width:500px; }
-    .too{ padding:20px 10px; height:45px; min-width:180px; }
-    .to { padding:10px 10px; height:45px; min-width:180px; }
-
-    .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
-    .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
-    .bond { padding:10px; }
-
-    aside { padding: 10px 14px 28px 14px; }
-
-    .AI { position: fixed; right: 12px; bottom: 12px; z-index: 1200; }
-    .AI img { width:64px; height:auto; border-radius:6px; display:block; }
-
-    .hamburger-container { position: fixed; top: calc(var(--header-h) - 36px); right: 12px; z-index: 2000; }
-    .hamburger { font-size: 26px; padding:6px 10px; border-radius:8px; background:#fff; border:1px solid #000; cursor:pointer; }
-    .menu-dropdown { display:none; position:absolute; right:0; margin-top:8px; width:260px; background:#fff; border:1px solid #000; border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
-
-    .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
-    .menu-dropdown .book-btn{ display:none; } /* no book button for technician */
-
-    .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
-    .status-note { font-size:12px; color:#444; margin-top:6px; }
-    .switch { position:relative; width:54px; height:30px; display:inline-block; }
-    .switch input { display:none; }
-    .slider { position:absolute; inset:0; background:#999; border-radius:30px; transition:.25s; }
-    .slider:before { content:''; position:absolute; width:22px; height:22px; left:4px; bottom:4px; background:#fff; border-radius:50%; transition:.25s; box-shadow:0 2px 5px rgba(0,0,0,.2); }
-    input:checked + .slider { background:#28a745; }
-    input:checked + .slider:before { transform: translateX(24px); }
-
-    .online-indicator { display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#333; }
-    .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
-    .indicator-online { background:#28a745; box-shadow:0 0 8px rgba(40,167,69,.25); }
-    .indicator-offline { background:gray; }
-
-    .toast { position: fixed; top: 12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
-    img { max-width:100%; height:auto; display:block; }
-
+    /* BUTTONS: neat, identical borders and size
+       ----- ONLY BUTTON STYLES UPDATED BELOW -----
+    */
     .audits {
       display: flex;
       justify-content: center;
@@ -175,6 +147,80 @@
   text-decoration:none;
   font-weight:bold;
 }
+    /* small responsive tweaks for tiny phones */
+    @media (max-width:480px){
+      .do, .to { min-width: 46%; height:48px; font-size:15px; border-width:3px; border-radius:20px; padding:2px 56px; }
+      .brief { padding: 12px; }
+      .fit { padding: 10px 12px; }
+    }
+
+    /* leaderboard small buttons: keep the same look but smaller height */
+    .auditss { display:flex; justify-content:center; gap:14px; padding: 18px 10px; }
+    .auditss .to { min-width: 140px; height:44px; font-size:15px; }
+
+    /* match small menu book button to same look */
+    .menu-dropdown .book-btn {
+      display:block;
+      margin-top:6px;
+      background: linear-gradient(#1154ff,#0738d6);
+      color:#fff;
+      padding:10px 12px;
+      text-align:center;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:800;
+      border: 3px solid #000;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(0,0,0,0.06);
+    }
+
+    /* keep regular menu links visible but not changed */
+    .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
+
+    /* keep existing button classes for Learn More, etc. */
+    .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
+    .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
+    .bond { padding:10px; }
+
+    /* aside */
+    aside { padding: 10px 14px 28px 14px; }
+
+    /* chat bubble */
+    .AI { position: fixed; right: 12px; bottom: 12px; z-index: 1200; }
+    .AI img { width:64px; height:auto; border-radius:6px; display:block; }
+
+    /* hamburger menu */
+    .hamburger-container {
+      position: fixed; top: calc(var(--header-h) - 36px); right: 12px; z-index: 2000;
+    }
+    .hamburger {
+      font-size: 26px; padding:6px 10px; border-radius:8px; background:#fff; border:1px solid #000; cursor:pointer;
+    }
+    .menu-dropdown {
+      display:none; position:absolute; right:0; margin-top:8px; width:260px;
+      background:#fff; border:1px solid #000; border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
+    }
+
+    /* toggle switch styles (kept) */
+    .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
+    .status-note { font-size:12px; color:#444; margin-top:6px; }
+    .switch { position:relative; width:54px; height:30px; display:inline-block; }
+    .switch input { display:none; }
+    .slider { position:absolute; inset:0; background:#999; border-radius:30px; transition:.25s; }
+    .slider:before { content:''; position:absolute; width:22px; height:22px; left:4px; bottom:4px; background:#fff; border-radius:50%; transition:.25s; box-shadow:0 2px 5px rgba(0,0,0,.2); }
+    input:checked + .slider { background:#28a745; }
+    input:checked + .slider:before { transform: translateX(24px); }
+
+    /* online indicator */
+    .online-indicator { display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#333; }
+    .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
+    .indicator-online { background:#28a745; box-shadow:0 0 8px rgba(40,167,69,.25); }
+    .indicator-offline { background:gray; }
+
+    /* toast */
+    .toast { position: fixed; top: 12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
+
+    /* ensure images can't overflow horizontally */
+    img { max-width:100%; height:auto; display:block; }
   </style>
 </head>
 <body data-user-id="">
@@ -191,10 +237,10 @@
       <a class="menu-link" href="settings.html">Settings</a>
       <a class="menu-link" href="kyc.html">KYC</a>
 
-      <!-- logout -->
+      <!-- LOGOUT added above Book Job as requested -->
       <a id="logoutBtn" class="menu-link" href="#">Logout</a>
 
-      <!-- Book button intentionally removed for technician UI -->
+      <a class="book-btn" href="book.html">Book Job</a>
 
       <div class="status-toggle">
         <span>Status:</span>
@@ -203,7 +249,7 @@
           <span class="slider"></span>
         </label>
       </div>
-      <div class="status-note">Toggle to set your availability (sends status to backend)</div>
+      <div class="status-note">Toggle to set technician availability (sends status to backend)</div>
     </div>
   </div>
 
@@ -225,11 +271,6 @@
     <section class="fit">
       <p>WireConnect is a professional platform connecting skilled electrical technicians, verified service bookings, and trusted client projects. Built from Africa for the world, every connection supports real workmanship while enabling reliable service delivery.</p>
     </section>
-
-    <!-- Technician removes Book buttons -->
-    <div class="audits" aria-hidden="true">
-      <!-- intentionally left blank for technician -->
-    </div>
 
     <div class="audit">
       <p><a class="do" href="#">Book A Job</a></p>
@@ -271,7 +312,7 @@
         <li><strong>Powered by Community:</strong> At Wire Connect, people come first. Our community drives growth, trust, and lasting impact across the platform.</li>
       </ul>
 
-      <a class="do" href="#" style="display:inline-block; margin:6px 12px;">Learn More</a>
+      <a class="doo" href="#" style="display:inline-block; margin:6px 12px;">Learn More</a>
     </aside>
 
     <aside class="AI"><a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg" alt="chat"></a></aside>
@@ -283,7 +324,7 @@
     // backend base
     const API_BASE = 'https://wireconnet-1.onrender.com';
 
-    // DOM refs
+    // UI elements
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const menuDropdown = document.getElementById('menuDropdown');
     const statusSwitch = document.getElementById('statusSwitch');
@@ -292,6 +333,7 @@
     const toastEl = document.getElementById('toast');
     const logoutBtn = document.getElementById('logoutBtn');
 
+    // hamburger toggle (unchanged)
     (function(){
       const btn = hamburgerBtn, menu = menuDropdown;
       btn.addEventListener('click', (e) => {
@@ -311,9 +353,12 @@
       });
     })();
 
+    // toast helper
     function showToast(msg, ms = 3000){
-      toastEl.innerText = msg; toastEl.style.display = 'block';
-      clearTimeout(showToast._t); showToast._t = setTimeout(()=> toastEl.style.display = 'none', ms);
+      toastEl.innerText = msg;
+      toastEl.style.display = 'block';
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=> toastEl.style.display = 'none', ms);
     }
 
     function setIndicator(online){
@@ -328,22 +373,44 @@
       }
     }
 
+    // get user from storage (try wc_user object then fallback)
     function getLocalUser(){
       try {
         const raw = localStorage.getItem('wc_user');
-        if(raw) return JSON.parse(raw);
+        if(raw){
+          const u = JSON.parse(raw);
+          return u || null;
+        }
       } catch(e){}
-      const id = localStorage.getItem('userId');
-      const role = localStorage.getItem('userRole');
-      if(id) return { id, role: role || null };
+      try {
+        const id = localStorage.getItem('userId');
+        const role = localStorage.getItem('userRole');
+        if(id) return { id, role: role || null };
+      } catch(e){}
       return null;
     }
 
-    function getUserId(){ const u = getLocalUser(); if(u && u.id) return u.id; const bodyId = document.body.getAttribute('data-user-id'); return bodyId && bodyId.trim() !== '' ? bodyId : null; }
-    function getUserRole(){ const u = getLocalUser(); if(u && u.role) return u.role; return null; }
+    function getUserId(){
+      const u = getLocalUser();
+      if(u && u.id) return u.id;
+      const bodyId = document.body.getAttribute('data-user-id');
+      return bodyId && bodyId.trim() !== '' ? bodyId : null;
+    }
 
-    function storeLastKnownOnline(userId, online){ if(!userId) return; try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){} }
-    function readLastKnownOnline(userId){ if(!userId) return null; try { const v = localStorage.getItem('techOnline_' + userId); return v === null ? null : v === '1'; } catch(e){ return null; } }
+    function getUserRole(){
+      const u = getLocalUser();
+      if(u && u.role) return u.role;
+      return null;
+    }
+
+    function storeLastKnownOnline(userId, online){
+      if(!userId) return;
+      try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){}
+    }
+    function readLastKnownOnline(userId){
+      if(!userId) return null;
+      try { const v = localStorage.getItem('techOnline_' + userId); return v === null ? null : v === '1'; } catch(e){ return null; }
+    }
 
     async function sendStatusToBackend(userId, online, lat = null, lng = null){
       const url = API_BASE + '/api/tech/status';
@@ -367,18 +434,17 @@
       }
     }
 
-    function isTechnicianRole(role){
-      if(!role) return false;
-      const r = role.toString().toLowerCase();
-      return (r === 'worker' || r === 'technician' || r === 'tech');
-    }
-
+    // Toggle handler: ONLY ALLOW when user role === 'client'
     async function handleSwitchToggle(e){
       const checked = e.target.checked;
+
+      // allow only for clients
       const role = getUserRole();
-      if(!isTechnicianRole(role)){
+      const isClient = role === 'client';
+      if(!isClient){
+        // revert
         if(statusSwitch) statusSwitch.checked = false;
-        showToast('Availability toggle is for technicians only on this page.', 4500);
+        showToast('Availability toggle works only when a client is signed in.', 4500);
         return;
       }
 
@@ -389,6 +455,7 @@
         return;
       }
 
+      // best-effort geolocation
       let lat = null, lng = null;
       if(navigator.geolocation){
         try{
@@ -400,6 +467,7 @@
         }catch(err){ /* ignore */ }
       }
 
+      // optimistic UI update
       setIndicator(checked);
       if(statusSwitch) statusSwitch.disabled = true;
       showToast( checked ? 'Setting status to Online...' : 'Setting status to Offline...', 2000 );
@@ -411,51 +479,9 @@
         storeLastKnownOnline(userId, checked);
         showToast('Status updated', 2000);
       } else {
+        // revert
         const prev = !checked;
         if(statusSwitch) statusSwitch.checked = prev;
         setIndicator(prev);
         const msg = (result && result.message) ? result.message : 'Failed to update status';
         showToast('Error: ' + msg, 6000);
-        console.warn('Status update failed:', result);
-      }
-    }
-
-    statusSwitch && statusSwitch.addEventListener('change', handleSwitchToggle);
-
-    (function initFromLocal(){
-      const role = getUserRole();
-      const userId = getUserId();
-      const ss = document.getElementById('statusSwitch');
-
-      if(!isTechnicianRole(role)){ setIndicator(false); if(ss) ss.checked = false; return; }
-
-      const known = readLastKnownOnline(userId);
-      if(known === null){ setIndicator(false); if(ss) ss.checked = false; } else { if(ss) ss.checked = !!known; setIndicator(!!known); }
-    })();
-
-    // logout clears session and redirects to login
-    logoutBtn && logoutBtn.addEventListener('click', function(ev){
-      ev.preventDefault();
-      try {
-        const u = getLocalUser();
-        if(u && u.id) localStorage.removeItem('techOnline_' + u.id);
-      } catch(e){}
-      localStorage.removeItem('wc_user');
-      localStorage.removeItem('wc_token');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('userRole');
-      window.location.href = 'login.html';
-    });
-
-    document.addEventListener('keydown', (e)=> {
-      if(e.key === 'Escape') {
-        const menu = document.getElementById('menuDropdown');
-        const btn = document.getElementById('hamburgerBtn');
-        if(menu) menu.style.display = 'none';
-        if(btn) btn.setAttribute('aria-expanded', false);
-        if(menu) menu.setAttribute('aria-hidden', true);
-      }
-    });
-  </script>
-</body>
-</html>
