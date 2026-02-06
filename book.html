@@ -3,40 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — Book Job</title>
+  <title>WireConnect — Book Job (Debug)</title>
   <style>
     :root{
-      --bg:#f6f8fb;
-      --card:#fff;
-      --accent:#0b5cff;
-      --muted:#6b7280;
-      --shadow: 0 8px 30px rgba(16,24,40,0.06);
-      --radius:12px;
+      --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280; --shadow:0 8px 30px rgba(16,24,40,0.06);
     }
     html,body{height:100%;margin:0}
-    body{
-      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-      background:var(--bg);
-      color:#111827;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-      padding:18px;
-    }
-
-    .wrap{
-      width:100%;
-      max-width:980px;
-      background:var(--card);
-      border-radius:12px;
-      padding:0;
-      box-shadow:var(--shadow);
-      box-sizing:border-box;
-      overflow:hidden;
-    }
+    body{ font-family:Inter, Arial, sans-serif; background:var(--bg); color:#111827; display:flex; justify-content:center; padding:18px; }
+    .wrap{ width:100%; max-width:980px; background:var(--card); border-radius:12px; padding:0; box-shadow:var(--shadow); box-sizing:border-box; overflow:hidden; position:relative; }
 
     .header-logo img{ width:100%; height:120px; object-fit:cover; display:block; }
-
     .content { padding:18px; }
     h1{ margin:0; font-size:20px; font-weight:800; font-style:italic; }
     .muted{ color:var(--muted); font-size:13px; }
@@ -60,7 +36,32 @@
     .modal h3{ margin:0 0 8px; font-size:18px }
     .modal .muted{ color:#374151; margin-bottom:8px; }
 
-    @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} }
+    /* DEBUG panel */
+    .debug-toggle { position:fixed; right:18px; bottom:18px; z-index:5000; }
+    .debug-toggle button { background:#111; color:#fff; border:0; padding:10px 12px; border-radius:8px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,0.18); }
+    .debug-panel {
+      position:fixed;
+      right:18px;
+      bottom:64px;
+      width:420px;
+      max-width:calc(100% - 36px);
+      max-height:60vh;
+      overflow:auto;
+      background:#0b1220;
+      color:#e6f0ff;
+      border-radius:12px;
+      padding:12px;
+      box-shadow:0 16px 48px rgba(2,6,23,0.5);
+      z-index:5000;
+      font-family:monospace;
+      font-size:13px;
+      display:none;
+    }
+    .debug-panel pre { white-space:pre-wrap; word-break:break-word; color:#dbeafe; background:transparent; border:none; padding:6px 0; margin:0; }
+    .debug-actions { display:flex; gap:8px; margin-top:8px; justify-content:flex-end; }
+    .debug-actions button{ background:#fff; color:#111; border-radius:8px; padding:6px 8px; border:0; cursor:pointer; font-weight:700; }
+
+    @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} .debug-panel{ width:92vw; right:8px; left:8px; } }
   </style>
 </head>
 <body>
@@ -100,7 +101,7 @@
         <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
       </div>
 
-      <!-- NEW inputs requested: State, LGA, Town/City, workers, estimated days -->
+      <!-- NEW inputs: State, LGA, Town/City, workers, estimated days -->
       <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
         <div>
           <label>State *</label>
@@ -156,10 +157,31 @@
     </div>
   </div>
 
+  <!-- debug toggle & panel -->
+  <div class="debug-toggle">
+    <button id="debugToggleBtn">Debug</button>
+  </div>
+  <div id="debugPanel" class="debug-panel" aria-hidden="true">
+    <div style="font-weight:800;margin-bottom:8px">Network Debug</div>
+    <div><strong>Last Request URL:</strong><pre id="dbg_url">—</pre></div>
+    <div><strong>Payload sent:</strong><pre id="dbg_payload">—</pre></div>
+    <div><strong>Response status:</strong><pre id="dbg_status">—</pre></div>
+    <div><strong>Response headers / info:</strong><pre id="dbg_headers">—</pre></div>
+    <div><strong>Raw response text:</strong><pre id="dbg_raw">—</pre></div>
+    <div><strong>Parsed JSON:</strong><pre id="dbg_json">—</pre></div>
+    <div><strong>Client error (if any):</strong><pre id="dbg_error">—</pre></div>
+
+    <div class="debug-actions">
+      <button id="dbgClear">Clear</button>
+      <button id="dbgCopy">Copy debug JSON</button>
+    </div>
+  </div>
+
   <script>
+    // ---------- Config ----------
     const API_BASE = 'https://wireconnet-1.onrender.com';
 
-    // DOM refs
+    // ---------- DOM ----------
     const jobType = document.getElementById('jobType');
     const conduitFields = document.getElementById('conduitFields');
     const solarFields = document.getElementById('solarFields');
@@ -190,14 +212,26 @@
     const modalClose = document.getElementById('modalClose');
     const modalOk = document.getElementById('modalOk');
 
-    // default PRICES
+    const debugToggleBtn = document.getElementById('debugToggleBtn');
+    const debugPanel = document.getElementById('debugPanel');
+    const dbg_url = document.getElementById('dbg_url');
+    const dbg_payload = document.getElementById('dbg_payload');
+    const dbg_status = document.getElementById('dbg_status');
+    const dbg_headers = document.getElementById('dbg_headers');
+    const dbg_raw = document.getElementById('dbg_raw');
+    const dbg_json = document.getElementById('dbg_json');
+    const dbg_error = document.getElementById('dbg_error');
+    const dbgClear = document.getElementById('dbgClear');
+    const dbgCopy = document.getElementById('dbgCopy');
+
+    // ---------- Pricing ----------
     let PRICES = {
       conduit_per_room: 25000, conduit_db:15000, conduit_nepa:50000,
       conduit_wiring_add_per_room:5000, conduit_fittings_per_room:15000,
       solar_base_bungalow:170000, solar_extra_per_storey:30000, solar_complex:50000
     };
 
-    // modal helpers
+    // ---------- Utilities ----------
     function openModal(html, { showOk=false, onOk=null, closable=true } = {}){
       modalContent.innerHTML = html;
       modalBackdrop.style.display = 'flex';
@@ -209,36 +243,47 @@
     }
     function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); modalContent.innerHTML = ''; modalOk.onclick = null; }
 
-    function showLoadingModal(message = 'Searching for a technician...'){
-      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>${escapeHtml(message)}</h3><div class="muted">Please wait while we find a nearby available technician.</div></div>`, { showOk:false, closable:false });
+    function showLoadingModal(msg = 'Searching for a technician...'){ openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>${escapeHtml(msg)}</h3><div class="muted">Please wait while we query availability.</div></div>`, { showOk:false, closable:false }); }
+    function showAssignedModal(techName, jobId, techId){ openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${escapeHtml(techName || 'Technician assigned')}</div><div class="muted" style="margin-top:8px">Press OK to open chat with the technician.</div>`, { showOk:true, onOk: ()=> { const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : ''); window.location.href = 'chat.html?' + qs; }, closable:true }); }
+    function showNoTechModal(){ openModal(`<h3>No technician available</h3><div class="muted">We created your job but couldn't assign a technician right now. We'll keep trying.</div>`, { showOk:false, closable:true }); }
+    function showErrorModal(title, details){ const safe = details ? `<pre style="text-align:left;max-height:240px;overflow:auto;background:#fff;border:1px solid #fee;padding:8px;border-radius:6px;color:#111">${escapeHtml(typeof details === 'string' ? details : JSON.stringify(details, null, 2))}</pre>` : ''; openModal(`<h3>${escapeHtml(title)}</h3><div class="muted">${safe}</div>`, { showOk:false, closable:true }); }
+
+    function escapeHtml(s){ if(!s && s !== 0) return ''; return String(s).replace(/[&<>"'`=\/]/g, function(ch){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[ch]; }); }
+
+    // ---------- Debug helpers ----------
+    function dbgClearAll(){
+      dbg_url.textContent = '—';
+      dbg_payload.textContent = '—';
+      dbg_status.textContent = '—';
+      dbg_headers.textContent = '—';
+      dbg_raw.textContent = '—';
+      dbg_json.textContent = '—';
+      dbg_error.textContent = '—';
+    }
+    dbgClear.addEventListener('click', dbgClearAll);
+    debugToggleBtn.addEventListener('click', ()=> {
+      const shown = debugPanel.style.display === 'block';
+      debugPanel.style.display = shown ? 'none' : 'block';
+      debugToggleBtn.textContent = shown ? 'Debug' : 'Hide';
+    });
+    dbgCopy.addEventListener('click', ()=>{
+      const dump = {
+        url: dbg_url.textContent,
+        payload: safeParse(dbg_payload.textContent),
+        status: dbg_status.textContent,
+        headers: dbg_headers.textContent,
+        raw: dbg_raw.textContent,
+        json: safeParse(dbg_json.textContent),
+        error: dbg_error.textContent
+      };
+      navigator.clipboard?.writeText(JSON.stringify(dump, null, 2)).then(()=> alert('Debug JSON copied')).catch(()=> alert('Could not copy'));
+    });
+
+    function safeParse(txt){
+      try{ return JSON.parse(txt); }catch(e){ return txt; }
     }
 
-    function showAssignedModal(techName, jobId, techId){
-      const html = `<h3>Job matched</h3>
-        <div style="font-size:16px;margin-top:8px">${escapeHtml(techName || 'Technician assigned')}</div>
-        <div class="muted" style="margin-top:8px">Press OK to open chat with the technician.</div>`;
-      openModal(html, { showOk:true, onOk: ()=> {
-        const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-        window.location.href = 'chat.html?' + qs;
-      }, closable:true });
-    }
-
-    function showNoTechModal(){
-      openModal(`<h3>No technician available</h3><div class="muted">We created your job but could not assign a technician right now. We'll keep trying.</div>`, { showOk:false, closable:true });
-    }
-
-    function showErrorModal(title, details){
-      const safeDetails = details ? `<pre style="text-align:left;max-height:240px;overflow:auto;background:#fff;border:1px solid #fee;padding:8px;border-radius:6px">${escapeHtml(typeof details === 'string' ? details : JSON.stringify(details, null, 2))}</pre>` : '';
-      openModal(`<h3>${escapeHtml(title)}</h3><div class="muted">${safeDetails || ''}</div>`, { showOk:false, closable:true });
-    }
-
-    // small helper to escape HTML in messages
-    function escapeHtml(s){
-      if(!s && s !== 0) return '';
-      return String(s).replace(/[&<>"'`=\/]/g, function(ch){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[ch]; });
-    }
-
-    // job type toggle
+    // ---------- Job type toggle ----------
     jobType.addEventListener('change', ()=> {
       const v = jobType.value;
       conduitFields.classList.toggle('hidden', v!=='conduit');
@@ -246,7 +291,7 @@
       otherFields.classList.toggle('hidden', v!=='other');
     });
 
-    // calculate estimate locally
+    // ---------- Price calc ----------
     function calculateEstimateLocal(){
       const v = jobType.value; let total = 0; let breakdown = [];
       if(v === 'conduit'){
@@ -269,7 +314,6 @@
       }
       return { total, breakdown };
     }
-
     calcBtn.addEventListener('click', (e)=> {
       e.preventDefault();
       const res = calculateEstimateLocal();
@@ -277,10 +321,8 @@
       priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
     });
 
-    // load user
+    // ---------- Local user and geo ----------
     function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
-
-    // geo helper
     async function tryGeolocationSave(){
       if(!navigator.geolocation) return;
       try{
@@ -292,20 +334,24 @@
       }catch(e){ /* ignore */ }
     }
 
-    // MAIN: submit booking
+    // ---------- MAIN: submit booking with detailed debug ----------
     submitBtn.addEventListener('click', async (ev)=>{
       ev.preventDefault();
+
+      // clear debug display
+      dbgClearAll();
 
       const user = loadUser();
       if(!user || !user.id){
         showErrorModal('Login required', 'Please login as a client to create a booking.');
+        dbg_error.textContent = 'Missing wc_user in localStorage or user.id';
         return;
       }
 
-      // validate state
       const state = (stateInput.value || '').trim();
       if(!state){
         showErrorModal('State required', 'Please enter the state where the job will take place.');
+        dbg_error.textContent = 'Missing state in form';
         return;
       }
 
@@ -342,13 +388,19 @@
         estimated_days: Number(estimatedDays.value) || 1
       };
 
-      // show searching modal
+      // Show debug info for request
+      dbg_url.textContent = API_BASE + (useAssign.checked ? '/api/book-assign' : '/api/book');
+      dbg_payload.textContent = JSON.stringify(payload, null, 2);
+      debugPanel.style.display = 'block';
+      debugToggleBtn.textContent = 'Hide';
+
+      // show modal loading
       showLoadingModal('Searching for a technician...');
 
       try{
         const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
         const controller = new AbortController();
-        const timeout = setTimeout(()=> controller.abort(), 15000);
+        const timeout = setTimeout(()=> controller.abort(), 20000);
 
         const resp = await fetch(API_BASE + endpoint, {
           method: 'POST',
@@ -358,106 +410,102 @@
         });
         clearTimeout(timeout);
 
-        const text = await resp.text().catch(()=>null);
-        let body = null;
-        try{ body = text ? JSON.parse(text) : null; }catch(e){ body = text; }
+        // gather status & headers (note: header enumeration limited by CORS)
+        dbg_status.textContent = `${resp.status} ${resp.statusText}`;
+        try{
+          const hdrs = {};
+          for (const pair of resp.headers.entries()) { hdrs[pair[0]] = pair[1]; }
+          dbg_headers.textContent = JSON.stringify(hdrs, null, 2);
+        }catch(e){ dbg_headers.textContent = 'Could not read headers: ' + String(e); }
 
-        // If server responded with non-JSON or non-OK, show details
+        const raw = await resp.text().catch(()=>null);
+        dbg_raw.textContent = raw || '—';
+        let body = null;
+        try { body = raw ? JSON.parse(raw) : null; dbg_json.textContent = JSON.stringify(body, null, 2); } catch(e) { dbg_json.textContent = 'Response not JSON'; }
+
         if(!resp.ok){
           closeModal();
-          const serverMsg = (body && (body.message || body.error)) ? (body.message || body.error) : `HTTP ${resp.status} ${resp.statusText}`;
-          showErrorModal('Server error while creating booking', serverMsg || body || text || `HTTP ${resp.status}`);
-          console.error('Booking error response:', resp.status, body);
+          showErrorModal('Server error while creating booking', body && body.message ? body.message : (`HTTP ${resp.status}`));
+          dbg_error.textContent = `Non-OK response: ${resp.status} ${resp.statusText} — ${raw || ''}`;
+          console.error('Booking failed', resp.status, body || raw);
           return;
         }
 
-        // Now resp.ok and body parsed
+        // resp.ok and body parsed
         if(!body || typeof body !== 'object'){
           closeModal();
-          showErrorModal('Unexpected server response', body || text || 'No structured JSON returned');
+          showErrorModal('Unexpected server response', raw || 'No JSON body');
+          dbg_error.textContent = 'Response OK but body not JSON or empty';
           return;
         }
 
-        // success path
+        // Normal success path
         if(body.success){
           const jobId = body.jobId || (body.job && body.job.id) || null;
           const assigned = !!body.assigned;
-          // if server returned technician object, use it
-          if(assigned && body.technician){
-            const tech = body.technician;
-            closeModal();
-            showAssignedModal(tech.fullname || tech.username || tech.name || 'Technician assigned', jobId, tech.id || tech.user_id || null);
-            return;
-          }
-
-          // assigned but no technician object returned: try to fetch job status and user
-          if(assigned && jobId){
-            try {
-              // fetch job detail to get assigned_tech_id
-              const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId), { method:'GET' });
-              const sbody = sresp.ok ? await sresp.json().catch(()=>null) : null;
-              if(sresp.ok && sbody && sbody.success){
-                const tech = sbody.technician;
-                if(tech){
-                  closeModal();
-                  showAssignedModal(tech.fullname || tech.username || tech.name || ('Technician ' + (tech.id||'')), jobId, tech.id || null);
-                  return;
-                } else {
-                  // assigned but no tech profile returned
-                  closeModal();
-                  openModal(`<h3>Job matched</h3><div class="muted">Job assigned — technician details not available yet. Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
-                    const qs = jobId ? ('jobId=' + encodeURIComponent(jobId)) : '';
-                    window.location.href = 'chat.html?' + qs;
-                  }, closable:true });
-                  return;
+          if(assigned){
+            // if technician object present, use it
+            let tech = null;
+            if(body.technician && typeof body.technician === 'object') tech = body.technician;
+            if(!tech && jobId){
+              // try to fetch job status (robust)
+              try{
+                const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+                const sraw = await sresp.text().catch(()=>null);
+                let sbody = null;
+                try{ sbody = sraw ? JSON.parse(sraw) : null; } catch(e){}
+                dbg_json.textContent = JSON.stringify({ initial: body, job_status: sbody || sraw }, null, 2);
+                if(sresp.ok && sbody && sbody.job && sbody.job.assigned_tech_id){
+                  const techId = sbody.job.assigned_tech_id;
+                  // fetch tech profile
+                  try{
+                    const tresp = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId));
+                    const traw = await tresp.text().catch(()=>null);
+                    let tjson = null;
+                    try{ tjson = traw ? JSON.parse(traw) : null; } catch(e){}
+                    dbg_json.textContent = JSON.stringify({ initial: body, job_status: sbody, tech_fetch: tjson || traw }, null, 2);
+                    if(tresp.ok && tjson && (tjson.id || tjson.success)){
+                      tech = tjson;
+                    }
+                  }catch(e){ dbg_error.textContent = 'Tech fetch failed: ' + String(e); }
                 }
-              }
-            }catch(e){
-              console.warn('Could not fetch job details after assignment', e);
-              // fallthrough to generic assigned redirect
+              }catch(e){ dbg_error.textContent = 'Post-assign job fetch error: ' + String(e); }
             }
-            // fallback: redirect to chat using jobId
-            closeModal();
-            openModal(`<h3>Job matched</h3><div class="muted">Assignment recorded. Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
-              const qs = jobId ? ('jobId=' + encodeURIComponent(jobId)) : '';
-              window.location.href = 'chat.html?' + qs;
-            }, closable:true });
-            return;
-          }
 
-          // not assigned immediately
-          if(!assigned){
             closeModal();
+            const techName = (tech && (tech.fullname || tech.username || tech.name)) || 'Assigned technician';
+            showAssignedModal(techName, jobId, tech && (tech.id || tech.user_id) ? (tech.id || tech.user_id) : null);
+            return;
+          } else {
+            closeModal();
+            dbg_status.textContent += ' — assigned:false';
             showNoTechModal();
             return;
           }
-
-          // fallback
-          closeModal();
-          showErrorModal('Unexpected server reply', body);
-          return;
         } else {
-          // server says success:false
           closeModal();
-          showErrorModal('Failed to create booking', body.message || body || 'Unknown');
+          dbg_error.textContent = 'success:false from server';
+          showErrorModal('Server reported failure', body.message || JSON.stringify(body));
           return;
         }
 
       }catch(err){
         closeModal();
         const isAbort = err && err.name === 'AbortError';
+        dbg_error.textContent = (isAbort ? 'Request timed out' : String(err)) + '\n' + (err && err.stack ? err.stack : '');
         showErrorModal(isAbort ? 'Request timed out' : 'Network error', String(err));
         console.error('Booking exception', err);
       }
     });
 
-    // init
+    // ---------- Init ----------
     (function init(){
       const uRaw = localStorage.getItem('wc_user');
       if(uRaw){
         try { const user = JSON.parse(uRaw); document.getElementById('userGreeting').textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`; } catch(e){}
       }
-      (async ()=> {
+
+      (async ()=>{
         try{
           const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
           if(resp.ok){
@@ -477,6 +525,12 @@
 
     // close modal if backdrop clicked
     modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
+
+    // expose a short debug helper on window for console use
+    window.__wc_debug = {
+      setPayload: (p)=> { dbg_payload.textContent = JSON.stringify(p, null, 2); debugPanel.style.display = 'block'; },
+      clear: dbgClearAll
+    };
   </script>
 </body>
 </html>
