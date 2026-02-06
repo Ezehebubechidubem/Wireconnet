@@ -1,10 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — Chat</title>
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
     body{font-family:Inter,Arial;margin:0;background:#f6f8fb;color:#111}
     header{display:flex;align-items:center;gap:12px;padding:10px;background:linear-gradient(135deg,#0b5cff,#55a7ff);color:#fff;position:relative}
@@ -18,8 +21,9 @@
     #map{height:320px;border-radius:8px;margin-top:12px;display:none}
     .top-row{display:flex;align-items:center;justify-content:space-between}
     .countdown{background:rgba(255,255,255,0.15);padding:6px 10px;border-radius:8px;font-weight:700}
-    /* small message bubble tweaks */
+    /* small message styles */
     .msg-time{font-size:11px;color:#64748b}
+    .msg-bubble{padding:10px;border-radius:8px;margin-top:6px;word-break:break-word}
   </style>
 </head>
 <body>
@@ -54,17 +58,20 @@
     </div>
   </div>
 
+  <!-- Leaflet + PolylineDecorator for arrows -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.7.0/leaflet.polylineDecorator.min.js"></script>
+
   <script>
     (function(){
       const API_BASE = 'https://wireconnet-1.onrender.com';
+
+      // query string
       const params = new URLSearchParams(location.search);
       const jobId = params.get('jobId');
-      const urlTechId = params.get('techId'); // optional direct tech id
+      const urlTechId = params.get('techId');
 
-      if(!jobId){ alert('No job specified'); location.href = 'dashboard.html'; }
-
-      // DOM
+      // nodes
       const chatWindow = document.getElementById('chatWindow');
       const sendBtn = document.getElementById('sendBtn');
       const chatText = document.getElementById('chatText');
@@ -75,247 +82,212 @@
       const toggleMapBtn = document.getElementById('toggleMapBtn');
       const mapEl = document.getElementById('map');
 
-      // local user
-      function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; }catch(e){return null} }
+      if(!jobId){ alert('No job specified'); location.href = 'dashboard.html'; }
+
+      // local user (preserve login)
+      function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
       const me = loadUser();
 
-      // storage key for caching messages
+      // local storage chat key
       const storageKey = 'wc_chat_' + jobId;
 
-      // render messages (ordered ascending by time)
-      function renderMessagesArray(msgs){
-        msgs.sort((a,b)=> (a.t || 0) - (b.t || 0));
+      // helper: get local messages (array with possibly pending items where id==null)
+      function loadLocalMessages(){ try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e){ return []; } }
+      function saveLocalMessages(arr){ localStorage.setItem(storageKey, JSON.stringify(arr)); }
+
+      // render messages (local store)
+      function renderMessages(){
+        const msgs = loadLocalMessages();
         chatWindow.innerHTML = msgs.map(m=>{
           const time = new Date(m.t).toLocaleTimeString();
-          const bubbleBg = m.own ? '#e6f0ff' : '#fff';
-          const align = m.own ? 'flex-end' : 'flex-start';
-          let senderLabel = '';
-          if(!m.own && m.senderName) senderLabel = `<div style="font-size:12px;color:#334155;font-weight:700;margin-bottom:6px">${escapeHtml(m.senderName)}</div>`;
-          return `<div style="display:flex;justify-content:${align};margin-bottom:10px"><div style="max-width:78%">${senderLabel}<div class="msg-time">${time}</div><div style="padding:10px;background:${bubbleBg};border-radius:8px;margin-top:6px">${escapeHtml(m.text)}</div></div></div>`;
+          const own = !!m.own;
+          const bubbleBg = own ? '#e6f0ff' : '#fff';
+          const align = own ? 'flex-end' : 'flex-start';
+          // indicate pending messages visually (no server id yet)
+          const pending = !m.id ? ' <span style="font-size:11px;color:#9ca3af">(sending…)</span>' : '';
+          return `<div style="display:flex;justify-content:${align};margin-bottom:10px">
+                    <div style="max-width:78%">
+                      <div class="msg-time">${time}${pending}</div>
+                      <div class="msg-bubble" style="background:${bubbleBg}">${escapeHtml(m.text)}</div>
+                    </div>
+                  </div>`;
         }).join('');
         chatWindow.scrollTop = chatWindow.scrollHeight;
       }
 
       function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-      // fetch messages from backend
-      async function fetchMessagesFromServer(){
+      // merge remote messages to local store (dedupe by server id, or metadata.cid)
+      function mergeRemoteMessages(remoteMessages){
+        // remoteMessages: array of server message objects with id, sender_id, text, metadata, created_at
+        const local = loadLocalMessages();
+        const byId = new Map(); // message id -> index
+        for(let i=0;i<local.length;i++){ if(local[i].id) byId.set(String(local[i].id), i); }
+
+        const byCid = new Map(); // client cid -> index (pending local messages)
+        for(let i=0;i<local.length;i++){ if(local[i].cid) byCid.set(String(local[i].cid), i); }
+
+        // ensure result contains all remote messages (in order) + remaining pending locals
+        const merged = [];
+        // we will keep remote messages in chronological order by created_at
+        // convert remote created_at to timestamp and sort ascending
+        remoteMessages.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+        for(const rm of remoteMessages){
+          const rid = String(rm.id || '');
+          const rCid = (rm.metadata && rm.metadata.cid) ? String(rm.metadata.cid) : null;
+          if(rid && byId.has(rid)){
+            // already have it in local; copy
+            merged.push(local[byId.get(rid)]);
+          } else if(rCid && byCid.has(rCid)){
+            // replace pending local message with server message (preserve 'own' flag)
+            const idx = byCid.get(rCid);
+            const localMsg = local[idx];
+            const own = localMsg.own;
+            const newMsg = {
+              id: rm.id,
+              cid: rCid,
+              t: new Date(rm.created_at).getTime(),
+              text: rm.text,
+              senderId: rm.sender_id || rm.senderId || null,
+              own: own
+            };
+            merged.push(newMsg);
+            // mark this local index as consumed
+            byId.set(String(newMsg.id), merged.length-1);
+          } else {
+            // not present locally; append
+            const newMsg = {
+              id: rm.id,
+              cid: (rm.metadata && rm.metadata.cid) ? rm.metadata.cid : null,
+              t: new Date(rm.created_at).getTime(),
+              text: rm.text,
+              senderId: rm.sender_id || rm.senderId || null,
+              own: (me && (me.id == (rm.sender_id || rm.senderId))) ? true : false
+            };
+            merged.push(newMsg);
+            if(newMsg.id) byId.set(String(newMsg.id), merged.length-1);
+          }
+        }
+
+        // now append any remaining local pending messages (those without id and not matched by cid)
+        for(const lm of local){
+          if(lm.id) continue; // already handled (server messages)
+          if(lm.cid && remoteMessages.some(rm => rm.metadata && rm.metadata.cid && String(rm.metadata.cid) === String(lm.cid))) {
+            // has been handled above
+            continue;
+          }
+          // keep the pending local message at the end (so it stays visible)
+          merged.push(lm);
+        }
+
+        // save merged
+        saveLocalMessages(merged);
+        renderMessages();
+      }
+
+      // fetch server messages and merge
+      async function pollMessages(){
         try{
-          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/messages', { cache:'no-store' });
-          if(!r.ok) return null;
+          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/messages');
+          if(!r.ok) return;
           const js = await r.json().catch(()=>null);
-          if(!js || !js.success) return null;
-          return js.messages || [];
+          if(!js || !js.success) return;
+          const remote = js.messages || [];
+          mergeRemoteMessages(remote);
         }catch(e){
-          return null;
+          // network errors ignored — keep local messages
         }
       }
 
-      // merge server messages into local cache and return canonical array
-      async function syncMessages(){
-        const remote = await fetchMessagesFromServer();
-        let local = [];
-        try{ local = JSON.parse(localStorage.getItem(storageKey) || '[]'); }catch(e){ local = []; }
-
-        if(!remote) {
-          // no server result; just render local
-          renderMessagesArray(local);
+      // send message (optimistic + server POST with metadata.cid)
+      async function sendMessage(text){
+        if(!me || !me.id){
+          alert('Please login to send messages.');
           return;
         }
+        const senderId = me.id;
+        const cid = 'c_' + Date.now() + '_' + Math.floor(Math.random()*99999);
+        const localMsg = { id:null, cid: cid, t: Date.now(), text: text, senderId: senderId, own: true };
+        // save locally immediately
+        const local = loadLocalMessages();
+        local.push(localMsg);
+        saveLocalMessages(local);
+        renderMessages();
 
-        // build map by unique key (prefer server id if present)
-        const byKey = new Map();
-        for(const m of local){
-          const key = m.serverId ? 's:'+m.serverId : ('l:'+m.t+'|'+m.text);
-          byKey.set(key, m);
-        }
-
-        // for each remote message, add if missing
-        for(const r of remote){
-          const t = new Date(r.created_at).getTime();
-          const key = r.id ? 's:'+r.id : ('r:'+t+'|'+r.text);
-          if(!byKey.has(key)){
-            const own = me && (me.id == r.sender_id || me.userId == r.sender_id || me._id == r.sender_id);
-            byKey.set(key, {
-              t,
-              text: r.text || '',
-              own: !!own,
-              serverId: r.id || null,
-              senderId: r.sender_id || null
-            });
-          } else {
-            // update existing with possible serverId
-            const existing = byKey.get(key);
-            if(!existing.serverId && r.id) existing.serverId = r.id;
-            if(!existing.senderId && r.sender_id) existing.senderId = r.sender_id;
-            existing.t = new Date(r.created_at).getTime();
-            existing.text = r.text || existing.text;
-          }
-        }
-
-        // convert to array
-        const merged = Array.from(byKey.values());
-
-        // annotate sender names by fetching minimal user info for unknown senderIds
-        const unknownSenderIds = new Set();
-        for(const m of merged){
-          if(!m.own && m.senderId && !m.senderName){
-            unknownSenderIds.add(m.senderId);
-          }
-        }
-        if(unknownSenderIds.size){
-          // fetch profiles in parallel (limit to avoid many requests)
-          await Promise.all(Array.from(unknownSenderIds).map(async sid=>{
-            try{
-              const r = await fetch(API_BASE + '/api/user/' + encodeURIComponent(sid));
-              if(!r.ok) return;
-              const u = await r.json().catch(()=>null);
-              // server returns success true with user details or sometimes the row directly
-              const profile = (u && u.success && u.fullname) ? u : (u && u.id ? u : null);
-              const name = profile ? (profile.fullname || profile.username || ('tech-'+sid)) : ('user-'+sid);
-              // apply
-              for(const m of merged) if(m.senderId == sid) m.senderName = name;
-            }catch(e){}
-          }));
-        }
-
-        // ensure own messages show 'You' label? we'll keep them unlabelled
-        // save merged to localStorage for offline use
-        try{ localStorage.setItem(storageKey, JSON.stringify(merged)); }catch(e){}
-        renderMessagesArray(merged);
-      }
-
-      // send message
-      let sending = false;
-      sendBtn.addEventListener('click', async ()=>{
-        const txt = chatText.value.trim(); if(!txt || sending) return;
-        if(!me || !me.id){ alert('Please sign in to send messages'); return; }
-        sending = true;
-        sendBtn.disabled = true;
-        // optimistic UI: append local message immediately (keeps user feeling responsive)
-        const optimistic = { t: Date.now(), text: txt, own: true, serverId: null, senderId: me.id };
-        try{
-          // append to local cache
-          let local = [];
-          try{ local = JSON.parse(localStorage.getItem(storageKey) || '[]'); }catch(e){ local = []; }
-          local.push(optimistic);
-          localStorage.setItem(storageKey, JSON.stringify(local));
-          renderMessagesArray(local);
-        } catch(e){}
-
-        // send to backend
+        // POST to server with metadata.cid so we can match later
         try{
           const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ senderId: me.id, text: txt })
+            body: JSON.stringify({ senderId, text, metadata: { cid } })
           });
-          if(!resp.ok){
-            // leave optimistic but alert
-            alert('Message could not be sent (server error). It will be retried on next poll.');
+          const js = await resp.json().catch(()=>null);
+          if(resp.ok && js && js.success && js.message){
+            // server returned the created message object in js.message
+            // replace the local pending message (cid) with server message
+            const serverMsg = js.message;
+            // get stored local array
+            const arr = loadLocalMessages();
+            const idx = arr.findIndex(m => m.cid === cid);
+            const newMsg = {
+              id: serverMsg.id,
+              cid: cid,
+              t: new Date(serverMsg.created_at).getTime(),
+              text: serverMsg.text,
+              senderId: serverMsg.sender_id || senderId,
+              own: true
+            };
+            if(idx >= 0){
+              arr[idx] = newMsg;
+            } else {
+              // not found (unlikely) — append
+              arr.push(newMsg);
+            }
+            saveLocalMessages(arr);
+            renderMessages();
           } else {
-            // refresh from server to get canonical list
-            await syncMessages();
+            // POST failed — keep pending state, mark user
+            // Optionally show an error toast
+            console.warn('Failed to send message', js || resp.statusText);
+            // keep local pending message visible for retry or inform user
+            // you could mark it as failed; for now just keep
           }
-        }catch(e){
-          alert('Network error: message not sent. It will be retried on next poll.');
-        } finally {
-          chatText.value = '';
-          sending = false;
-          sendBtn.disabled = false;
+        }catch(err){
+          console.warn('Network error while sending message', err);
+          // keep pending local message
+        }
+      }
+
+      // send button handler
+      sendBtn.addEventListener('click', ()=>{
+        const txt = chatText.value.trim();
+        if(!txt) return;
+        sendMessage(txt);
+        chatText.value = '';
+      });
+
+      // Enter key sends
+      chatText.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' && !e.shiftKey){
+          e.preventDefault();
+          sendBtn.click();
         }
       });
 
-      // helper: fetch job status and update UI / peer name
-      async function fetchJobStatusAndUpdate(){
-        try{
-          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status', { cache:'no-store' });
-          if(!r.ok) return null;
-          const js = await r.json().catch(()=>null);
-          if(!js || !js.success) return null;
-          const job = js.job;
-          jobStatusEl.textContent = `Status: ${job.status || '—'}`;
-          // if assigned, fetch technician name
-          if(job.assigned_tech_id){
-            try{
-              const tr = await fetch(API_BASE + '/api/user/' + encodeURIComponent(job.assigned_tech_id), { cache:'no-store' });
-              if(tr.ok){
-                const tjs = await tr.json().catch(()=>null);
-                const profile = (tjs && tjs.success && tjs.id) ? tjs : (tjs && tjs.id ? tjs : (tjs && tjs.fullname ? tjs : null));
-                const name = profile ? (profile.fullname || profile.username || ('Tech')) : 'Technician';
-                peerNameEl.textContent = name;
-                peerRoleEl.textContent = 'Technician';
-              } else {
-                peerNameEl.textContent = 'Assigned Technician';
-                peerRoleEl.textContent = 'Technician';
-              }
-            }catch(e){}
-          } else {
-            // If there's a techId in URL param, show it
-            if(urlTechId){
-              try{
-                const tr = await fetch(API_BASE + '/api/user/' + encodeURIComponent(urlTechId), { cache:'no-store' });
-                if(tr.ok){
-                  const tjs = await tr.json().catch(()=>null);
-                  const profile = (tjs && tjs.success && tjs.id) ? tjs : (tjs && tjs.id ? tjs : (tjs && tjs.fullname ? tjs : null));
-                  const name = profile ? (profile.fullname || profile.username || 'Technician') : 'Technician';
-                  peerNameEl.textContent = name;
-                  peerRoleEl.textContent = 'Technician';
-                }
-              }catch(e){}
-            } else {
-              // fallback: show other party as "Peer"
-              peerNameEl.textContent = 'Peer';
-              peerRoleEl.textContent = '';
-            }
-          }
+      // MAP / ROUTE SETUP
+      let map = null, routeLayer = null, decorator = null, jobMarker = null, techMarker = null;
+      let showMap = false;
 
-          // handle expires_at countdown
-          if(job.expires_at){
-            startCountdown(new Date(job.expires_at).getTime());
-          }
-          return job;
-        }catch(e){
-          return null;
-        }
-      }
-
-      // countdown for job expiry
-      let countdownInterval = null;
-      function startCountdown(expiresTs){
-        if(countdownInterval) clearInterval(countdownInterval);
-        function update(){
-          const now = Date.now();
-          let diff = Math.max(0, expiresTs - now);
-          const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
-          const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
-          const m = Math.floor(diff / (60*1000));
-          jobCountdownEl.textContent = `${d}d ${h}h ${m}m`;
-          if(expiresTs <= now){ jobCountdownEl.textContent = 'Expired'; clearInterval(countdownInterval); countdownInterval = null; }
-        }
-        update();
-        countdownInterval = setInterval(update, 60*1000);
-      }
-
-      // polling loop
-      async function pollEverything(){
-        await syncMessages();
-        await fetchJobStatusAndUpdate();
-      }
-
-      // Start polls
-      pollEverything();
-      setInterval(pollEverything, 3000); // every 3s keeps both sides fairly real-time
-
-      // Map & routing:
-      let map=null, techMarker=null, clientMarker=null, routeLayer=null;
       toggleMapBtn.addEventListener('click', async ()=>{
-        const showing = mapEl.style.display !== 'block';
-        mapEl.style.display = showing ? 'block' : 'none';
-        toggleMapBtn.innerText = showing ? 'Hide map' : 'Show map';
-        if(showing){
+        showMap = !showMap;
+        if(showMap){
+          mapEl.style.display = 'block';
+          toggleMapBtn.innerText = 'Hide map';
           if(!map) initMap();
-          await updateMapRoute();
+          await updateMapRouteWithArrows();
+        } else {
+          mapEl.style.display = 'none';
+          toggleMapBtn.innerText = 'Show map';
         }
       });
 
@@ -324,108 +296,176 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map);
       }
 
-      // helper to get client coords: prefer wc_last_lat/lng, else me.lat/lng
-      function getClientCoords(){
-        const latLS = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
-        const lngLS = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
-        if(Number.isFinite(latLS) && Number.isFinite(lngLS)) return [latLS, lngLS];
-        if(me && me.lat && me.lng) return [Number(me.lat), Number(me.lng)];
+      // Helper fetch job full details (try /api/job/:id first, fallback to /api/job/:id/status)
+      async function fetchJobFull(){
+        // try GET /api/job/:id (may not exist on backend)
+        try{
+          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId));
+          if(r.ok){
+            const js = await r.json().catch(()=>null);
+            if(js && js.success && js.job) return js.job;
+            if(js && js.job) return js.job;
+          }
+        }catch(e){}
+        // fallback to status endpoint
+        try{
+          const r2 = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+          if(r2.ok){
+            const s = await r2.json().catch(()=>null);
+            if(s && s.success && s.job) return s.job;
+          }
+        }catch(e){}
         return null;
       }
 
-      // fetch assigned tech id from job status
-      async function getAssignedTechId(){
+      async function fetchTechProfile(techId){
+        if(!techId) return null;
         try{
-          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status', { cache:'no-store' });
-          if(!r.ok) return urlTechId || null;
-          const js = await r.json().catch(()=>null);
-          if(!js || !js.success) return urlTechId || null;
-          return js.job && js.job.assigned_tech_id ? js.job.assigned_tech_id : (urlTechId || null);
-        }catch(e){
-          return urlTechId || null;
-        }
-      }
-
-      async function fetchUserProfile(id){
-        try{
-          const r = await fetch(API_BASE + '/api/user/' + encodeURIComponent(id), { cache:'no-store' });
+          const r = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId));
           if(!r.ok) return null;
           const js = await r.json().catch(()=>null);
-          // server may return { success:true, ... } or we might get user row directly
-          if(js && js.success && (js.id || js.fullname)) return js;
-          if(js && js.id) return js;
-          return null;
+          if(js && js.success) return js.user || js;
+          return js;
         }catch(e){ return null; }
       }
 
-      async function updateMapRoute(){
-        const clientCoords = getClientCoords();
-        const assignedTechId = await getAssignedTechId();
-        let techCoords = null;
-        let techProfile = null;
-        if(assignedTechId){
-          techProfile = await fetchUserProfile(assignedTechId);
-          if(techProfile && techProfile.lat && techProfile.lng) techCoords = [Number(techProfile.lat), Number(techProfile.lng)];
+      async function updateMapRouteWithArrows(){
+        if(!map) initMap();
+        // fetch job & tech
+        const job = await fetchJobFull();
+        const techId = urlTechId || (job && job.assigned_tech_id);
+        const tech = techId ? await fetchTechProfile(techId) : null;
+
+        const clientCoords = job && job.lat && job.lng ? [Number(job.lat), Number(job.lng)] : null;
+        const techCoords = tech && tech.lat && tech.lng ? [Number(tech.lat), Number(tech.lng)] : null;
+
+        // fallback to localStorage last-known client coords
+        let fallbackClientLat = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
+        let fallbackClientLng = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
+        const clientFallback = Number.isFinite(fallbackClientLat) && Number.isFinite(fallbackClientLng) ? [fallbackClientLat, fallbackClientLng] : null;
+
+        // clear old
+        if(routeLayer){ routeLayer.remove(); routeLayer = null; }
+        if(decorator){ decorator.remove(); decorator = null; }
+        if(jobMarker){ jobMarker.remove(); jobMarker = null; }
+        if(techMarker){ techMarker.remove(); techMarker = null; }
+
+        const finalClient = clientCoords || clientFallback;
+        const finalTech = techCoords || null;
+
+        if(finalClient){
+          jobMarker = L.marker([finalClient[0], finalClient[1]]).addTo(map).bindPopup('Client');
+        }
+        if(finalTech){
+          techMarker = L.marker([finalTech[0], finalTech[1]]).addTo(map).bindPopup('Technician');
         }
 
-        // clear existing
-        if(routeLayer){ routeLayer.remove(); routeLayer=null; }
-        if(clientMarker){ clientMarker.remove(); clientMarker=null; }
-        if(techMarker){ techMarker.remove(); techMarker=null; }
-
-        if(clientCoords){
-          clientMarker = L.marker([clientCoords[0], clientCoords[1]]).addTo(map).bindPopup('Client');
-        }
-        if(techCoords){
-          techMarker = L.marker([techCoords[0], techCoords[1]]).addTo(map).bindPopup('Technician');
-        }
-
-        if(clientCoords && techCoords){
+        if(finalClient && finalTech){
           try{
-            const from = `${techCoords[1]},${techCoords[0]}`;
-            const to   = `${clientCoords[1]},${clientCoords[0]}`;
-            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson&steps=false`;
+            // Build OSRM URL lon,lat
+            const from = `${finalTech[1]},${finalTech[0]}`;
+            const to   = `${finalClient[1]},${finalClient[0]}`;
+            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson&annotations=duration,distance`;
             const r = await fetch(osrmUrl);
             if(r.ok){
               const js = await r.json();
               if(js && js.routes && js.routes.length){
                 const route = js.routes[0];
                 const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-                routeLayer = L.polyline(coords, { color:'#0b5cff', weight:5, opacity:0.85 }).addTo(map);
+                routeLayer = L.polyline(coords, { color:'#0b5cff', weight:5, opacity:0.9 }).addTo(map);
+                // add arrows using polyline decorator
+                decorator = L.polylineDecorator(routeLayer, {
+                  patterns: [
+                    { offset: 12, repeat: 24, symbol: L.Symbol.arrowHead({ pixelSize: 10, polygon: false, pathOptions: { stroke: true, color: '#0b5cff', weight: 1 } }) }
+                  ]
+                }).addTo(map);
                 map.fitBounds(routeLayer.getBounds(), { padding:[40,40] });
-                // display ETA in jobStatusEl
-                const mins = Math.round((route.duration||0)/60);
-                const distKm = ((route.distance||0)/1000).toFixed(1);
-                jobStatusEl.textContent = `ETA: ${mins} min • ${distKm} km`;
+                // update ETA text
+                const minutes = Math.max(0, Math.round((route.duration || 0) / 60));
+                const distanceKm = ((route.distance || 0) / 1000).toFixed(1);
+                jobStatusEl.textContent = `ETA: ${minutes} min • ${distanceKm} km`;
               }
             }
           }catch(e){
-            console.warn('OSRM error', e);
+            console.warn('OSRM route error', e);
+            if(finalClient) map.setView([finalClient[0], finalClient[1]], 12);
+            else if(finalTech) map.setView([finalTech[0], finalTech[1]], 12);
           }
-        } else if(clientCoords){
-          map.setView([clientCoords[0], clientCoords[1]], 12);
-        } else if(techCoords){
-          map.setView([techCoords[0], techCoords[1]], 12);
+        } else if(finalClient){
+          map.setView([finalClient[0], finalClient[1]], 12);
+        } else if(finalTech){
+          map.setView([finalTech[0], finalTech[1]], 12);
         } else {
-          // nothing to show
           map.setView([9.0820,8.6753], 6);
         }
       }
 
-      // keep map updated periodically if visible
-      setInterval(()=>{ if(mapEl.style.display === 'block') updateMapRoute(); }, 10000);
+      // JOB STATUS POLLING & UI UPDATES
+      let countdownInterval = null;
+      async function fetchJobStatus(){
+        try{
+          const res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+          if(!res.ok) return;
+          const js = await res.json().catch(()=>null);
+          if(!js || !js.success) return;
+          const job = js.job;
+          jobStatusEl.textContent = `Status: ${job.status || '—'}`;
 
-      // ensure we try once on load if user toggled manually
-      // also re-fetch messages immediately on load
-      (async function initial(){
-        await syncMessages();
-        await fetchJobStatusAndUpdate();
-      })();
+          // assigned tech info (once)
+          if(job.assigned_tech_id){
+            const t = await fetchTechProfile(job.assigned_tech_id);
+            const name = (t && (t.fullname || t.username)) ? (t.fullname || t.username) : ('Tech ' + job.assigned_tech_id);
+            peerNameEl.textContent = name;
+            peerRoleEl.textContent = 'Technician';
+          }
 
-      // When page visible, refresh
-      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ syncMessages(); fetchJobStatusAndUpdate(); if(mapEl.style.display==='block') updateMapRoute(); } });
+          // countdown
+          let expires = null;
+          if(job.expires_at) expires = new Date(job.expires_at).getTime();
+          if(expires){
+            startCountdown(expires);
+          } else {
+            jobCountdownEl.textContent = '—';
+            if(countdownInterval){ clearInterval(countdownInterval); countdownInterval = null; }
+          }
+        }catch(e){}
+      }
 
+      function startCountdown(expiresTs){
+        if(countdownInterval) clearInterval(countdownInterval);
+        function update(){
+          const now = Date.now();
+          let diff = Math.max(0, expiresTs - now);
+          const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
+          const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
+          const m = Math.floor(diff / (60*1000)); diff %= 60*1000;
+          jobCountdownEl.textContent = `${d}d ${h}h ${m}m`;
+          if(expiresTs <= now){ jobCountdownEl.textContent = 'Expired'; clearInterval(countdownInterval); countdownInterval = null; }
+        }
+        update();
+        countdownInterval = setInterval(update, 1000 * 60);
+      }
+
+      // Message polling + status
+      setInterval(pollMessages, 2500); // poll messages frequently (2.5s)
+      setInterval(fetchJobStatus, 5000); // poll job status (5s)
+      // initial runs
+      pollMessages();
+      fetchJobStatus();
+
+      // Also update map route if visible every 12s (so arrows update)
+      setInterval(()=>{ if(mapEl.style.display !== 'none') updateMapRouteWithArrows(); }, 12000);
+
+      // initial rendering
+      renderMessages();
+
+      // keep syncing server messages into local store on page focus
+      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ pollMessages(); fetchJobStatus(); if(mapEl.style.display !== 'none') updateMapRouteWithArrows(); } });
+
+      // expose some functions for debug if needed
+      window.__wc_reloadMessages = pollMessages;
+      window.__wc_updateMap = updateMapRouteWithArrows;
     })();
   </script>
 </body>
-</html>
+</html> 
