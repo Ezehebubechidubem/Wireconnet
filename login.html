@@ -24,7 +24,7 @@
     .actions{display:flex;gap:8px;align-items:center;margin-top:14px}
     button{background:var(--accent);color:white;padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600;width:100%}
     .small{font-size:14px;color:var(--muted); }
-    
+
   .smallt{text-decoration:none;color:blue}
     /* overlay */
     .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.45);z-index:1200}
@@ -141,6 +141,13 @@
         if(!resp.ok){ const serverMsg = data && data.message ? data.message : `HTTP ${resp.status}`; showResult(false,'Login failed',serverMsg); return; }
         if(data && data.success && data.user){
           try { localStorage.setItem('wc_user', JSON.stringify(data.user)); } catch(e){}
+          // <-- ADDED: save userId and body[data-user-id] so dashboard can send techId to backend
+          try {
+            if(data.user && data.user.id){
+              localStorage.setItem('userId', data.user.id);
+              document.body.setAttribute('data-user-id', data.user.id);
+            }
+          } catch(e) { /* ignore */ }
           if(data.token){ try{ localStorage.setItem('wc_token', data.token); } catch(e){} }
           showResult(true,'Login successful', data.message || 'Redirecting to dashboard...');
           setTimeout(()=>{ hideOverlay(); redirectToDashboard(); },900);
