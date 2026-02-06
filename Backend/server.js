@@ -327,43 +327,104 @@ app.post('/api/tech/status', async (req,res) => {
 // Book job (client)
 app.post('/api/book', async (req,res)=>{
   try{
+
     const {
-      clientId, state, city, address, lat, lng, job_type, description, price,
-      workers_needed, estimated_days, lga
+      clientId,
+      state,
+      city,
+      address,
+      lat,
+      lng,
+      job_type,
+      description,
+      price
     } = req.body || {};
 
-    if(!clientId || !state) return res.status(400).json({ success:false, message:'clientId and state required' });
+    if(!clientId || !state){
+      return res.status(400).json({
+        success:false,
+        message:'clientId and state required'
+      });
+    }
 
     const jobId = uid();
-    const nlat = (lat === null || lat === undefined) ? null : Number(lat);
-    const nlng = (lng === null || lng === undefined) ? null : Number(lng);
 
-    await pool.query(`INSERT INTO jobs (id, client_id, state, city, address, lat, lng, job_type, description, price, status, workers_needed, estimated_days)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [jobId, clientId, state, city||null, address||null, Number.isFinite(nlat) ? nlat : null, Number.isFinite(nlng) ? nlng : null, job_type||null, description||null, price||null, 'created', Number(workers_needed)||1, Number(estimated_days)||1]
-    );
+    // Insert job safely
+    await pool.query(`
+      INSERT INTO jobs
+      (id, client_id, state, city, address, lat, lng, job_type, description, price, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    `, [
+      jobId,
+      clientId,
+      state,
+      city || null,
+      address || null,
+      lat || null,
+      lng || null,
+      job_type || null,
+      description || null,
+      price || null,
+      'created'
+    ]);
 
-    // find online workers in same state (server side)
-    const techRows = (await pool.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [state])).rows;
-    // compute distances robustly
-    let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(nlat, nlng, t.lat, t.lng) }));
-    techsWithDist.sort((a,b)=>a.distance - b.distance);
+    // Fetch technicians
+    const techRows = (await pool.query(`
+      SELECT id, lat, lng
+      FROM users
+      WHERE role='worker'
+      AND online=true
+      AND state=$1
+    `,[state])).rows;
 
+    // SAFE distance calc
+    let techsWithDist = techRows
+      .filter(t => t.lat && t.lng && lat && lng)
+      .map(t => ({
+        id:t.id,
+        lat:t.lat,
+        lng:t.lng,
+        distance:distanceMeters(lat,lng,t.lat,t.lng)
+      }));
+
+    techsWithDist.sort((a,b)=>a.distance-b.distance);
+
+    // No technicians
     if(techsWithDist.length === 0){
-      await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
-      return res.json({ success:true, message:'Job created but no technicians available', jobId, assigned:false });
-    } else {
-      // attempt assign and get technician object if successful
-      const assignedTech = await attemptAssign(jobId, techsWithDist);
-      if(assignedTech){
-        // return assigned technician object in response
-        return res.json({ success:true, message:'Job created and assigned (pending acceptance)', jobId, assigned:true, technician: assignedTech });
-      } else {
-        // couldn't assign now
-        return res.json({ success:true, message:'Job created, no immediate assignment', jobId, assigned:false });
-      }
+      await pool.query(`
+        UPDATE jobs
+        SET status='pending_assignment'
+        WHERE id=$1
+      `,[jobId]);
+
+      return res.json({
+        success:true,
+        message:'Job created but no technicians available',
+        jobId,
+        assigned:false
+      });
     }
-  }catch(e){ console.error('/api/book', e); return res.status(500).json({ success:false, message:'Server error' }); }
+
+    // Attempt assignment
+    const ok = await attemptAssign(jobId, techsWithDist);
+
+    return res.json({
+      success:true,
+      message: ok
+        ? 'Job created and assigned'
+        : 'Job created, no immediate assignment',
+      jobId,
+      assigned: ok
+    });
+
+  }catch(e){
+    console.error('BOOK ERROR FULL:', e);
+    return res.status(500).json({
+      success:false,
+      message:'Server error',
+      error:e.message
+    });
+  }
 });
 
 // Poll assigned jobs for technician
