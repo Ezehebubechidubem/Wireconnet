@@ -479,9 +479,77 @@
         storeLastKnownOnline(userId, checked);
         showToast('Status updated', 2000);
       } else {
-        // revert
+                // revert
         const prev = !checked;
         if(statusSwitch) statusSwitch.checked = prev;
         setIndicator(prev);
         const msg = (result && result.message) ? result.message : 'Failed to update status';
         showToast('Error: ' + msg, 6000);
+        console.warn('Status update failed:', result);
+      }
+    }
+
+    // attach listener if present
+    if(document.getElementById('statusSwitch')){
+      document.getElementById('statusSwitch').addEventListener('change', handleSwitchToggle);
+    }
+
+    // initial UI state: if no user OR role != client -> set OFFLINE and leave switch unchecked
+    (function initFromLocal(){
+      const role = getUserRole();
+      const isClient = role === 'client';
+      const userId = getUserId();
+      const ss = document.getElementById('statusSwitch');
+
+      if(!isClient){
+        // hide nothing (you asked leave UI unchanged) — but ensure switch is unchecked and indicator offline
+        setIndicator(false);
+        if(ss) ss.checked = false;
+        return;
+      }
+
+      // for client, restore last known if any
+      const known = readLastKnownOnline(userId);
+      if(known === null){
+        setIndicator(false);
+        if(ss) ss.checked = false;
+      } else {
+        setIndicator(!!known);
+        if(ss) ss.checked = !!known;
+      }
+    })();
+
+    // LOGOUT: clear session-related keys and redirect to login.html
+    logoutBtn && logoutBtn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      try {
+        const u = getLocalUser();
+        if(u && u.id) {
+          // remove any per-user online flag
+          localStorage.removeItem('techOnline_' + u.id);
+        }
+      } catch(e){}
+      // clear common session keys used by your pages
+      localStorage.removeItem('wc_user');
+      localStorage.removeItem('wc_token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      // also remove generic online flag
+      localStorage.removeItem('wc_online');
+      // navigate to login
+      window.location.href = 'login.html';
+    });
+
+    // close menu on ESC (unchanged)
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') {
+        const menu = document.getElementById('menuDropdown');
+        const btn = document.getElementById('hamburgerBtn');
+        if(menu) menu.style.display = 'none';
+        if(btn) btn.setAttribute('aria-expanded', false);
+        if(menu) menu.setAttribute('aria-hidden', true);
+      }
+    });
+  </script>
+</body>
+</html>
