@@ -1,243 +1,402 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>WireConnect — Chat</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<style>
-body{font-family:Inter,Arial;margin:0;background:#f6f8fb;color:#111}
-header{display:flex;align-items:center;gap:12px;padding:10px;background:linear-gradient(135deg,#0b5cff,#55a7ff);color:#fff}
-
-.container{
-  display:flex;
-  padding:12px;
-  max-width:900px;
-  margin:12px auto;
-}
-
-.chat-card{
-  flex:1;
-  background:#fff;
-  border-radius:12px;
-  padding:12px;
-  box-shadow:0 8px 30px rgba(16,24,40,0.06)
-}
-
-#mapWrap{
-  display:none;
-  margin-top:12px;
-}
-
-#map{
-  height:320px;
-  border-radius:10px;
-}
-
-.chat-window{
-  height:300px;
-  overflow:auto;
-  border:1px solid #eef2ff;
-  padding:8px;
-  border-radius:8px
-}
-
-.chat-input{
-  display:flex;
-  gap:8px;
-  margin-top:8px
-}
-
-.btn{
-  background:#0b5cff;
-  color:#fff;
-  padding:8px 12px;
-  border-radius:8px;
-  border:0;
-  cursor:pointer;
-  font-weight:600
-}
-
-.muted{color:#64748b}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — Chat</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body{font-family:Inter,Arial;margin:0;background:#f6f8fb;color:#111}
+    header{display:flex;align-items:center;gap:12px;padding:10px;background:linear-gradient(135deg,#0b5cff,#55a7ff);color:#fff;position:relative}
+    .logo img{height:36px}
+    .container{display:flex;gap:12px;padding:12px;max-width:1100px;margin:12px auto;flex-direction:column}
+    .panel{width:100%;background:#fff;border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(16,24,40,0.06)}
+    .chat-window{height:360px;overflow:auto;border:1px solid #eef2ff;padding:12px;border-radius:8px;background:#fbfeff}
+    .chat-input{display:flex;gap:8px;margin-top:8px}
+    .btn{background:#0b5cff;color:#fff;padding:8px 10px;border-radius:8px;border:0;cursor:pointer}
+    .muted{color:#64748b}
+    #map{height:320px;border-radius:8px;margin-top:12px;display:none}
+    .top-row{display:flex;align-items:center;justify-content:space-between}
+    .countdown{background:rgba(255,255,255,0.15);padding:6px 10px;border-radius:8px;font-weight:700}
+  </style>
 </head>
-
 <body>
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" style="height:36px;object-fit:contain" alt="logo">
+      <div style="font-weight:700">WireConnect — Job Chat</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <button id="toggleMapBtn" class="btn" style="background:#fff;color:#0b5cff;border:1px solid rgba(11,92,255,0.2)">Show map</button>
+      <div id="jobCountdown" class="countdown" aria-live="polite">—</div>
+    </div>
+  </header>
 
-<header>
-<img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" style="height:36px">
-<div style="font-weight:700">WireConnect — Chat</div>
-</header>
+  <div class="container">
+    <div class="panel">
+      <div class="top-row" style="margin-bottom:8px">
+        <div>
+          <strong id="peerName">Peer</strong><div class="muted" id="peerRole">Role</div>
+        </div>
+        <div class="muted" id="jobStatus">Loading job...</div>
+      </div>
 
-<div class="container">
-<div class="chat-card">
+      <div id="chatWindow" class="chat-window" aria-live="polite"></div>
 
-<div style="display:flex;justify-content:space-between;align-items:center">
-<div>
-<strong id="peerName">Peer</strong>
-<div class="muted" id="peerRole"></div>
-</div>
+      <div class="chat-input">
+        <input id="chatText" placeholder="Write a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eef2ff">
+        <button id="sendBtn" class="btn">Send</button>
+      </div>
 
-<button id="toggleMapBtn" class="btn">Show Map</button>
-</div>
+      <div id="map" aria-hidden="true"></div>
+    </div>
+  </div>
 
-<div id="jobStatus" style="font-weight:700;margin-top:6px"></div>
-<div class="muted" id="distanceInfo"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API_BASE = 'https://wireconnet-1.onrender.com';
 
-<div class="chat-window" id="chatWindow"></div>
+    // query string
+    const params = new URLSearchParams(location.search);
+    const jobId = params.get('jobId');
+    const urlTechId = params.get('techId');
 
-<div class="chat-input">
-<input id="chatText" placeholder="Write a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eef2ff">
-<button id="sendBtn" class="btn">Send</button>
-</div>
+    // nodes
+    const chatWindow = document.getElementById('chatWindow');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatText = document.getElementById('chatText');
+    const peerNameEl = document.getElementById('peerName');
+    const peerRoleEl = document.getElementById('peerRole');
+    const jobStatusEl = document.getElementById('jobStatus');
+    const jobCountdownEl = document.getElementById('jobCountdown');
+    const toggleMapBtn = document.getElementById('toggleMapBtn');
+    const mapEl = document.getElementById('map');
 
-<div id="mapWrap">
-<div id="map"></div>
-</div>
+    if(!jobId){ alert('No job specified'); location.href = 'dashboard.html'; }
 
-</div>
-</div>
+    // local user (preserve login)
+    function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
+    const me = loadUser();
 
+    // local storage chat key
+    const storageKey = 'wc_chat_' + jobId;
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    function loadMessages(){ try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e){ return []; } }
+    function saveMessage(m){ const arr = loadMessages(); arr.push(m); localStorage.setItem(storageKey, JSON.stringify(arr)); renderMessages(); }
 
-<script>
-const API_BASE = "https://wireconnet-1.onrender.com";
+    function renderMessages(){
+      const msgs = loadMessages();
+      chatWindow.innerHTML = msgs.map(m=>{
+        const time = new Date(m.t).toLocaleTimeString();
+        const bubbleBg = m.own ? '#e6f0ff' : '#fff';
+        const align = m.own ? 'flex-end' : 'flex-start';
+        return `<div style="display:flex;justify-content:${align};margin-bottom:10px"><div style="max-width:78%"><div style="font-size:11px;color:#64748b">${time}</div><div style="padding:10px;background:${bubbleBg};border-radius:8px;margin-top:6px">${escapeHtml(m.text)}</div></div></div>`;
+      }).join('');
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
 
-const params = new URLSearchParams(location.search);
-const jobId = params.get("jobId");
+    sendBtn.addEventListener('click', async ()=>{
+      const txt = chatText.value.trim(); if(!txt) return;
+      // optimistic save locally
+      saveMessage({ t: Date.now(), text: txt, own:true });
+      chatText.value = '';
+      // attempt to POST to backend for persistence (best-effort)
+      try{
+        const senderId = me && (me.id || me.userId || me._id) ? (me.id || me.userId || me._id) : null;
+        if(!senderId) return;
+        await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/message', {
+          method:'POST', headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ senderId, text: txt })
+        });
+      }catch(e){ /* ignore network errors — messages kept locally */ }
+    });
 
-if(!jobId){
- alert("No job specified");
- location.href="dashboard.html";
-}
+    function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-function q(s){return document.querySelector(s)}
+    // OSRM route drawing (map hidden by default)
+    let map = null, jobMarker = null, techMarker = null, routeLayer = null;
+    let showMap = false;
 
-const chatWindow=q("#chatWindow");
-const chatText=q("#chatText");
-const sendBtn=q("#sendBtn");
-const jobStatus=q("#jobStatus");
-const peerName=q("#peerName");
-const peerRole=q("#peerRole");
-const distanceInfo=q("#distanceInfo");
+    toggleMapBtn.addEventListener('click', async function(){
+      showMap = !showMap;
+      if(showMap){
+        mapEl.style.display = 'block';
+        toggleMapBtn.innerText = 'Hide map';
+        if(!map) initMap();
+        // update route
+        await updateMapRoute();
+      } else {
+        mapEl.style.display = 'none';
+        toggleMapBtn.innerText = 'Show map';
+      }
+    });
 
-const toggleMapBtn=q("#toggleMapBtn");
-const mapWrap=q("#mapWrap");
+    function initMap(){
+      map = L.map('map', { center:[9.0820,8.6753], zoom:6 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map);
+    }
 
-//////////////////////// CHAT ////////////////////////
-const storageKey="wc_chat_"+jobId;
+    async function updateMapRoute(){
+      // Attempt to fetch job details (lat/lng) from backend endpoint /api/job/:id (if exists) otherwise fallback to status
+      let job = null;
+      try{
+        const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId));
+        if(r.ok){ const j = await r.json().catch(()=>null); if(j && j.success && j.job) job = j.job; else if(j && j.job) job = j.job; }
+      }catch(e){}
+      // fallback: try status endpoint which may include lat/lng depending on your backend
+      if(!job){
+        try{
+          const r2 = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+          if(r2.ok){ const s = await r2.json().catch(()=>null); if(s && s.success && s.job) job = s.job; }
+        }catch(e){}
+      }
 
-function loadMsgs(){return JSON.parse(localStorage.getItem(storageKey)||"[]")}
-function saveMsg(m){
- const arr=loadMsgs();
- arr.push(m);
- localStorage.setItem(storageKey,JSON.stringify(arr));
- renderMsgs();
-}
+      // tech profile
+      let tech = null;
+      const techId = urlTechId || (job && job.assigned_tech_id);
+      if(techId){
+        try{
+          const tr = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId));
+          if(tr.ok){ const tj = await tr.json().catch(()=>null); if(tj && tj.success && tj.user) tech = tj.user; else if(tj && tj.id) tech = tj; }
+        }catch(e){}
+      }
 
-function renderMsgs(){
- const msgs=loadMsgs();
- chatWindow.innerHTML=msgs.map(m=>`
- <div style="margin-bottom:8px">
-   <div style="font-size:12px;color:#64748b">${new Date(m.t).toLocaleTimeString()}</div>
-   <div style="padding:8px;background:${m.own?'#e6f0ff':'#f3f6fb'};border-radius:8px">${m.text}</div>
- </div>`).join('');
- chatWindow.scrollTop=chatWindow.scrollHeight;
-}
+      const clientCoords = (job && job.lat && job.lng) ? [Number(job.lat), Number(job.lng)] : null;
+      const techCoords = (tech && tech.lat && tech.lng) ? [Number(tech.lat), Number(tech.lng)] : null;
 
-sendBtn.onclick=()=>{
- const txt=chatText.value.trim();
- if(!txt)return;
- saveMsg({t:Date.now(),text:txt,own:true});
- chatText.value="";
-};
+      // fallback: try localStorage last-known coords for user
+      if(!clientCoords){
+        const lat = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
+        const lng = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
+        if(Number.isFinite(lat) && Number.isFinite(lng)) jobMarker || (clientCoords = [lat, lng]);
+      }
 
-renderMsgs();
+      if(!map) initMap();
 
-//////////////////////// MAP ////////////////////////
-let map=null;
-let routeLine=null;
-let markerA=null;
-let markerB=null;
+      // clear existing
+      if(routeLayer){ routeLayer.remove(); routeLayer = null; }
+      if(jobMarker){ jobMarker.remove(); jobMarker=null; }
+      if(techMarker){ techMarker.remove(); techMarker=null; }
 
-toggleMapBtn.onclick=()=>{
- if(mapWrap.style.display==="none"){
-   mapWrap.style.display="block";
-   toggleMapBtn.textContent="Hide Map";
-   initMap();
- }else{
-   mapWrap.style.display="none";
-   toggleMapBtn.textContent="Show Map";
- }
-};
+      if(clientCoords){
+        jobMarker = L.marker([clientCoords[0], clientCoords[1]]).addTo(map).bindPopup('Client');
+      }
+      if(techCoords){
+        techMarker = L.marker([techCoords[0], techCoords[1]]).addTo(map).bindPopup('Technician');
+      }
 
-async function initMap(){
- if(map) return;
+      if(clientCoords && techCoords){
+        // OSRM route request (public demo)
+        try{
+          const from = `${techCoords[1]},${techCoords[0]}`; // lon,lat
+          const to   = `${clientCoords[1]},${clientCoords[0]}`;
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson&steps=false`;
+          const r = await fetch(osrmUrl);
+          if(r.ok){
+            const js = await r.json();
+            if(js && js.routes && js.routes.length){
+              const route = js.routes[0];
+              const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+              routeLayer = L.polyline(coords, { color:'#0b5cff', weight:5, opacity:0.8 }).addTo(map);
+              map.fitBounds(routeLayer.getBounds(), { padding:[40,40] });
+              // ETA from OSRM (duration in seconds)
+              const dur = route.duration || 0;
+              const mins = Math.round(dur/60);
+              const distKm = (route.distance || 0)/1000;
+              jobStatusEl.textContent = `ETA: ${mins} min • ${distKm.toFixed(1)} km`;
+            }
+          }
+        }catch(e){}
+      } else {
+        if(clientCoords) map.setView([clientCoords[0], clientCoords[1]], 12);
+        else if(techCoords) map.setView([techCoords[0], techCoords[1]], 12);
+      }
+    }
 
- map=L.map("map").setView([9.0820,8.6753],6);
- L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    // job status polling & countdown
+    let countdownInterval = null;
+    async function fetchJobStatus(){
+      try{
+        const res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+        if(!res.ok) return;
+        const js = await res.json().catch(()=>null);
+        if(!js || !js.success) return;
+        const job = js.job;
+        // update status text
+        jobStatusEl.textContent = `Status: ${job.status || '—'}`;
+        // assigned tech id show name
+        if(job.assigned_tech_id){
+          // try to fetch tech name once
+          try{
+            const tr = await fetch(API_BASE + '/api/user/' + encodeURIComponent(job.assigned_tech_id));
+            if(tr.ok){
+              const tjs = await tr.json().catch(()=>null);
+              const name = (tjs && tjs.success && tjs.user && (tjs.user.fullname || tjs.user.username)) ? (tjs.user.fullname || tjs.user.username) : (tjs && (tjs.fullname || tjs.username)) || `Tech ${job.assigned_tech_id}`;
+              peerNameEl.textContent = name;
+              peerRoleEl.textContent = 'Technician';
+            } else {
+              peerNameEl.textContent = 'Assigned Technician';
+              peerRoleEl.textContent = 'Technician';
+            }
+          }catch(e){}
+        }
 
- const job=await fetch(API_BASE+"/api/job/"+jobId+"/status")
-               .then(r=>r.json()).then(j=>j.job);
+        // countdown: prefer expires_at, else use assigned_at + estimated_days
+        let expires = null;
+        if(job.expires_at) expires = new Date(job.expires_at).getTime();
+        else if(job.assigned_at && job.estimated_days) {
+          expires = new Date(job.assigned_at).getTime() + Number(job.estimated_days) * 24*3600*1000;
+        }
+        if(expires){
+          startCountdown(expires);
+        } else {
+          jobCountdownEl.textContent = '—';
+          if(countdownInterval){ clearInterval(countdownInterval); countdownInterval = null; }
+        }
 
- if(!job.lat||!job.lng||!job.assigned_tech_id) return;
+        // if status accepted → ensure chat available (technician and client)
+        if(job.status === 'accepted' || job.status === 'in_progress' || job.status === 'assigned'){
+          // ensure we'll show chat; also auto open map if user asked
+          // nothing to do other than ensure map button can be used
+        }
+      }catch(e){}
+    }
 
- const tech=await fetch(API_BASE+"/api/user/"+job.assigned_tech_id)
-                 .then(r=>r.json());
+    function startCountdown(expiresTs){
+      if(countdownInterval) clearInterval(countdownInterval);
+      function update(){
+        const now = Date.now();
+        let diff = Math.max(0, expiresTs - now);
+        const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
+        const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
+        const m = Math.floor(diff / (60*1000)); diff %= 60*1000;
+        const s = Math.floor(diff / 1000);
+        jobCountdownEl.textContent = `${d}d ${h}h ${m}m`;
+        if(expiresTs <= now){ jobCountdownEl.textContent = 'Expired'; clearInterval(countdownInterval); countdownInterval = null; }
+      }
+      update();
+      countdownInterval = setInterval(update, 1000 * 60); // update every minute
+    }
 
- let from,to;
+    // messages polling from backend to keep local chat in sync (also persists messages server-side)
+    async function pollMessages(){
+      try{
+        const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/messages');
+        if(!r.ok) return;
+        const js = await r.json().catch(()=>null);
+        if(!js || !js.success) return;
+        const remote = js.messages || [];
+        // merge remote messages into local store (avoid duplicates)
+        const local = loadMessages();
+        const localKeys = new Set(local.map(m => (m.t + '|' + m.text + '|' + (m.sender || ''))));
+        let changed = false;
+        for(const m of remote){
+          // transform server message shape to local
+          const t = new Date(m.created_at).getTime();
+          const text = m.text || '';
+          const sender = m.sender_id || m.senderId || m.sender;
+          const key = t + '|' + text + '|' + (sender || '');
+          if(!localKeys.has(key)){
+            // If sender matches current user id => mark as own
+            const own = me && (me.id == sender || me.userId == sender || me._id == sender);
+            local.push({ t, text, own });
+            localKeys.add(key);
+            changed = true;
+          }
+        }
+        if(changed) localStorage.setItem(storageKey, JSON.stringify(local));
+        renderMessages();
+      }catch(e){}
+    }
 
- const role=(localStorage.getItem("userRole")||"").toLowerCase();
+    // local message helpers used by pollMessages
+    function loadMessages(){ try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e){ return []; } }
+    function saveMessageLocal(m){ const arr = loadMessages(); arr.push(m); localStorage.setItem(storageKey, JSON.stringify(arr)); renderMessages(); }
 
- if(role.includes("worker")){
-   from=[tech.lat,tech.lng];
-   to=[job.lat,job.lng];
- }else{
-   from=[job.lat,job.lng];
-   to=[tech.lat,tech.lng];
- }
+    // render initial local messages
+    renderMessages();
 
- markerA=L.marker(from).addTo(map);
- markerB=L.marker(to).addTo(map);
+    // periodic tasks
+    setInterval(fetchJobStatus, 5000);
+    setInterval(pollMessages, 3000);
+    // initial run
+    fetchJobStatus();
+    pollMessages();
 
- drawRoute(from,to);
-}
+    // also attempt to auto-redirect to chat immediately when job becomes accepted (for tech)
+    // If the technician's dashboard accepts job, job.status becomes 'accepted' on the server. The chat page will already be open for client; for the technician, their dashboard should redirect them to chat (you have polling code there). Here we ensure once status is accepted we stay on chat and show countdown.
 
-//////////////// ROUTING ///////////////////
-async function drawRoute(a,b){
- const url=`https://router.project-osrm.org/route/v1/driving/${a[1]},${a[0]};${b[1]},${b[0]}?overview=full&geometries=geojson`;
- const data=await fetch(url).then(r=>r.json());
+    // load map route automatically if user clicked 'Show map' earlier (we keep it manual)
 
- if(!data.routes.length) return;
+    async function updateMapIfVisible(){ if(mapEl.style.display !== 'none') await updateMapRoute(); }
 
- const route=data.routes[0];
+    // code re-used from earlier route logic (minimized)
+    async function initMapIfNeeded(){ if(!map){ map = L.map('map', { center:[9.0820,8.6753], zoom:6 }); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map); } }
 
- routeLine=L.geoJSON(route.geometry).addTo(map);
- map.fitBounds(routeLine.getBounds());
+    async function updateMapRoute(){
+      await initMapIfNeeded();
 
- const km=(route.distance/1000).toFixed(2);
- const min=Math.round(route.duration/60);
+      // get job full details & technician profile
+      let job = null;
+      try{ const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId)); if(r.ok){ const js = await r.json().catch(()=>null); if(js && js.success && js.job) job = js.job; else if(js && js.job) job = js.job; } }catch(e){}
+      if(!job){
+        try{ const r2 = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status'); if(r2.ok){ const sjs = await r2.json().catch(()=>null); if(sjs && sjs.success && sjs.job) job = sjs.job; } }catch(e){}
+      }
+      let tech = null;
+      const techId = urlTechId || (job && job.assigned_tech_id);
+      if(techId){
+        try{ const tr = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId)); if(tr.ok){ const tjs = await tr.json().catch(()=>null); if(tjs && tjs.success && tjs.user) tech = tjs.user; else if(tjs && tjs.id) tech = tjs; } }catch(e){}
+      }
 
- distanceInfo.textContent=`Distance: ${km} km — ETA: ${min} minutes`;
-}
+      const clientCoords = (job && job.lat && job.lng) ? [Number(job.lat), Number(job.lng)] : null;
+      const techCoords = (tech && tech.lat && tech.lng) ? [Number(tech.lat), Number(tech.lng)] : null;
 
-//////////////// JOB STATUS ////////////////
-async function loadJob(){
- const js=await fetch(API_BASE+"/api/job/"+jobId+"/status")
-             .then(r=>r.json());
+      // clear previous layers
+      if(window.__routeLayer){ window.__routeLayer.remove(); window.__routeLayer = null; }
+      if(window.__jobMarker){ window.__jobMarker.remove(); window.__jobMarker = null; }
+      if(window.__techMarker){ window.__techMarker.remove(); window.__techMarker = null; }
 
- const job=js.job;
- jobStatus.textContent=`Job: ${job.job_type} — ${job.status}`;
- peerName.textContent=job.assigned_tech_id||"Unassigned";
- peerRole.textContent="Connected";
-}
+      if(clientCoords){
+        window.__jobMarker = L.marker([clientCoords[0], clientCoords[1]]).addTo(map).bindPopup('Client');
+      }
+      if(techCoords){
+        window.__techMarker = L.marker([techCoords[0], techCoords[1]]).addTo(map).bindPopup('Technician');
+      }
+      if(clientCoords && techCoords){
+        try{
+          const from = `${techCoords[1]},${techCoords[0]}`;
+          const to   = `${clientCoords[1]},${clientCoords[0]}`;
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson`;
+          const r = await fetch(osrmUrl);
+          if(r.ok){
+            const js = await r.json();
+            if(js && js.routes && js.routes.length){
+              const route = js.routes[0];
+              const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+              window.__routeLayer = L.polyline(coords, { color:'#0b5cff', weight:5, opacity:0.8 }).addTo(map);
+              map.fitBounds(window.__routeLayer.getBounds(), { padding:[40,40] });
+              const mins = Math.round((route.duration||0)/60);
+              jobStatusEl.textContent = `ETA: ${mins} min`;
+            }
+          }
+        }catch(e){}
+      } else {
+        if(clientCoords) map.setView([clientCoords[0], clientCoords[1]], 12);
+        else if(techCoords) map.setView([techCoords[0], techCoords[1]], 12);
+      }
+    }
 
-loadJob();
-setInterval(loadJob,3000);
+    // keep render messages local on load
+    function renderMessages(){ const msgs = loadMessages(); chatWindow.innerHTML = msgs.map(m=>{ const time = new Date(m.t).toLocaleTimeString(); const bubbleBg = m.own ? '#e6f0ff' : '#fff'; const align = m.own ? 'flex-end' : 'flex-start'; return `<div style="display:flex;justify-content:${align};margin-bottom:10px"><div style="max-width:78%"><div style="font-size:11px;color:#64748b">${time}</div><div style="padding:10px;background:${bubbleBg};border-radius:8px;margin-top:6px">${escapeHtml(m.text)}</div></div></div>` }).join(''); chatWindow.scrollTop = chatWindow.scrollHeight; }
+    function loadMessages(){ try{return JSON.parse(localStorage.getItem(storageKey) || '[]')}catch(e){return []} }
+    function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-</script>
+    // initial render
+    renderMessages();
+
+    // when the page becomes visible, refresh map/route if shown
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && mapEl.style.display !== 'none') updateMapRoute(); });
+
+  </script>
 </body>
 </html>
