@@ -1,438 +1,473 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — Book Job</title>
-  <style>
-    :root{
-      --bg:#f6f8fb;
-      --card:#fff;
-      --accent:#0b5cff;
-      --muted:#6b7280;
-      --shadow: 0 8px 30px rgba(16,24,40,0.06);
-      --radius:12px;
-    }
-    html,body{height:100%;margin:0}
-    body{
-      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-      background:var(--bg);
-      color:#111827;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-      padding:18px;
-    }
+// server.js (WireConnect backend — extended with Profile & KYC)
+// Requirements:
+// npm i express cors bcryptjs pg dotenv
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const { Pool } = require('pg');
 
-    .wrap{
-      width:100%;
-      max-width:980px;
-      background:var(--card);
-      border-radius:12px;
-      padding:0;
-      box-shadow:var(--shadow);
-      box-sizing:border-box;
-      overflow:hidden;
-    }
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-    .header-logo img{ width:100%; height:120px; object-fit:cover; display:block; }
+// Postgres pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized:false } : false
+});
 
-    .content { padding:18px; }
-    h1{ margin:0; font-size:20px; font-weight:800; font-style:italic; }
-    .muted{ color:var(--muted); font-size:13px; }
-    label{ display:block; margin-bottom:6px; font-size:14px; font-weight:700 }
-    input, select, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #eef3fb; box-sizing:border-box; margin-bottom:8px; font-size:14px; }
-    textarea{ font-family:inherit; min-height:100px; }
+// open CORS
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: '10mb' })); // allow some room for base64 if demo
 
-    .controls { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
-    .btn{ background:var(--accent); color:white; border:0; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:800 }
-    .btn-ghost{ background:transparent; border:1px solid #e6eef9; padding:8px 12px; border-radius:8px; cursor:pointer }
-    .estimate{ background:#f0f7ff; padding:10px; border-radius:8px; margin-bottom:8px; font-weight:700 }
-    .small{ font-size:13px; color:var(--muted) }
+// DB init & migrations (idempotent)
+const initSql = `
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  role TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  phone TEXT NOT NULL UNIQUE,
+  fullname TEXT NOT NULL,
+  username TEXT NOT NULL UNIQUE,
+  state TEXT NOT NULL,
+  lga TEXT NOT NULL,
+  city TEXT NOT NULL,
+  gender TEXT,
+  specializations TEXT[],
+  password_hash TEXT NOT NULL,
+  kyc_status TEXT DEFAULT 'not_required',
+  avatar_url TEXT,
+  profile_complete boolean DEFAULT false,
+  account_details JSONB,
+  kyc_documents TEXT[],
+  kyc_submitted_at TIMESTAMP WITH TIME ZONE,
+  online boolean DEFAULT false,
+  lat double precision,
+  lng double precision,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 
-    /* modal styles */
-    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,0.35); display:none; align-items:center; justify-content:center; z-index:9999; }
-    .modal{ width:92%; max-width:560px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 12px 48px rgba(2,6,23,0.4); text-align:center; }
-    .spinner{ width:64px; height:64px; border-radius:50%; border:8px solid #eef6ff; border-top-color:var(--accent); animation:spin 1s linear infinite; margin:10px auto }
-    @keyframes spin{ to{ transform:rotate(360deg) } }
-    .tech-card{ display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; border:1px solid #eef6ff; background:#fbfeff; margin-top:10px }
-    .tech-avatar{ width:64px; height:64px; border-radius:10px; object-fit:cover; background:#f0f3ff }
-    .modal h3{ margin:0 0 8px; font-size:18px }
-    .modal .muted{ color:#374151; margin-bottom:8px; }
+CREATE TABLE IF NOT EXISTS announcements (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 
-    @media(max-width:680px){ .controls{flex-direction:column;align-items:stretch} }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header-logo"><img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo"></div>
-    <div class="content">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div><h1>Book a Job</h1><div class="muted" id="userGreeting">—</div></div>
-        <div style="align-self:flex-start"><a href="dashboard.html" style="text-decoration:none;color:var(--accent);font-weight:800">← Back to dashboard</a></div>
-      </div>
+CREATE TABLE IF NOT EXISTS articles (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  body TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 
-      <!-- booking form -->
-      <label>Choose job type</label>
-      <select id="jobType">
-        <option value="conduit">Conduit wiring</option>
-        <option value="solar">Solar installation</option>
-        <option value="other">Other (custom)</option>
-      </select>
+CREATE TABLE IF NOT EXISTS jobs (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES users(id),
+  role_required TEXT NOT NULL DEFAULT 'technician',
+  state TEXT NOT NULL,
+  city TEXT,
+  address TEXT,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
+  job_type TEXT,
+  description TEXT,
+  price NUMERIC,
+  status TEXT NOT NULL DEFAULT 'created',
+  assigned_tech_id TEXT REFERENCES users(id),
+  assigned_at TIMESTAMP WITH TIME ZONE,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 
-      <div id="conduitFields" style="margin-top:8px">
-        <label>Number of rooms</label>
-        <input id="conduitRooms" type="number" min="1" value="1">
-        <label><input id="conduitDB" type="checkbox"> Include DB mounting (₦15,000)</label>
-        <label><input id="conduitNEPA" type="checkbox"> Include NEPA connection (₦50,000)</label>
-        <label><input id="conduitWiringAdd" type="checkbox"> Add extra wiring (₦5,000 per room)</label>
-        <label><input id="conduitFittings" type="checkbox"> Include fittings (₦15,000 per room)</label>
-      </div>
+CREATE TABLE IF NOT EXISTS kyc_requests (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  id_type TEXT,
+  id_number TEXT,
+  id_images TEXT[],      -- array of image URLs or base64 (demo)
+  work_video TEXT,       -- URL or reference (demo)
+  notes TEXT,
+  status TEXT DEFAULT 'pending', -- pending, approved, declined
+  admin_note TEXT,
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  decided_at TIMESTAMP WITH TIME ZONE
+);
+`;
 
-      <div id="solarFields" class="hidden" style="margin-top:8px">
-        <label>Building type</label>
-        <select id="solarBuilding"><option value="bungalow">Bungalow (base)</option><option value="one_story">1 storey</option><option value="two_plus">2+ storey</option></select>
-        <label><input id="solarComplex" type="checkbox"> Complex roof / high access (+₦50,000)</label>
-      </div>
+(async ()=> {
+  try{
+    await pool.query(initSql);
+    console.log('DB ready.');
+  } catch(err){
+    console.error('DB init error', err);
+    process.exit(1);
+  }
+})();
 
-      <div id="otherFields" class="hidden" style="margin-top:8px">
-        <label>Job name</label>
-        <input id="otherName" type="text" placeholder="e.g. Plumbing, AC install">
-      </div>
+// Helpers
+function validEmail(email){ return /\S+@\S+\.\S+/.test(email || ''); }
+function validPhone(ph){ if(!ph) return false; const cleaned = ph.replace(/\s+/g,''); return /^(?:\+234|0)?\d{10}$/.test(cleaned); }
+function uid(){ return Math.floor(1000000000 + Math.random()*9000000000).toString(); }
+function distanceMeters(lat1, lon1, lat2, lon2){
+  if(lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Number.POSITIVE_INFINITY;
+  const R = 6371000;
+  const toRad = v => v * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
-      <!-- NEW inputs requested: State, LGA, Town/City, workers, estimated days -->
-      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px;">
-        <div>
-          <label>State</label>
-          <input id="stateInput" type="text" placeholder="e.g. Lagos">
-        </div>
-        <div>
-          <label>LGA</label>
-          <input id="lgaInput" type="text" placeholder="e.g. Ikeja">
-        </div>
-        <div>
-          <label>Town / City</label>
-          <input id="cityInput" type="text" placeholder="e.g. Lagos Island">
-        </div>
-      </div>
+// attemptAssign helper (same as earlier, tries techs list)
+async function attemptAssign(jobId, techs, attemptIndex = 0){
+  if(attemptIndex >= techs.length){
+    await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
+    return false;
+  }
 
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">
-        <div>
-          <label>Number of workers needed</label>
-          <input id="workersNeeded" type="number" min="1" value="1">
-        </div>
-        <div>
-          <label>Estimated days to finish</label>
-          <input id="estimatedDays" type="number" min="1" value="1">
-        </div>
-      </div>
+  const tech = techs[attemptIndex];
+  const client = await pool.connect();
+  try {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 60*1000);
+    const res = await client.query(`
+      UPDATE jobs
+      SET assigned_tech_id=$1, status='pending_accept', assigned_at=now(), expires_at=$2
+      WHERE id=$3 AND status IN ('created','pending_assignment')
+      RETURNING *`, [tech.id, expiresAt.toISOString(), jobId]);
 
-      <label style="margin-top:8px">Small description (max 500 words)</label>
-      <textarea id="description" rows="5" placeholder="Describe the job — location, constraints, etc."></textarea>
+    if(!res.rows.length) return false;
 
-      <div class="controls">
-        <button id="calcBtn" class="btn" title="Estimate price">Calculate estimate</button>
-        <button id="submitBtn" class="btn-ghost" title="Submit booking">Submit booking</button>
-        <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-          <div style="background:#f3f8ff; border-radius:8px; padding:10px 12px; border:1px solid #eef3fb; color:var(--muted)">₦</div>
-          <div id="priceDisplay" style="font-weight:800;font-size:16px">—</div>
-        </div>
-        <label style="margin-left:12px;align-self:center"><input id="useAssign" type="checkbox"> use /api/book-assign</label>
-      </div>
-
-      <div style="height:12px"></div>
-      <div class="estimate" id="estimateBox"><em>Estimate:</em> —</div>
-    </div>
-  </div>
-
-  <!-- modal -->
-  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal" role="document" aria-labelledby="modalTitle">
-      <div id="modalContent"></div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-        <button id="modalClose" class="btn-ghost" style="display:none">Close</button>
-        <button id="modalOk" class="btn" style="display:none">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const API_BASE = 'https://wireconnet-1.onrender.com';
-
-    // DOM refs
-    const jobType = document.getElementById('jobType');
-    const conduitFields = document.getElementById('conduitFields');
-    const solarFields = document.getElementById('solarFields');
-    const otherFields = document.getElementById('otherFields');
-    const conduitRooms = document.getElementById('conduitRooms');
-    const conduitDB = document.getElementById('conduitDB');
-    const conduitNEPA = document.getElementById('conduitNEPA');
-    const conduitWiringAdd = document.getElementById('conduitWiringAdd');
-    const conduitFittings = document.getElementById('conduitFittings');
-    const solarBuilding = document.getElementById('solarBuilding');
-    const solarComplex = document.getElementById('solarComplex');
-    const otherName = document.getElementById('otherName');
-    const description = document.getElementById('description');
-    const calcBtn = document.getElementById('calcBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    const estimateBox = document.getElementById('estimateBox');
-    const priceDisplay = document.getElementById('priceDisplay');
-
-    const stateInput = document.getElementById('stateInput');
-    const lgaInput = document.getElementById('lgaInput');
-    const cityInput = document.getElementById('cityInput');
-    const workersNeeded = document.getElementById('workersNeeded');
-    const estimatedDays = document.getElementById('estimatedDays');
-    const useAssign = document.getElementById('useAssign');
-
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    const modalContent = document.getElementById('modalContent');
-    const modalClose = document.getElementById('modalClose');
-    const modalOk = document.getElementById('modalOk');
-
-    // default PRICES
-    let PRICES = {
-      conduit_per_room: 25000, conduit_db:15000, conduit_nepa:50000,
-      conduit_wiring_add_per_room:5000, conduit_fittings_per_room:15000,
-      solar_base_bungalow:170000, solar_extra_per_storey:30000, solar_complex:50000
-    };
-
-    // modal helpers
-    function openModal(html, { showOk=false, onOk=null, closable=true } = {}){
-      modalContent.innerHTML = html;
-      modalBackdrop.style.display = 'flex';
-      modalBackdrop.setAttribute('aria-hidden','false');
-      modalOk.style.display = showOk ? 'inline-block' : 'none';
-      modalOk.onclick = function(){ if(onOk) onOk(); closeModal(); };
-      modalClose.style.display = closable ? 'inline-block' : 'none';
-      modalClose.onclick = closeModal;
-    }
-    function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); modalContent.innerHTML = ''; modalOk.onclick = null; }
-
-    function showModalLoading(){
-      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>Signing you in...</h3><div class="muted">Please wait while we verify your credentials.</div></div>`, { showOk:false, closable:false });
-    }
-
-    function showModalAssigned(technicianName, jobId, techId, estimatedDaysVal){
-      const html = `<h3>Login successful</h3>
-        <div style="font-size:18px;margin-top:6px">${technicianName || 'Technician assigned'}</div>
-        <div class="muted" style="margin-top:8px">Job created and assigned. Press OK to go to chat.</div>`;
-      openModal(html, { showOk:true, onOk: ()=> {
-        // redirect to chat (guaranteed)
-        const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-        window.location.href = 'chat.html?' + qs;
-      }, closable:true });
-    }
-
-    function showModalNoTech(){
-      openModal(`<h3>No technician available right now</h3><div class="muted">We created your job but couldn't assign a technician at this moment.</div>`, { showOk:false, closable:true });
-    }
-
-    function showModalError(msg){
-      openModal(`<h3>Error</h3><div class="muted">${msg}</div>`, { showOk:false, closable:true });
-    }
-
-    // job type toggle
-    jobType.addEventListener('change', ()=> {
-      const v = jobType.value;
-      conduitFields.classList.toggle('hidden', v!=='conduit');
-      solarFields.classList.toggle('hidden', v!=='solar');
-      otherFields.classList.toggle('hidden', v!=='other');
-    });
-
-    // calculate estimate locally
-    function calculateEstimateLocal(){
-      const v = jobType.value; let total = 0; let breakdown = [];
-      if(v === 'conduit'){
-        const rooms = Math.max(1, Number(conduitRooms.value || 1));
-        const base = PRICES.conduit_per_room * rooms;
-        total += base; breakdown.push(`${rooms} room(s) × ₦${PRICES.conduit_per_room.toLocaleString()} = ₦${base.toLocaleString()}`);
-        if(conduitDB.checked){ total += PRICES.conduit_db; breakdown.push(`DB mounting = ₦${PRICES.conduit_db.toLocaleString()}`); }
-        if(conduitNEPA.checked){ total += PRICES.conduit_nepa; breakdown.push(`NEPA connection = ₦${PRICES.conduit_nepa.toLocaleString()}`); }
-        if(conduitWiringAdd.checked){ const add = PRICES.conduit_wiring_add_per_room * rooms; total += add; breakdown.push(`Extra wiring ${rooms}×₦${PRICES.conduit_wiring_add_per_room.toLocaleString()} = ₦${add.toLocaleString()}`); }
-        if(conduitFittings.checked){ const fit = PRICES.conduit_fittings_per_room * rooms; total += fit; breakdown.push(`Fittings ${rooms}×₦${PRICES.conduit_fittings_per_room.toLocaleString()} = ₦${fit.toLocaleString()}`); }
-      } else if(v === 'solar'){
-        let base = PRICES.solar_base_bungalow; const b = solarBuilding.value;
-        if(b === 'bungalow'){ base = PRICES.solar_base_bungalow; breakdown.push(`Bungalow base ₦${base.toLocaleString()}`); }
-        else if(b === 'one_story'){ base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey; breakdown.push(`1 storey added`); }
-        else if(b === 'two_plus'){ base = PRICES.solar_base_bungalow + PRICES.solar_extra_per_storey * 2; breakdown.push(`2+ storey added`); }
-        total += base;
-        if(solarComplex.checked){ total += PRICES.solar_complex; breakdown.push(`Complex roof = ₦${PRICES.solar_complex.toLocaleString()}`); }
-      } else {
-        total = 0; breakdown.push('Custom job — enter price or wait for negotiation.');
-      }
-      return { total, breakdown };
-    }
-
-    calcBtn.addEventListener('click', (e)=> {
-      e.preventDefault();
-      const res = calculateEstimateLocal();
-      estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
-      priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
-    });
-
-    // helper to load user from localStorage
-    function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
-
-    // try to save geolocation (best-effort)
-    async function tryGeolocationSave(){
-      if(!navigator.geolocation) return;
+    setTimeout(async ()=>{
       try{
-        const pos = await new Promise((resolve,reject)=>{
-          const t = setTimeout(()=> reject(new Error('geolocation timeout')), 4500);
-          navigator.geolocation.getCurrentPosition(p => { clearTimeout(t); resolve(p); }, err => { clearTimeout(t); reject(err); }, { maximumAge:60000, timeout:4500 });
-        });
-        try{ localStorage.setItem('wc_last_lat', String(pos.coords.latitude)); localStorage.setItem('wc_last_lng', String(pos.coords.longitude)); }catch(e){}
-      }catch(e){ /* ignore */ }
-    }
+        const check = await pool.query(`SELECT status, assigned_tech_id FROM jobs WHERE id=$1`, [jobId]);
+        if(!check.rows.length) return;
+        const js = check.rows[0];
+        if(js.status === 'pending_accept' && js.assigned_tech_id === tech.id){
+          await pool.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
+          await attemptAssign(jobId, techs, attemptIndex + 1);
+        }
+      }catch(e){ console.error('timeout handler error', e); }
+    }, 60*1000);
 
-    // submit booking: robust handling for backend response shapes
-    submitBtn.addEventListener('click', async (ev)=>{
-      ev.preventDefault();
-      const user = loadUser();
-      if(!user){ showModalError('Please login as a client to book.'); return; }
+    return true;
 
-      const jt = jobType.value;
-      let job_type = jt;
-      let descriptionText = description.value || '';
-      if(jt === 'conduit'){ const rooms = Math.max(1, Number(conduitRooms.value || 1)); job_type = 'conduit'; descriptionText = `Conduit wiring — rooms: ${rooms}. ` + descriptionText; }
-      else if(jt === 'solar'){ job_type = 'solar'; descriptionText = `Solar install — building: ${solarBuilding.value}. ` + descriptionText; }
-      else job_type = otherName.value || 'other';
+  } finally {
+    client.release();
+  }
+}
 
-      const est = calculateEstimateLocal();
-      let price = est.total;
-      if(price === 0 && jt === 'other'){
-        const pRaw = prompt('Enter estimated price in Naira (no commas):', '50000');
-        price = Number(pRaw || 0) || 0;
+// --- Existing endpoints: register/login/dashboard/book/tech status/assigned-jobs/respond/job status ...
+// Registration
+app.post('/api/register', async (req, res) => {
+  try {
+    const {
+      role, email, phone, fullname, username,
+      state, lga, city, gender, specializations, password
+    } = req.body || {};
+
+    if(!email || !validEmail(email)) return res.status(400).json({ success:false, message:'Invalid email' });
+    if(!phone || !validPhone(phone)) return res.status(400).json({ success:false, message:'Invalid phone' });
+    if(!fullname || fullname.trim().length < 3) return res.status(400).json({ success:false, message:'Invalid full name' });
+    if(!username || username.trim().length < 3) return res.status(400).json({ success:false, message:'Invalid username' });
+    if(!state || !lga || !city) return res.status(400).json({ success:false, message:'State/LGA/City required' });
+    if(!password || password.length < 6) return res.status(400).json({ success:false, message:'Password must be at least 6 characters' });
+
+    const client = await pool.connect();
+    try {
+      const dupQuery = `SELECT email, username, phone FROM users WHERE email = $1 OR username = $2 OR phone = $3 LIMIT 1`;
+      const dupRes = await client.query(dupQuery, [email, username, phone]);
+      if(dupRes.rows.length){
+        return res.status(409).json({ success:false, message: 'Email, username or phone already exists' });
       }
 
-      await tryGeolocationSave();
-      const latLocal = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
-      const lngLocal = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(password, salt);
 
-      const payload = {
-        clientId: user.id,
-        state: (stateInput.value || '').trim(),
-        city: (cityInput.value || '').trim(),
-        lga: (lgaInput.value || '').trim(),
-        address: null,
-        lat: Number.isFinite(latLocal) ? latLocal : null,
-        lng: Number.isFinite(lngLocal) ? lngLocal : null,
-        job_type,
-        description: descriptionText,
-        price,
-        workers_needed: Number(workersNeeded.value) || 1,
-        estimated_days: Number(estimatedDays.value) || 1
+      const newUser = {
+        id: uid(),
+        role: role || 'client',
+        email, phone, fullname, username,
+        state, lga, city,
+        gender: gender || 'other',
+        specializations: Array.isArray(specializations) ? specializations : [],
+        password_hash: hash,
+        kyc_status: (role === 'worker') ? 'not_required' : 'not_required'
       };
 
-      // show searching modal
-      openModal(`<div style="padding:6px 2px"><div class="spinner" aria-hidden="true"></div><h3>Searching for a technician...</h3><div class="muted">Please wait while we find a nearby available technician.</div></div>`, { showOk:false, closable:false });
+      const insertSql = `
+        INSERT INTO users (id, role, email, phone, fullname, username, state, lga, city, gender, specializations, password_hash, kyc_status)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      `;
+      await client.query(insertSql, [
+        newUser.id, newUser.role, newUser.email, newUser.phone,
+        newUser.fullname, newUser.username, newUser.state, newUser.lga,
+        newUser.city, newUser.gender, newUser.specializations, newUser.password_hash, newUser.kyc_status
+      ]);
 
-      try{
-        const endpoint = useAssign.checked ? '/api/book-assign' : '/api/book';
-        const controller = new AbortController(); const timeout = setTimeout(()=> controller.abort(), 15000);
-        const resp = await fetch(API_BASE + endpoint, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload), signal: controller.signal });
-        clearTimeout(timeout);
-        const text = await resp.text().catch(()=>null);
-        let body = null;
-        try{ body = text ? JSON.parse(text) : null; } catch(e){ body = text; }
+      return res.json({ success:true, message:'Account created successfully', userId: newUser.id });
 
-        // If backend says success & assigned true -> proceed to fetch assigned tech info (robust)
-        if(resp.ok && body && body.success){
-          const jobId = body.jobId || (body.job && body.job.id);
-          const assignedFlag = !!body.assigned;
+    } finally {
+      client.release();
+    }
 
-          if(assignedFlag){
-            // If backend returned technician object use it; otherwise fetch job status and tech profile
-            let tech = null;
-            if(body.technician && (typeof body.technician === 'object')) tech = body.technician;
-            if(!tech && jobId){
-              // attempt to get assigned_tech_id by asking for job details/status
-              try{
-                const sresp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status', { method:'GET' });
-                if(sresp.ok){
-                  const sjs = await sresp.json().catch(()=>null);
-                  if(sjs && sjs.success && sjs.job && (sjs.job.assigned_tech_id || sjs.job.assigned_tech_id === 0)){
-                    const techId = sjs.job.assigned_tech_id;
-                    // fetch tech profile if endpoint exists
-                    try {
-                      const tresp = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId), { method:'GET' });
-                      if(tresp.ok){
-                        const tjs = await tresp.json().catch(()=>null);
-                        if(tjs && tjs.success && tjs.user) tech = tjs.user;
-                        else if(tjs && tjs.id) tech = tjs; // sometimes returns object directly
-                      }
-                    } catch(e){}
-                    // if fetching profile fails, still redirect using techId
-                    const techName = (tech && (tech.fullname || tech.username)) || ('Technician ' + techId);
-                    closeModal();
-                    // show assigned simple modal then redirect to chat
-                    openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${techName}</div><div class="muted" style="margin-top:8px">Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
-                      const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-                      window.location.href = 'chat.html?' + qs;
-                    }, closable:true });
-                    return;
-                  }
-                }
-              }catch(e){}
-            }
+  } catch(err){
+    console.error('Server error /api/register', err);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
 
-            // if we reach here and we have tech object
-            const techId = tech && (tech.id || tech.user_id || tech._id) ? (tech.id || tech.user_id || tech._id) : null;
-            const techName = tech && (tech.fullname || tech.username || tech.name) ? (tech.fullname || tech.username || tech.name) : 'Technician assigned';
-            closeModal();
-            openModal(`<h3>Job matched</h3><div style="font-size:16px;margin-top:8px">${techName}</div><div class="muted" style="margin-top:8px">Press OK to open chat.</div>`, { showOk:true, onOk: ()=> {
-              const qs = 'jobId=' + encodeURIComponent(jobId) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-              window.location.href = 'chat.html?' + qs;
-            }, closable:true });
-            return;
-          } else {
-            // not assigned now
-            closeModal();
-            showModalNoTech();
-            return;
-          }
-        } else {
-          // backend returned failure or weird non-ok
-          closeModal();
-          showModalError((body && body.message) ? body.message : 'Failed to create booking');
-        }
-      }catch(err){
-        closeModal();
-        const isAbort = err && err.name === 'AbortError';
-        showModalError(isAbort ? 'Request timed out' : 'Network error');
+// Login
+app.post('/api/login', async (req,res) =>{
+  try{
+    const { login, password } = req.body;
+    if(!login || !password) return res.status(400).json({ success:false, message:'Login and password required' });
+
+    const client = await pool.connect();
+    try {
+      const q = `SELECT * FROM users WHERE email=$1 OR username=$1 OR phone=$1 LIMIT 1`;
+      const r = await client.query(q, [login]);
+      if(!r.rows.length) return res.status(404).json({ success:false, message:'User not found' });
+      const user = r.rows[0];
+      const ok = await bcrypt.compare(password, user.password_hash);
+      if(!ok) return res.status(401).json({ success:false, message:'Incorrect password' });
+
+      const safeUser = {
+        id: user.id, role: user.role, email: user.email, phone: user.phone,
+        fullname: user.fullname, username: user.username, state: user.state, lga: user.lga,
+        city: user.city, gender: user.gender, specializations: user.specializations, kyc_status: user.kyc_status,
+        avatar_url: user.avatar_url, profile_complete: user.profile_complete,
+        account_details: user.account_details, online: user.online, lat: user.lat, lng: user.lng, created_at: user.created_at
+      };
+
+      return res.json({ success:true, message:'Login successful', user: safeUser });
+    } finally { client.release(); }
+  }catch(e){
+    console.error('Server error /api/login', e);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
+// Dashboard
+app.get('/api/dashboard', async (req,res)=>{
+  try{
+    const role = (req.query.role || 'client');
+    const client = await pool.connect();
+    try{
+      const ann = (await client.query(`SELECT id,title,body,created_at FROM announcements ORDER BY created_at DESC LIMIT 10`)).rows;
+      const art = (await client.query(`SELECT id,title,excerpt,created_at FROM articles ORDER BY created_at DESC LIMIT 10`)).rows;
+      const techLeaderboard = (await client.query(`
+        SELECT u.id,u.username,u.fullname, COUNT(j.*) as jobs_completed
+        FROM users u
+        LEFT JOIN jobs j ON j.assigned_tech_id = u.id AND j.status = 'completed'
+        WHERE u.role = 'worker'
+        GROUP BY u.id
+        ORDER BY jobs_completed DESC
+        LIMIT 10
+      `)).rows;
+      const clientLeaderboard = (await client.query(`
+        SELECT u.id,u.username,u.fullname, COUNT(j.*) as jobs_posted
+        FROM users u
+        LEFT JOIN jobs j ON j.client_id = u.id
+        WHERE u.role = 'client'
+        GROUP BY u.id
+        ORDER BY jobs_posted DESC
+        LIMIT 10
+      `)).rows;
+
+      return res.json({ success:true, announcements: ann, articles: art, leaderboard: role === 'worker' ? techLeaderboard : clientLeaderboard });
+    } finally { client.release(); }
+  }catch(e){ console.error('err /api/dashboard', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Tech status update
+app.post('/api/tech/status', async (req,res) => {
+  try{
+    const { techId, online, lat, lng } = req.body;
+    if(!techId) return res.status(400).json({ success:false, message:'techId required' });
+    await pool.query(`UPDATE users SET online=$1, lat=$2, lng=$3 WHERE id=$4`, [!!online, lat || null, lng || null, techId]);
+    return res.json({ success:true, message:'Status updated' });
+  }catch(e){ console.error('/api/tech/status', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Book job (client)
+app.post('/api/book', async (req,res)=>{
+  try{
+    const { clientId, state, city, address, lat, lng, job_type, description, price } = req.body || {};
+    if(!clientId || !state) return res.status(400).json({ success:false, message:'clientId and state required' });
+
+    const jobId = uid();
+    await pool.query(`INSERT INTO jobs (id, client_id, state, city, address, lat, lng, job_type, description, price, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [jobId, clientId, state, city||null, address||null, lat||null, lng||null, job_type||null, description||null, price||null, 'created']);
+
+    const techRows = (await pool.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [state])).rows;
+    let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(lat, lng, t.lat, t.lng) }));
+    techsWithDist.sort((a,b)=>a.distance - b.distance);
+
+    if(techsWithDist.length === 0){
+      await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
+      return res.json({ success:true, message:'Job created but no technicians available', jobId });
+    } else {
+      const ok = await attemptAssign(jobId, techsWithDist);
+      if(ok) return res.json({ success:true, message:'Job created and assigned (pending acceptance)', jobId });
+      else return res.json({ success:true, message:'Job created, no immediate assignment', jobId });
+    }
+  }catch(e){ console.error('/api/book', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Poll assigned jobs for technician
+app.get('/api/assigned-jobs', async (req,res)=>{
+  try{
+    const techId = req.query.techId;
+    if(!techId) return res.status(400).json({ success:false, message:'techId required' });
+    const rows = (await pool.query(`SELECT j.* FROM jobs j WHERE j.assigned_tech_id = $1 AND j.status = 'pending_accept' ORDER BY j.assigned_at DESC`, [techId])).rows;
+    return res.json({ success:true, jobs: rows });
+  }catch(e){ console.error('/api/assigned-jobs', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Respond to job (accept/decline)
+app.post('/api/job/:id/respond', async (req,res)=>{
+  try{
+    const jobId = req.params.id;
+    const { techId, action } = req.body;
+    if(!techId || !action) return res.status(400).json({ success:false, message:'techId and action required' });
+    if(!['accept','decline'].includes(action)) return res.status(400).json({ success:false, message:'invalid action' });
+
+    const client = await pool.connect();
+    try{
+      const q = await client.query(`SELECT * FROM jobs WHERE id=$1`, [jobId]);
+      if(!q.rows.length) return res.status(404).json({ success:false, message:'Job not found' });
+      const job = q.rows[0];
+      if(job.assigned_tech_id !== techId) return res.status(403).json({ success:false, message:'Not assigned to this technician' });
+
+      if(action === 'accept'){
+        await client.query(`UPDATE jobs SET status='accepted', expires_at=NULL WHERE id=$1`, [jobId]);
+        return res.json({ success:true, message:'Job accepted' });
+      } else {
+        await client.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
+        const techRows = (await client.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [job.state])).rows;
+        let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(job.lat, job.lng, t.lat, t.lng) }));
+        techsWithDist = techsWithDist.filter(t => t.id !== techId);
+        techsWithDist.sort((a,b)=>a.distance - b.distance);
+        await attemptAssign(jobId, techsWithDist);
+        return res.json({ success:true, message:'Job declined; assigning next technician' });
       }
-    });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/job/:id/respond', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
 
-    // init: load user and attempt to load prices from backend (silent)
-    (function init(){
-      const uRaw = localStorage.getItem('wc_user');
-      if(!uRaw){ /* don't force redirect here: user may be testing */ }
-      else {
-        try { const user = JSON.parse(uRaw); document.getElementById('userGreeting').textContent = `${user.fullname || user.username} — ${user.city || user.state || ''}`; } catch(e){}
-      }
+// Job status (client)
+app.get('/api/job/:id/status', async (req,res)=>{
+  try{
+    const jobId = req.params.id;
+    const r = await pool.query(`SELECT id,status,assigned_tech_id,assigned_at,expires_at FROM jobs WHERE id=$1`, [jobId]);
+    if(!r.rows.length) return res.status(404).json({ success:false, message:'Not found' });
+    return res.json({ success:true, job: r.rows[0] });
+  }catch(e){ console.error('/api/job/:id/status', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
 
-      (async ()=> {
-        try{
-          const resp = await fetch(API_BASE + '/api/prices', { method:'GET', cache:'no-store' });
-          if(resp.ok){
-            const json = await resp.json().catch(()=>null);
-            const backendPrices = (json && json.prices) ? json.prices : json;
-            if(backendPrices && typeof backendPrices === 'object'){
-              for(const k in backendPrices){
-                if(Object.prototype.hasOwnProperty.call(PRICES,k) && typeof backendPrices[k] === 'number') PRICES[k] = backendPrices[k];
-              }
-            }
-          }
-        }catch(e){}
-        const res = calculateEstimateLocal(); estimateBox.innerHTML = `<strong>Estimate: ₦${res.total.toLocaleString()}</strong><div class="small" style="margin-top:6px">${res.breakdown.join('<br>')}</div>`;
-        priceDisplay.textContent = res.total > 0 ? res.total.toLocaleString() : '—';
-      })();
-    })();
+// ----------------- NEW: Profile & KYC endpoints -----------------
 
-    // close modal if backdrop clicked
-    modalBackdrop.addEventListener('click', (e)=> { if(e.target === modalBackdrop) closeModal(); });
+// Profile update: avatar_url, fullname (optional), account_details { bank, account_number, account_name }
+app.post('/api/profile/update', async (req,res)=>{
+  try{
+    const { userId, avatarUrl, fullname, account } = req.body || {};
+    if(!userId) return res.status(400).json({ success:false, message:'userId required' });
 
-  </script>
-</body>
-</html>
+    const client = await pool.connect();
+    try{
+      // update fields provided
+      const row = (await client.query(`SELECT * FROM users WHERE id=$1`, [userId])).rows[0];
+      if(!row) return res.status(404).json({ success:false, message:'User not found' });
+
+      const newFull = fullname || row.fullname;
+      const newAvatar = avatarUrl || row.avatar_url;
+      const newAccount = account ? account : row.account_details;
+
+      // determine profile_complete: simple rule -> avatar + account_details present
+      const profileComplete = !!(newAvatar && newAccount && newAccount.bank && newAccount.account_number);
+
+      await client.query(`UPDATE users SET fullname=$1, avatar_url=$2, account_details=$3, profile_complete=$4 WHERE id=$5`,
+        [newFull, newAvatar, newAccount ? JSON.stringify(newAccount) : null, profileComplete, userId]);
+
+      const updated = (await client.query(`SELECT id,fullname,avatar_url,account_details,profile_complete FROM users WHERE id=$1`, [userId])).rows[0];
+      return res.json({ success:true, message:'Profile updated', user: updated });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/profile/update', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Submit KYC
+app.post('/api/kyc/submit', async (req,res)=>{
+  try{
+    const { userId, id_type, id_number, id_images, work_video, notes } = req.body || {};
+    if(!userId || !id_type || !id_number || !Array.isArray(id_images) || id_images.length === 0){
+      return res.status(400).json({ success:false, message:'userId, id_type, id_number and at least one id_images required' });
+    }
+    const client = await pool.connect();
+    try{
+      const usr = (await client.query(`SELECT id FROM users WHERE id=$1`, [userId])).rows[0];
+      if(!usr) return res.status(404).json({ success:false, message:'User not found' });
+
+      const ins = await client.query(`INSERT INTO kyc_requests (user_id, id_type, id_number, id_images, work_video, notes, status) VALUES ($1,$2,$3,$4,$5,$6,'pending') RETURNING id, submitted_at`, [userId, id_type, id_number, id_images, work_video||null, notes||null]);
+      const reqId = ins.rows[0].id;
+
+      await client.query(`UPDATE users SET kyc_status='pending', kyc_documents=$1, kyc_submitted_at=now() WHERE id=$2`, [id_images, userId]);
+
+      return res.json({ success:true, message:'KYC submitted and pending review', requestId: reqId });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/kyc/submit', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Get user's KYC status
+app.get('/api/kyc/status/:userId', async (req,res)=>{
+  try{
+    const userId = req.params.userId;
+    const r = await pool.query(`SELECT kyc_status, kyc_documents, kyc_submitted_at FROM users WHERE id=$1`, [userId]);
+    if(!r.rows.length) return res.status(404).json({ success:false, message:'User not found' });
+    return res.json({ success:true, status: r.rows[0] });
+  }catch(e){ console.error('/api/kyc/status/:userId', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Admin: list pending KYC requests
+app.get('/api/kyc/pending', async (req,res)=>{
+  try{
+    const rows = (await pool.query(`SELECT k.*, u.username, u.fullname, u.email FROM kyc_requests k JOIN users u ON u.id = k.user_id WHERE k.status = 'pending' ORDER BY k.submitted_at ASC`)).rows;
+    return res.json({ success:true, requests: rows });
+  }catch(e){ console.error('/api/kyc/pending', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+///userid
+app.get('/api/user/:id', async (req,res)=> {
+  const id = req.params.id;
+  const r = await pool.query(`SELECT id, fullname, username, avatar_url, lat, lng FROM users WHERE id=$1`, [id]);
+  if(!r.rows.length) return res.status(404).json({ success:false });
+  return res.json(Object.assign({ success:true }, r.rows[0]));
+});
+// Admin: approve/decline a KYC request
+app.post('/api/kyc/:reqId/decision', async (req,res)=>{
+  try{
+    const reqId = req.params.reqId;
+    const { adminId, decision, adminNote } = req.body || {};
+    if(!adminId || !decision || !['approve','decline'].includes(decision)) return res.status(400).json({ success:false, message:'adminId and decision (approve|decline) required' });
+    const client = await pool.connect();
+    try{
+      const r = await client.query(`SELECT * FROM kyc_requests WHERE id=$1`, [reqId]);
+      if(!r.rows.length) return res.status(404).json({ success:false, message:'KYC request not found' });
+      const reqRow = r.rows[0];
+
+      const newStatus = decision === 'approve' ? 'approved' : 'declined';
+      await client.query(`UPDATE kyc_requests SET status=$1, admin_note=$2, decided_at=now() WHERE id=$3`, [newStatus, adminNote || null, reqId]);
+      await client.query(`UPDATE users SET kyc_status=$1 WHERE id=$2`, [decision === 'approve' ? 'approved' : 'declined', reqRow.user_id]);
+
+      return res.json({ success:true, message:`KYC ${newStatus}` });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/kyc/:reqId/decision', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// root
+app.get('/', (req,res)=> res.send('WireConnect backend (with Profile & KYC) running'));
+
+// start
+app.listen(PORT, ()=> console.log(`WireConnect backend listening on port ${PORT}`)); 
