@@ -23,7 +23,10 @@
     .countdown{background:rgba(255,255,255,0.15);padding:6px 10px;border-radius:8px;font-weight:700}
     /* small message styles */
     .msg-time{font-size:11px;color:#64748b}
-    .msg-bubble{padding:10px;border-radius:8px;margin-top:6px;word-break:break-word}
+    .msg-bubble{padding:10px;border-radius:8px;margin-top:6px;word-break:break-word;display:inline-block;max-width:78%}
+    .msg-row{display:flex;margin-bottom:10px}
+    .msg-row.me{justify-content:flex-end}
+    .msg-row.other{justify-content:flex-start}
   </style>
 </head>
 <body>
@@ -47,10 +50,10 @@
         <div class="muted" id="jobStatus">Loading job...</div>
       </div>
 
-      <div id="chatWindow" class="chat-window" aria-live="polite"></div>
+      <div id="chatWindow" class="chat-window" aria-live="polite" role="log" aria-atomic="false"></div>
 
       <div class="chat-input">
-        <input id="chatText" placeholder="Write a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eef2ff">
+        <input id="chatText" placeholder="Write a message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eef2ff" aria-label="Message input">
         <button id="sendBtn" class="btn">Send</button>
       </div>
 
@@ -63,409 +66,289 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.7.0/leaflet.polylineDecorator.min.js"></script>
 
   <script>
-    (function(){
-      const API_BASE = 'https://wireconnet-1.onrender.com';
+  (function(){
+    const API_BASE = 'https://wireconnet-1.onrender.com';
 
-      // query string
-      const params = new URLSearchParams(location.search);
-      const jobId = params.get('jobId');
-      const urlTechId = params.get('techId');
+    // query string
+    const params = new URLSearchParams(location.search);
+    const jobId = params.get('jobId');
+    const urlTechId = params.get('techId');
 
-      // nodes
-      const chatWindow = document.getElementById('chatWindow');
-      const sendBtn = document.getElementById('sendBtn');
-      const chatText = document.getElementById('chatText');
-      const peerNameEl = document.getElementById('peerName');
-      const peerRoleEl = document.getElementById('peerRole');
-      const jobStatusEl = document.getElementById('jobStatus');
-      const jobCountdownEl = document.getElementById('jobCountdown');
-      const toggleMapBtn = document.getElementById('toggleMapBtn');
-      const mapEl = document.getElementById('map');
+    // DOM nodes
+    const chatWindow = document.getElementById('chatWindow');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatText = document.getElementById('chatText');
+    const peerNameEl = document.getElementById('peerName');
+    const peerRoleEl = document.getElementById('peerRole');
+    const jobStatusEl = document.getElementById('jobStatus');
+    const jobCountdownEl = document.getElementById('jobCountdown');
+    const toggleMapBtn = document.getElementById('toggleMapBtn');
+    const mapEl = document.getElementById('map');
 
-      if(!jobId){ alert('No job specified'); location.href = 'dashboard.html'; }
+    if(!jobId){ alert('No job specified'); location.href = 'dashboard.html'; return; }
 
-      // local user (preserve login)
-      function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; } catch(e){ return null; } }
-      const me = loadUser();
+    // load local user (must be set by login flow)
+    function loadUser(){ try{ const raw = localStorage.getItem('wc_user'); return raw ? JSON.parse(raw) : null; }catch(e){return null;} }
+    const me = loadUser();
+    if(!me){ /* allow viewing if needed but sending requires login */ }
 
-      // local storage chat key
-      const storageKey = 'wc_chat_' + jobId;
+    // Render messages from an array returned by server.
+    function renderMessages(messages){
+      // messages should be array sorted asc by created_at
+      chatWindow.innerHTML = '';
+      messages.forEach(m => {
+        const createdTs = new Date(m.created_at).getTime ? new Date(m.created_at).getTime() : Date.parse(m.created_at);
+        const time = isNaN(createdTs) ? '' : new Date(createdTs).toLocaleTimeString();
+        const isMe = me && (String(m.sender_id) === String(me.id));
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + (isMe ? 'me' : 'other');
+        const inner = document.createElement('div');
+        inner.innerHTML = `
+          <div class="msg-time">${time}</div>
+          <div class="msg-bubble" style="background:${isMe ? '#e6f0ff' : '#fff'}">${escapeHtml(m.text)}</div>
+        `;
+        row.appendChild(inner);
+        chatWindow.appendChild(row);
+      });
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
 
-      // helper: get local messages (array with possibly pending items where id==null)
-      function loadLocalMessages(){ try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e){ return []; } }
-      function saveLocalMessages(arr){ localStorage.setItem(storageKey, JSON.stringify(arr)); }
+    function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-      // render messages (local store)
-      function renderMessages(){
-        const msgs = loadLocalMessages();
-        chatWindow.innerHTML = msgs.map(m=>{
-          const time = new Date(m.t).toLocaleTimeString();
-          const own = !!m.own;
-          const bubbleBg = own ? '#e6f0ff' : '#fff';
-          const align = own ? 'flex-end' : 'flex-start';
-          // indicate pending messages visually (no server id yet)
-          const pending = !m.id ? ' <span style="font-size:11px;color:#9ca3af">(sending…)</span>' : '';
-          return `<div style="display:flex;justify-content:${align};margin-bottom:10px">
-                    <div style="max-width:78%">
-                      <div class="msg-time">${time}${pending}</div>
-                      <div class="msg-bubble" style="background:${bubbleBg}">${escapeHtml(m.text)}</div>
-                    </div>
-                  </div>`;
-        }).join('');
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+    // Fetch messages from backend and render.
+    // The backend must return { success: true, messages: [...] } and messages sorted asc (oldest first).
+    async function fetchMessages(){
+      try{
+        const res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/messages');
+        if(!res.ok) return;
+        const js = await res.json().catch(()=>null);
+        if(!js || !js.success) return;
+        // Ensure sort by created_at asc
+        const messages = Array.isArray(js.messages) ? js.messages.slice().sort((a,b)=> new Date(a.created_at) - new Date(b.created_at)) : [];
+        renderMessages(messages);
+      }catch(err){
+        // network issues silently ignored (UI still usable)
+        console.warn('fetchMessages error', err);
       }
+    }
 
-      function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
-      // merge remote messages to local store (dedupe by server id, or metadata.cid)
-      function mergeRemoteMessages(remoteMessages){
-        // remoteMessages: array of server message objects with id, sender_id, text, metadata, created_at
-        const local = loadLocalMessages();
-        const byId = new Map(); // message id -> index
-        for(let i=0;i<local.length;i++){ if(local[i].id) byId.set(String(local[i].id), i); }
-
-        const byCid = new Map(); // client cid -> index (pending local messages)
-        for(let i=0;i<local.length;i++){ if(local[i].cid) byCid.set(String(local[i].cid), i); }
-
-        // ensure result contains all remote messages (in order) + remaining pending locals
-        const merged = [];
-        // we will keep remote messages in chronological order by created_at
-        // convert remote created_at to timestamp and sort ascending
-        remoteMessages.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
-        for(const rm of remoteMessages){
-          const rid = String(rm.id || '');
-          const rCid = (rm.metadata && rm.metadata.cid) ? String(rm.metadata.cid) : null;
-          if(rid && byId.has(rid)){
-            // already have it in local; copy
-            merged.push(local[byId.get(rid)]);
-          } else if(rCid && byCid.has(rCid)){
-            // replace pending local message with server message (preserve 'own' flag)
-            const idx = byCid.get(rCid);
-            const localMsg = local[idx];
-            const own = localMsg.own;
-            const newMsg = {
-              id: rm.id,
-              cid: rCid,
-              t: new Date(rm.created_at).getTime(),
-              text: rm.text,
-              senderId: rm.sender_id || rm.senderId || null,
-              own: own
-            };
-            merged.push(newMsg);
-            // mark this local index as consumed
-            byId.set(String(newMsg.id), merged.length-1);
-          } else {
-            // not present locally; append
-            const newMsg = {
-              id: rm.id,
-              cid: (rm.metadata && rm.metadata.cid) ? rm.metadata.cid : null,
-              t: new Date(rm.created_at).getTime(),
-              text: rm.text,
-              senderId: rm.sender_id || rm.senderId || null,
-              own: (me && (me.id == (rm.sender_id || rm.senderId))) ? true : false
-            };
-            merged.push(newMsg);
-            if(newMsg.id) byId.set(String(newMsg.id), merged.length-1);
-          }
-        }
-
-        // now append any remaining local pending messages (those without id and not matched by cid)
-        for(const lm of local){
-          if(lm.id) continue; // already handled (server messages)
-          if(lm.cid && remoteMessages.some(rm => rm.metadata && rm.metadata.cid && String(rm.metadata.cid) === String(lm.cid))) {
-            // has been handled above
-            continue;
-          }
-          // keep the pending local message at the end (so it stays visible)
-          merged.push(lm);
-        }
-
-        // save merged
-        saveLocalMessages(merged);
-        renderMessages();
+    // Send message: POST -> then refresh messages
+    async function sendMessage(text){
+      if(!me || !me.id){
+        alert('Please login to send messages.');
+        return;
       }
-
-      // fetch server messages and merge
-      async function pollMessages(){
-        try{
-          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/messages');
-          if(!r.ok) return;
-          const js = await r.json().catch(()=>null);
-          if(!js || !js.success) return;
-          const remote = js.messages || [];
-          mergeRemoteMessages(remote);
-        }catch(e){
-          // network errors ignored — keep local messages
+      const payload = { senderId: me.id, text };
+      // disable send to avoid duplicates while awaiting
+      sendBtn.disabled = true;
+      try{
+        const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const js = await r.json().catch(()=>null);
+        if(!r.ok){
+          console.warn('sendMessage failed', js || r.statusText);
         }
-      }
-
-      // send message (optimistic + server POST with metadata.cid)
-      async function sendMessage(text){
-        if(!me || !me.id){
-          alert('Please login to send messages.');
-          return;
-        }
-        const senderId = me.id;
-        const cid = 'c_' + Date.now() + '_' + Math.floor(Math.random()*99999);
-        const localMsg = { id:null, cid: cid, t: Date.now(), text: text, senderId: senderId, own: true };
-        // save locally immediately
-        const local = loadLocalMessages();
-        local.push(localMsg);
-        saveLocalMessages(local);
-        renderMessages();
-
-        // POST to server with metadata.cid so we can match later
-        try{
-          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ senderId, text, metadata: { cid } })
-          });
-          const js = await resp.json().catch(()=>null);
-          if(resp.ok && js && js.success && js.message){
-            // server returned the created message object in js.message
-            // replace the local pending message (cid) with server message
-            const serverMsg = js.message;
-            // get stored local array
-            const arr = loadLocalMessages();
-            const idx = arr.findIndex(m => m.cid === cid);
-            const newMsg = {
-              id: serverMsg.id,
-              cid: cid,
-              t: new Date(serverMsg.created_at).getTime(),
-              text: serverMsg.text,
-              senderId: serverMsg.sender_id || senderId,
-              own: true
-            };
-            if(idx >= 0){
-              arr[idx] = newMsg;
-            } else {
-              // not found (unlikely) — append
-              arr.push(newMsg);
-            }
-            saveLocalMessages(arr);
-            renderMessages();
-          } else {
-            // POST failed — keep pending state, mark user
-            // Optionally show an error toast
-            console.warn('Failed to send message', js || resp.statusText);
-            // keep local pending message visible for retry or inform user
-            // you could mark it as failed; for now just keep
-          }
-        }catch(err){
-          console.warn('Network error while sending message', err);
-          // keep pending local message
-        }
-      }
-
-      // send button handler
-      sendBtn.addEventListener('click', ()=>{
-        const txt = chatText.value.trim();
-        if(!txt) return;
-        sendMessage(txt);
+      }catch(err){
+        console.warn('Network error sending message', err);
+      } finally {
+        sendBtn.disabled = false;
         chatText.value = '';
-      });
-
-      // Enter key sends
-      chatText.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' && !e.shiftKey){
-          e.preventDefault();
-          sendBtn.click();
-        }
-      });
-
-      // MAP / ROUTE SETUP
-      let map = null, routeLayer = null, decorator = null, jobMarker = null, techMarker = null;
-      let showMap = false;
-
-      toggleMapBtn.addEventListener('click', async ()=>{
-        showMap = !showMap;
-        if(showMap){
-          mapEl.style.display = 'block';
-          toggleMapBtn.innerText = 'Hide map';
-          if(!map) initMap();
-          await updateMapRouteWithArrows();
-        } else {
-          mapEl.style.display = 'none';
-          toggleMapBtn.innerText = 'Show map';
-        }
-      });
-
-      function initMap(){
-        map = L.map('map', { center:[9.0820,8.6753], zoom:6 });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map);
+        // refresh messages from server (best-effort)
+        fetchMessages();
       }
+    }
 
-      // Helper fetch job full details (try /api/job/:id first, fallback to /api/job/:id/status)
-      async function fetchJobFull(){
-        // try GET /api/job/:id (may not exist on backend)
-        try{
-          const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId));
-          if(r.ok){
-            const js = await r.json().catch(()=>null);
-            if(js && js.success && js.job) return js.job;
-            if(js && js.job) return js.job;
-          }
-        }catch(e){}
-        // fallback to status endpoint
-        try{
-          const r2 = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
-          if(r2.ok){
-            const s = await r2.json().catch(()=>null);
-            if(s && s.success && s.job) return s.job;
-          }
-        }catch(e){}
-        return null;
-      }
+    // wire send button & enter key
+    sendBtn.addEventListener('click', ()=> {
+      const t = chatText.value.trim();
+      if(!t) return;
+      sendMessage(t);
+    });
+    chatText.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
+    });
 
-      async function fetchTechProfile(techId){
-        if(!techId) return null;
-        try{
-          const r = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId));
-          if(!r.ok) return null;
-          const js = await r.json().catch(()=>null);
-          if(js && js.success) return js.user || js;
-          return js;
-        }catch(e){ return null; }
-      }
+    // --- MAP / ROUTE / ARROWS (unchanged, kept) ---
+    let map = null, routeLayer = null, decorator = null, jobMarker = null, techMarker = null;
+    let showMap = false;
 
-      async function updateMapRouteWithArrows(){
+    toggleMapBtn.addEventListener('click', async ()=>{
+      showMap = !showMap;
+      if(showMap){
+        mapEl.style.display = 'block';
+        toggleMapBtn.innerText = 'Hide map';
         if(!map) initMap();
-        // fetch job & tech
-        const job = await fetchJobFull();
-        const techId = urlTechId || (job && job.assigned_tech_id);
-        const tech = techId ? await fetchTechProfile(techId) : null;
-
-        const clientCoords = job && job.lat && job.lng ? [Number(job.lat), Number(job.lng)] : null;
-        const techCoords = tech && tech.lat && tech.lng ? [Number(tech.lat), Number(tech.lng)] : null;
-
-        // fallback to localStorage last-known client coords
-        let fallbackClientLat = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
-        let fallbackClientLng = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
-        const clientFallback = Number.isFinite(fallbackClientLat) && Number.isFinite(fallbackClientLng) ? [fallbackClientLat, fallbackClientLng] : null;
-
-        // clear old
-        if(routeLayer){ routeLayer.remove(); routeLayer = null; }
-        if(decorator){ decorator.remove(); decorator = null; }
-        if(jobMarker){ jobMarker.remove(); jobMarker = null; }
-        if(techMarker){ techMarker.remove(); techMarker = null; }
-
-        const finalClient = clientCoords || clientFallback;
-        const finalTech = techCoords || null;
-
-        if(finalClient){
-          jobMarker = L.marker([finalClient[0], finalClient[1]]).addTo(map).bindPopup('Client');
-        }
-        if(finalTech){
-          techMarker = L.marker([finalTech[0], finalTech[1]]).addTo(map).bindPopup('Technician');
-        }
-
-        if(finalClient && finalTech){
-          try{
-            // Build OSRM URL lon,lat
-            const from = `${finalTech[1]},${finalTech[0]}`;
-            const to   = `${finalClient[1]},${finalClient[0]}`;
-            const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson&annotations=duration,distance`;
-            const r = await fetch(osrmUrl);
-            if(r.ok){
-              const js = await r.json();
-              if(js && js.routes && js.routes.length){
-                const route = js.routes[0];
-                const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-                routeLayer = L.polyline(coords, { color:'#0b5cff', weight:5, opacity:0.9 }).addTo(map);
-                // add arrows using polyline decorator
-                decorator = L.polylineDecorator(routeLayer, {
-                  patterns: [
-                    { offset: 12, repeat: 24, symbol: L.Symbol.arrowHead({ pixelSize: 10, polygon: false, pathOptions: { stroke: true, color: '#0b5cff', weight: 1 } }) }
-                  ]
-                }).addTo(map);
-                map.fitBounds(routeLayer.getBounds(), { padding:[40,40] });
-                // update ETA text
-                const minutes = Math.max(0, Math.round((route.duration || 0) / 60));
-                const distanceKm = ((route.distance || 0) / 1000).toFixed(1);
-                jobStatusEl.textContent = `ETA: ${minutes} min • ${distanceKm} km`;
-              }
-            }
-          }catch(e){
-            console.warn('OSRM route error', e);
-            if(finalClient) map.setView([finalClient[0], finalClient[1]], 12);
-            else if(finalTech) map.setView([finalTech[0], finalTech[1]], 12);
-          }
-        } else if(finalClient){
-          map.setView([finalClient[0], finalClient[1]], 12);
-        } else if(finalTech){
-          map.setView([finalTech[0], finalTech[1]], 12);
-        } else {
-          map.setView([9.0820,8.6753], 6);
-        }
+        await updateMapRouteWithArrows();
+      } else {
+        mapEl.style.display = 'none';
+        toggleMapBtn.innerText = 'Show map';
       }
+    });
 
-      // JOB STATUS POLLING & UI UPDATES
-      let countdownInterval = null;
-      async function fetchJobStatus(){
+    function initMap(){
+      map = L.map('map', { center:[9.0820,8.6753], zoom:6 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map);
+    }
+
+    async function fetchJobFull(){
+      try{
+        const r = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId));
+        if(r.ok){
+          const js = await r.json().catch(()=>null);
+          if(js && js.success && js.job) return js.job;
+          if(js && js.job) return js.job;
+        }
+      }catch(e){}
+      try{
+        const r2 = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+        if(r2.ok){
+          const s = await r2.json().catch(()=>null);
+          if(s && s.success && s.job) return s.job;
+        }
+      }catch(e){}
+      return null;
+    }
+
+    async function fetchTechProfile(techId){
+      if(!techId) return null;
+      try{
+        const r = await fetch(API_BASE + '/api/user/' + encodeURIComponent(techId));
+        if(!r.ok) return null;
+        const js = await r.json().catch(()=>null);
+        if(js && js.success) return js.user || js;
+        return js;
+      }catch(e){ return null; }
+    }
+
+    async function updateMapRouteWithArrows(){
+      if(!map) initMap();
+      const job = await fetchJobFull();
+      const techId = urlTechId || (job && job.assigned_tech_id);
+      const tech = techId ? await fetchTechProfile(techId) : null;
+      const clientCoords = job && job.lat && job.lng ? [Number(job.lat), Number(job.lng)] : null;
+      const techCoords = tech && tech.lat && tech.lng ? [Number(tech.lat), Number(tech.lng)] : null;
+
+      let fallbackClientLat = parseFloat(localStorage.getItem('wc_last_lat') || 'NaN');
+      let fallbackClientLng = parseFloat(localStorage.getItem('wc_last_lng') || 'NaN');
+      const clientFallback = Number.isFinite(fallbackClientLat) && Number.isFinite(fallbackClientLng) ? [fallbackClientLat, fallbackClientLng] : null;
+
+      if(routeLayer){ routeLayer.remove(); routeLayer = null; }
+      if(decorator){ decorator.remove(); decorator = null; }
+      if(jobMarker){ jobMarker.remove(); jobMarker = null; }
+      if(techMarker){ techMarker.remove(); techMarker = null; }
+
+      const finalClient = clientCoords || clientFallback;
+      const finalTech = techCoords || null;
+
+      if(finalClient) jobMarker = L.marker([finalClient[0], finalClient[1]]).addTo(map).bindPopup('Client');
+      if(finalTech) techMarker = L.marker([finalTech[0], finalTech[1]]).addTo(map).bindPopup('Technician');
+
+      if(finalClient && finalTech){
         try{
-          const res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
-          if(!res.ok) return;
-          const js = await res.json().catch(()=>null);
-          if(!js || !js.success) return;
-          const job = js.job;
-          jobStatusEl.textContent = `Status: ${job.status || '—'}`;
-
-          // assigned tech info (once)
-          if(job.assigned_tech_id){
-            const t = await fetchTechProfile(job.assigned_tech_id);
-            const name = (t && (t.fullname || t.username)) ? (t.fullname || t.username) : ('Tech ' + job.assigned_tech_id);
-            peerNameEl.textContent = name;
-            peerRoleEl.textContent = 'Technician';
+          const from = `${finalTech[1]},${finalTech[0]}`;
+          const to   = `${finalClient[1]},${finalClient[0]}`;
+          const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson&annotations=duration,distance`;
+          const r = await fetch(osrmUrl);
+          if(r.ok){
+            const js = await r.json();
+            if(js && js.routes && js.routes.length){
+              const route = js.routes[0];
+              const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+              routeLayer = L.polyline(coords, { color:'#0b5cff', weight:5, opacity:0.9 }).addTo(map);
+              decorator = L.polylineDecorator(routeLayer, {
+                patterns: [
+                  { offset: 12, repeat: 24, symbol: L.Symbol.arrowHead({ pixelSize: 10, polygon: false, pathOptions: { stroke: true, color: '#0b5cff', weight: 1 } }) }
+                ]
+              }).addTo(map);
+              map.fitBounds(routeLayer.getBounds(), { padding:[40,40] });
+              const minutes = Math.max(0, Math.round((route.duration || 0) / 60));
+              const distanceKm = ((route.distance || 0) / 1000).toFixed(1);
+              jobStatusEl.textContent = `ETA: ${minutes} min • ${distanceKm} km`;
+            }
           }
-
-          // countdown
-          let expires = null;
-          if(job.expires_at) expires = new Date(job.expires_at).getTime();
-          if(expires){
-            startCountdown(expires);
-          } else {
-            jobCountdownEl.textContent = '—';
-            if(countdownInterval){ clearInterval(countdownInterval); countdownInterval = null; }
-          }
-        }catch(e){}
-      }
-
-      function startCountdown(expiresTs){
-        if(countdownInterval) clearInterval(countdownInterval);
-        function update(){
-          const now = Date.now();
-          let diff = Math.max(0, expiresTs - now);
-          const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
-          const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
-          const m = Math.floor(diff / (60*1000)); diff %= 60*1000;
-          jobCountdownEl.textContent = `${d}d ${h}h ${m}m`;
-          if(expiresTs <= now){ jobCountdownEl.textContent = 'Expired'; clearInterval(countdownInterval); countdownInterval = null; }
+        }catch(e){
+          console.warn('OSRM route error', e);
+          if(finalClient) map.setView([finalClient[0], finalClient[1]], 12);
+          else if(finalTech) map.setView([finalTech[0], finalTech[1]], 12);
         }
-        update();
-        countdownInterval = setInterval(update, 1000 * 60);
+      } else if(finalClient){
+        map.setView([finalClient[0], finalClient[1]], 12);
+      } else if(finalTech){
+        map.setView([finalTech[0], finalTech[1]], 12);
+      } else {
+        map.setView([9.0820,8.6753], 6);
       }
+    }
 
-      // Message polling + status
-      setInterval(pollMessages, 2500); // poll messages frequently (2.5s)
-      setInterval(fetchJobStatus, 5000); // poll job status (5s)
-      // initial runs
-      pollMessages();
-      fetchJobStatus();
+    // JOB STATUS & COUNTDOWN
+    let countdownInterval = null;
+    async function fetchJobStatus(){
+      try{
+        const res = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/status');
+        if(!res.ok) return;
+        const js = await res.json().catch(()=>null);
+        if(!js || !js.success) return;
+        const job = js.job;
+        jobStatusEl.textContent = `Status: ${job.status || '—'}`;
 
-      // Also update map route if visible every 12s (so arrows update)
-      setInterval(()=>{ if(mapEl.style.display !== 'none') updateMapRouteWithArrows(); }, 12000);
+        if(job.assigned_tech_id){
+          const t = await fetchTechProfile(job.assigned_tech_id);
+          const name = (t && (t.fullname || t.username)) ? (t.fullname || t.username) : ('Tech ' + job.assigned_tech_id);
+          peerNameEl.textContent = name;
+          peerRoleEl.textContent = 'Technician';
+        }
 
-      // initial rendering
-      renderMessages();
+        let expires = null;
+        if(job.expires_at) expires = new Date(job.expires_at).getTime();
+        if(expires){
+          startCountdown(expires);
+        } else {
+          jobCountdownEl.textContent = '—';
+          if(countdownInterval){ clearInterval(countdownInterval); countdownInterval = null; }
+        }
+      }catch(e){ console.warn('fetchJobStatus error', e); }
+    }
+    function startCountdown(expiresTs){
+      if(countdownInterval) clearInterval(countdownInterval);
+      function update(){
+        const now = Date.now();
+        let diff = Math.max(0, expiresTs - now);
+        const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
+        const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
+        const m = Math.floor(diff / (60*1000)); diff %= 60*1000;
+        jobCountdownEl.textContent = `${d}d ${h}h ${m}m`;
+        if(expiresTs <= now){ jobCountdownEl.textContent = 'Expired'; clearInterval(countdownInterval); countdownInterval = null; }
+      }
+      update();
+      countdownInterval = setInterval(update, 1000 * 60);
+    }
 
-      // keep syncing server messages into local store on page focus
-      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ pollMessages(); fetchJobStatus(); if(mapEl.style.display !== 'none') updateMapRouteWithArrows(); } });
+    // POLLING: messages & job status & map updates
+    setInterval(fetchMessages, 2500);  // messages frequently
+    setInterval(fetchJobStatus, 5000); // job status
+    setInterval(()=>{ if(mapEl.style.display !== 'none') updateMapRouteWithArrows(); }, 12000);
 
-      // expose some functions for debug if needed
-      window.__wc_reloadMessages = pollMessages;
-      window.__wc_updateMap = updateMapRouteWithArrows;
-    })();
+    // initial runs
+    fetchMessages();
+    fetchJobStatus();
+
+    // refresh on visibility change
+    document.addEventListener('visibilitychange', ()=> {
+      if(!document.hidden){
+        fetchMessages();
+        fetchJobStatus();
+        if(mapEl.style.display !== 'none') updateMapRouteWithArrows();
+      }
+    });
+
+    // expose helpers for debug
+    window.__wc_fetchMessages = fetchMessages;
+    window.__wc_fetchJobStatus = fetchJobStatus;
+    window.__wc_updateMap = updateMapRouteWithArrows;
+  })();
   </script>
 </body>
-</html> 
+</html>
