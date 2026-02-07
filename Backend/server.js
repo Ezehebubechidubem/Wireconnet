@@ -21,6 +21,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' })); // allow some room for base64 if demo
 
 // DB init & migrations (idempotent)
+// Create core tables if missing, and run safe ALTERs to add missing columns for older DBs.
 const initSql = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
@@ -75,19 +76,12 @@ CREATE TABLE IF NOT EXISTS jobs (
   description TEXT,
   price NUMERIC,
   status TEXT NOT NULL DEFAULT 'created',
-  assigned_tech_id TEXT REFERENCES users(id), -- primary assigned (legacy)
+  assigned_tech_id TEXT REFERENCES users(id),
   assigned_at TIMESTAMP WITH TIME ZONE,
   expires_at TIMESTAMP WITH TIME ZONE,
   workers_needed INTEGER DEFAULT 1,
   estimated_days INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-
-  -- new columns for better assignment handling
-  declined_techs TEXT[] DEFAULT '{}',
-  notified_techs TEXT[] DEFAULT '{}',
-  seen_by_tech TEXT[] DEFAULT '{}',
-  assigned_tech_ids TEXT[] DEFAULT '{}', -- allows multiple technicians to be attached
-  accepted_at TIMESTAMP WITH TIME ZONE
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS kyc_requests (
@@ -103,37 +97,48 @@ CREATE TABLE IF NOT EXISTS kyc_requests (
   submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   decided_at TIMESTAMP WITH TIME ZONE
 );
+`;
 
--- messages table (if missing in older DBs)
+// Additional safe ALTERs to add columns that may be missing in older DBs
+const alterUsersSql = `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_complete boolean DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS account_details JSONB;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_documents TEXT[];
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_submitted_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS online boolean DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lat double precision;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lng double precision;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+`;
+
+// Ensure older DBs have the new columns (safe ALTER statements)
+const alterJobsSql = `
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS workers_needed INTEGER DEFAULT 1;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_days INTEGER DEFAULT 1;
+`;
+
+// Ensure messages table exists (some versions referenced it)
+const createMessagesTableSql = `
 CREATE TABLE IF NOT EXISTS messages (
   id SERIAL PRIMARY KEY,
   job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-  sender_id TEXT NOT NULL,
+  sender_id TEXT NOT NULL REFERENCES users(id),
   text TEXT NOT NULL,
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 `;
 
-// Ensure older DBs have the new columns (safe ALTER statements)
-const alterSql = `
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS workers_needed INTEGER DEFAULT 1;
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_days INTEGER DEFAULT 1;
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS declined_techs TEXT[] DEFAULT '{}';
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS notified_techs TEXT[] DEFAULT '{}';
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS seen_by_tech TEXT[] DEFAULT '{}';
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS assigned_tech_ids TEXT[] DEFAULT '{}';
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP WITH TIME ZONE;
-`;
-
-
 (async ()=> {
   try{
     await pool.query(initSql);
-    await pool.query(alterSql);
-    console.log('DB ready.');
+    await pool.query(alterUsersSql);
+    await pool.query(alterJobsSql);
+    await pool.query(createMessagesTableSql);
+    console.log('DB ready and migrations applied.');
   } catch(err){
-    console.error('DB init error', err);
+    console.error('DB init/migration error', err);
     process.exit(1);
   }
 })();
@@ -166,56 +171,22 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
     return false;
   }
 
-  // read job to find already-declined
-  let jobRow;
-  try {
-    const r = await pool.query(`SELECT id, declined_techs, notified_techs, assigned_tech_id, assigned_tech_ids, workers_needed FROM jobs WHERE id=$1`, [jobId]);
-    if(!r.rows.length){
-      return false;
-    }
-    jobRow = r.rows[0];
-  } catch(err) {
-    console.error('attemptAssign read job error', err);
-    return false;
-  }
-
-  const declined = Array.isArray(jobRow.declined_techs) ? jobRow.declined_techs : [];
-  const alreadyAssignedIds = Array.isArray(jobRow.assigned_tech_ids) ? jobRow.assigned_tech_ids : [];
-
-  // find next candidate that is not in declined list and not already offered/assigned
-  let candidateIndex = -1;
-  for(let i = attemptIndex; i < techs.length; i++){
-    const t = techs[i];
-    if(!t || !t.id) continue;
-    if(declined.includes(t.id)) continue;
-    if(alreadyAssignedIds.includes(t.id)) continue;
-    candidateIndex = i; break;
-  }
-
-  if(candidateIndex === -1){
-    // no one available
-    await pool.query(`UPDATE jobs SET status='pending_assignment' WHERE id=$1`, [jobId]);
-    return false;
-  }
-
-  const tech = techs[candidateIndex];
+  const tech = techs[attemptIndex];
   const clientConn = await pool.connect();
   try {
     const now = new Date();
-    // expiry window for technician acceptance: 3 minutes (user requested)
-    const expiresAt = new Date(now.getTime() + 3 * 60 * 1000);
+    // keep short expiry for technician acceptance (60s)
+    const expiresAt = new Date(now.getTime() + 60*1000);
 
-    // Try to "reserve" the job for this technician if job is still create/pending_assignment
     const res = await clientConn.query(`
       UPDATE jobs
-      SET assigned_tech_id=$1, status='pending_accept', assigned_at=now(), expires_at=$2, notified_techs = array_append(COALESCE(notified_techs, '{}'::text[]), $1)
+      SET assigned_tech_id=$1, status='pending_accept', assigned_at=now(), expires_at=$2
       WHERE id=$3 AND status IN ('created','pending_assignment')
-      RETURNING *
-    `, [tech.id, expiresAt.toISOString(), jobId]);
+      RETURNING *`, [tech.id, expiresAt.toISOString(), jobId]);
 
     if(!res.rows.length) {
-      // reservation failed (someone else took it) -> try next
-      return await attemptAssign(jobId, techs, candidateIndex + 1);
+      // couldn't reserve the job (maybe status changed) -> move on
+      return false;
     }
 
     // fetch technician profile to return
@@ -228,33 +199,13 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
         if(!check.rows.length) return;
         const js = check.rows[0];
         if(js.status === 'pending_accept' && js.assigned_tech_id === tech.id){
-          // mark this tech as declined (did not respond) and release assignment
-          await pool.query(`
-            UPDATE jobs
-            SET status='pending_assignment',
-                assigned_tech_id=NULL,
-                assigned_at=NULL,
-                expires_at=NULL,
-                declined_techs = array_append(COALESCE(declined_techs, '{}'::text[]), $1)
-            WHERE id=$2
-          `, [tech.id, jobId]);
-
-          // attempt next tech (fire and forget)
-          try{
-            // build a fresh tech list from online users in same state (safer than reusing stale array)
-            const j = (await pool.query(`SELECT state, lat, lng FROM jobs WHERE id=$1`, [jobId])).rows[0];
-            if(j){
-              const rows = (await pool.query(`SELECT id, lat, lng FROM users WHERE role='worker' AND online=true AND state=$1`, [j.state])).rows;
-              const techsWithDist = rows
-                .filter(t2 => t2.lat && t2.lng && j.lat && j.lng)
-                .map(t2 => ({ id:t2.id, lat:t2.lat, lng:t2.lng, distance: distanceMeters(j.lat, j.lng, t2.lat, t2.lng) }))
-                .sort((a,b)=>a.distance-b.distance);
-              await attemptAssign(jobId, techsWithDist, 0);
-            }
-          }catch(e){ /* ignore */ }
+          // revert assignment and try next
+          await pool.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
+          // attempt next tech (note: this is fire-and-forget, do not await)
+          await attemptAssign(jobId, techs, attemptIndex + 1);
         }
       }catch(e){ console.error('timeout handler error', e); }
-    }, 3 * 60 * 1000); // 3 minutes
+    }, 60*1000);
 
     // Return tech profile to caller so frontend can display immediately
     return trow || { id: tech.id };
@@ -413,8 +364,7 @@ app.post('/api/book', async (req,res)=>{
       lng,
       job_type,
       description,
-      price,
-      workers_needed
+      price
     } = req.body || {};
 
     if(!clientId || !state){
@@ -429,8 +379,8 @@ app.post('/api/book', async (req,res)=>{
     // Insert job safely
     await pool.query(`
       INSERT INTO jobs
-      (id, client_id, state, city, address, lat, lng, job_type, description, price, status, workers_needed)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      (id, client_id, state, city, address, lat, lng, job_type, description, price, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     `, [
       jobId,
       clientId,
@@ -442,11 +392,10 @@ app.post('/api/book', async (req,res)=>{
       job_type || null,
       description || null,
       price || null,
-      'created',
-      Number.isFinite(Number(workers_needed)) ? Number(workers_needed) : 1
+      'created'
     ]);
 
-    // Fetch technicians (candidates) in the state who are online
+    // Fetch technicians
     const techRows = (await pool.query(`
       SELECT id, lat, lng
       FROM users
@@ -506,51 +455,13 @@ app.post('/api/book', async (req,res)=>{
 });
 
 // Poll assigned jobs for technician
-// By default, return only jobs that are pending_accept AND not already seen by the tech
-// Use ?includeSeen=true to include seen ones.
 app.get('/api/assigned-jobs', async (req,res)=>{
   try{
     const techId = req.query.techId;
-    const includeSeen = (req.query.includeSeen === 'true' || req.query.includeSeen === '1');
     if(!techId) return res.status(400).json({ success:false, message:'techId required' });
-
-    if(includeSeen){
-      const rows = (await pool.query(`SELECT j.* FROM jobs j WHERE j.assigned_tech_id = $1 AND j.status = 'pending_accept' ORDER BY j.assigned_at DESC`, [techId])).rows;
-      return res.json({ success:true, jobs: rows });
-    } else {
-      // only jobs not yet marked seen by this tech
-      const rows = (await pool.query(`
-        SELECT j.* FROM jobs j
-        WHERE j.assigned_tech_id = $1
-          AND j.status = 'pending_accept'
-          AND (NOT ($1 = ANY(COALESCE(j.seen_by_tech, '{}'::text[]))))
-        ORDER BY j.assigned_at DESC
-      `, [techId])).rows;
-      return res.json({ success:true, jobs: rows });
-    }
+    const rows = (await pool.query(`SELECT j.* FROM jobs j WHERE j.assigned_tech_id = $1 AND j.status = 'pending_accept' ORDER BY j.assigned_at DESC`, [techId])).rows;
+    return res.json({ success:true, jobs: rows });
   }catch(e){ console.error('/api/assigned-jobs', e); return res.status(500).json({ success:false, message:'Server error' }); }
-});
-
-// Mark job as seen by technician (so the server knows the tech has been notified and won't re-offer)
-app.post('/api/job/:id/mark-seen', async (req,res) => {
-  try{
-    const jobId = req.params.id;
-    const { techId } = req.body || {};
-    if(!jobId || !techId) return res.status(400).json({ success:false, message:'job id and techId required' });
-
-    await pool.query(`
-      UPDATE jobs
-      SET seen_by_tech = (
-        CASE
-          WHEN NOT ($1 = ANY(COALESCE(seen_by_tech, '{}'::text[]))) THEN array_append(COALESCE(seen_by_tech, '{}'::text[]), $1)
-          ELSE seen_by_tech
-        END
-      )
-      WHERE id=$2
-    `, [techId, jobId]);
-
-    return res.json({ success:true, message:'Marked seen' });
-  }catch(e){ console.error('/api/job/:id/mark-seen', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
 // Respond to job (accept/decline)
@@ -566,86 +477,18 @@ app.post('/api/job/:id/respond', async (req,res)=>{
       const q = await clientConn.query(`SELECT * FROM jobs WHERE id=$1`, [jobId]);
       if(!q.rows.length) return res.status(404).json({ success:false, message:'Job not found' });
       const job = q.rows[0];
-      if(job.assigned_tech_id !== techId){
-        // allow accept if tech is in assigned_tech_ids (for multi-worker acceptance) OR is the assigned_tech_id
-        const assignedIds = Array.isArray(job.assigned_tech_ids) ? job.assigned_tech_ids : [];
-        if(!assignedIds.includes(techId)){
-          return res.status(403).json({ success:false, message:'Not assigned to this technician' });
-        }
-      }
+      if(job.assigned_tech_id !== techId) return res.status(403).json({ success:false, message:'Not assigned to this technician' });
 
       if(action === 'accept'){
-        // If job expects multiple workers, append to assigned_tech_ids and check completion
-        const needed = Number(job.workers_needed || 1);
-        const current = Array.isArray(job.assigned_tech_ids) ? job.assigned_tech_ids.slice() : [];
-        // ensure techId not duplicated
-        if(!current.includes(techId)) current.push(techId);
-
-        // Update DB: add tech to assigned_tech_ids (if not present)
-        await clientConn.query(`
-          UPDATE jobs
-          SET assigned_tech_ids = (
-            CASE WHEN NOT ($1 = ANY(COALESCE(assigned_tech_ids,'{}'::text[]))) THEN array_append(COALESCE(assigned_tech_ids,'{}'::text[]), $1) ELSE assigned_tech_ids END
-          )
-          WHERE id=$2
-        `, [techId, jobId]);
-
-        // refetch to get updated array length
-        const after = (await clientConn.query(`SELECT assigned_tech_ids, workers_needed FROM jobs WHERE id=$1`, [jobId])).rows[0];
-        const updatedAssigned = Array.isArray(after.assigned_tech_ids) ? after.assigned_tech_ids : [];
-        const updatedLen = updatedAssigned.length;
-
-        if(updatedLen >= (Number(after.workers_needed) || 1)){
-          // we have enough technicians -> mark job accepted
-          await clientConn.query(`UPDATE jobs SET status='accepted', accepted_at=now(), expires_at=NULL WHERE id=$1`, [jobId]);
-        } else {
-          // still waiting for more techs; keep status as pending_assignment or 'partial' depending on your choice
-          // We'll set status to 'partial' to indicate some acceptances received but not complete
-          await clientConn.query(`UPDATE jobs SET status='partial' WHERE id=$1`, [jobId]);
-
-          // Try to assign more technicians to fill remaining slots
-          try {
-            const j = (await clientConn.query(`SELECT state, lat, lng FROM jobs WHERE id=$1`, [jobId])).rows[0];
-            if(j){
-              const rows = (await clientConn.query(`SELECT id, lat, lng FROM users WHERE role='worker' AND online=true AND state=$1`, [j.state])).rows;
-              let techsWithDist = rows
-                .filter(t2 => t2.lat && t2.lng && j.lat && j.lng)
-                .map(t2 => ({ id: t2.id, lat: t2.lat, lng: t2.lng, distance: distanceMeters(j.lat, j.lng, t2.lat, t2.lng) }))
-                .sort((a,b) => a.distance - b.distance);
-
-              // exclude any already declined or already in assigned_tech_ids
-              const declined = Array.isArray(job.declined_techs) ? job.declined_techs : [];
-              const exclude = new Set([...(Array.isArray(job.assigned_tech_ids)?job.assigned_tech_ids:[]), ...declined, ...updatedAssigned]);
-              techsWithDist = techsWithDist.filter(t => !exclude.has(t.id));
-
-              // attempt assign for remaining
-              await attemptAssign(jobId, techsWithDist, 0);
-            }
-          } catch(e){ console.warn('attempt additional assignment after accept error', e); }
-        }
-
+        await clientConn.query(`UPDATE jobs SET status='accepted', expires_at=NULL WHERE id=$1`, [jobId]);
         return res.json({ success:true, message:'Job accepted' });
-
       } else {
-        // decline -> mark this tech id as declined and try next technician
-        await clientConn.query(`
-          UPDATE jobs
-          SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL,
-              declined_techs = array_append(COALESCE(declined_techs, '{}'::text[]), $1)
-          WHERE id=$2
-        `, [techId, jobId]);
-
-        // Now attempt assign to next available techs
-        try{
-          const j = (await clientConn.query(`SELECT state, lat, lng FROM jobs WHERE id=$1`, [jobId])).rows[0];
-          if(j){
-            const rows = (await clientConn.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [j.state])).rows;
-            let techsWithDist = rows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(j.lat, j.lng, t.lat, t.lng) }));
-            techsWithDist = techsWithDist.filter(t => t.id !== techId).sort((a,b)=>a.distance-b.distance);
-            await attemptAssign(jobId, techsWithDist);
-          }
-        }catch(e){ /* ignore */ }
-
+        await clientConn.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
+        const techRows = (await clientConn.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [job.state])).rows;
+        let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(job.lat, job.lng, t.lat, t.lng) }));
+        techsWithDist = techsWithDist.filter(t => t.id !== techId);
+        techsWithDist.sort((a,b)=>a.distance - b.distance);
+        await attemptAssign(jobId, techsWithDist);
         return res.json({ success:true, message:'Job declined; assigning next technician' });
       }
     } finally { clientConn.release(); }
@@ -656,7 +499,7 @@ app.post('/api/job/:id/respond', async (req,res)=>{
 app.get('/api/job/:id/status', async (req,res)=>{
   try{
     const jobId = req.params.id;
-    const r = await pool.query(`SELECT id,status,assigned_tech_id,assigned_tech_ids,assigned_at,expires_at, estimated_days, workers_needed FROM jobs WHERE id=$1`, [jobId]);
+    const r = await pool.query(`SELECT id,status,assigned_tech_id,assigned_at,expires_at, estimated_days, workers_needed FROM jobs WHERE id=$1`, [jobId]);
     if(!r.rows.length) return res.status(404).json({ success:false, message:'Not found' });
     return res.json({ success:true, job: r.rows[0] });
   }catch(e){ console.error('/api/job/:id/status', e); return res.status(500).json({ success:false, message:'Server error' }); }
@@ -671,21 +514,13 @@ app.get('/api/job/:id', async (req,res)=>{
 
     // fetch client profile
     const clientRow = (await pool.query(`SELECT id, fullname, username, phone, email, lat, lng, state, city FROM users WHERE id=$1`, [job.client_id])).rows[0] || null;
-    // fetch technician profile(s) if assigned
-    let techRows = [];
+    // fetch technician profile if assigned
+    let techRow = null;
     if(job.assigned_tech_id){
-      const single = (await pool.query(`SELECT id, fullname, username, phone, email, lat, lng, state, city FROM users WHERE id=$1`, [job.assigned_tech_id])).rows[0] || null;
-      if(single) techRows.push(single);
-    }
-    if(Array.isArray(job.assigned_tech_ids) && job.assigned_tech_ids.length){
-      const ids = job.assigned_tech_ids.filter(Boolean);
-      if(ids.length){
-        const resTechs = (await pool.query(`SELECT id, fullname, username, phone, email, lat, lng, state, city FROM users WHERE id = ANY($1::text[])`, [ids])).rows;
-        techRows = techRows.concat(resTechs);
-      }
+      techRow = (await pool.query(`SELECT id, fullname, username, phone, email, lat, lng, state, city FROM users WHERE id=$1`, [job.assigned_tech_id])).rows[0] || null;
     }
 
-    return res.json({ success:true, job, client: clientRow, technicians: techRows });
+    return res.json({ success:true, job, client: clientRow, technician: techRow });
   }catch(e){ console.error('/api/job/:id', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
@@ -787,7 +622,7 @@ app.post('/api/kyc/:reqId/decision', async (req,res)=>{
       await client.query(`UPDATE kyc_requests SET status=$1, admin_note=$2, decided_at=now() WHERE id=$3`, [newStatus, adminNote || null, reqId]);
       await client.query(`UPDATE users SET kyc_status=$1 WHERE id=$2`, [decision === 'approve' ? 'approved' : 'declined', reqRow.user_id]);
 
-      return res.json({ success:true, message:\`KYC \${newStatus}\` });
+      return res.json({ success:true, message:`KYC ${newStatus}` });
     } finally { client.release(); }
   }catch(e){ console.error('/api/kyc/:reqId/decision', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
