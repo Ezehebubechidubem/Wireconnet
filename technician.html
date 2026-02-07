@@ -191,6 +191,9 @@
     const modalBackdrop = document.getElementById('mainModalBackdrop');
     const modal = document.getElementById('mainModal');
 
+    // keep timers for pending jobs
+    const pendingTimers = {}; // jobId -> { timeoutId }
+
     // util to show toast
     function showToast(msg, ms = 3000){
       toastEl.innerText = msg;
@@ -263,7 +266,6 @@
       modal.innerHTML = htmlContent;
       modalBackdrop.style.display = 'flex';
       modalBackdrop.setAttribute('aria-hidden','false');
-      // set close handler
       modal._onClose = onClose;
       modal._closable = !!closable;
     }
@@ -291,8 +293,9 @@
         <h3>New job request</h3>
         <div class="muted">You have been requested for a new job. Review details and choose an action.</div>
         <div style="margin-top:10px; padding:10px; background:#fbfeff; border:1px solid #eef6ff; border-radius:10px;">
-          <strong>${job.job_type || 'Job'}</strong><div style="margin-top:6px;">${(job.description||'No description').slice(0,300)}</div>
-          <div style="margin-top:8px; color:#374151; font-size:14px;"><strong>Price:</strong> ${job.price ? '₦' + job.price.toLocaleString() : '-' } ${job.address ? (' • ' + job.address) : ''}</div>
+          <strong>${job.job_type || 'Job'}</strong>
+          <div style="margin-top:6px;">${(job.description||'No description').slice(0,300)}</div>
+          <div style="margin-top:8px; color:#374151; font-size:14px;"><strong>Price:</strong> ${job.price ? '₦' + (Number(job.price).toLocaleString?.() || job.price) : '-' } ${job.address ? (' • ' + job.address) : ''}</div>
           ${job.estimated_days ? ('<div style="margin-top:6px;"><strong>Client estimated days:</strong> ' + job.estimated_days + '</div>') : ''}
         </div>
         <div class="modal-actions">
@@ -305,141 +308,161 @@
       document.getElementById('declineBtn').addEventListener('click', ()=> { closeModal(); onDecline && onDecline(); });
     }
 
-    // After accept show "accepted" modal and then assignment modal with countdown
-    function showAcceptedThenAssignment(job, jobId, techId){
-      const acceptedHtml = `
-        <h3>Job accepted</h3>
-        <div class="muted">You accepted the request. Preparing assignment details...</div>
-        <div class="modal-actions">
-          <button id="acceptedOk" class="btn">OK</button>
-        </div>
-      `;
-      openModal(acceptedHtml, { closable: true });
-      document.getElementById('acceptedOk').addEventListener('click', ()=>{
-        closeModal();
-        showAssignmentModal(job, jobId, techId, { autoRedirect:true });
-      });
-      // also auto-proceed shortly after
-      setTimeout(()=> {
-        if(modalBackdrop.style.display === 'flex') {
-          closeModal();
-          showAssignmentModal(job, jobId, techId, { autoRedirect:true });
-        }
-      }, 700);
-    }
-
-    // Assignment modal showing countdown (estimated_days from job)
-    function showAssignmentModal(job, jobId, techId, { autoRedirect = false } = {}){
-      const days = Number(job.estimated_days || job.estimatedDays || job.estimatedDaysFromClient || 1) || 1;
-      const endTs = Date.now() + days * 24*60*60*1000;
+    // SHOW the "Job Received ✅" image modal after accept; OK -> chat.html
+    function showJobReceivedModal(job, jobId, techId){
       const html = `
-        <h3>Job Assignment</h3>
-        <div class="muted">This job was assigned. Countdown to client's estimated finish time:</div>
-        <div class="countdown" id="assignmentCountdown">Calculating…</div>
-        <div style="margin-top:8px;">
-          <strong>Job ID:</strong> ${jobId || job.id || '-'}<br>
-          ${job.client_name ? ('<strong>Client:</strong> ' + job.client_name + '<br>') : ''}
-          ${job.price ? ('<strong>Price:</strong> ₦' + job.price) : ''}
+        <h3>Job matching successful ✅</h3>
+        <div class="muted">Job was accepted — client and technician can now chat.</div>
+        <div style="display:flex;justify-content:center;margin-top:12px;">
+          <img src="https://i.postimg.cc/8C9cKz3q/job-received.png" alt="Job Received" style="max-width:260px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.08)" />
+        </div>
+        <div style="margin-top:12px;">
+          <strong>Client:</strong> ${job.client_name || job.client || '-'}<br>
+          <strong>Location:</strong> ${job.address || (job.city || '') || '-'}<br>
+          <strong>Description:</strong> ${(job.description||'').slice(0,200)}
         </div>
         <div class="modal-actions" style="margin-top:12px;">
-          <button id="goChatBtn" class="btn">Go to chat</button>
-          <button id="assignmentClose" class="btn secondary">Close</button>
+          <button id="receivedOk" class="btn">OK</button>
         </div>
       `;
-      openModal(html, { closable: true });
-      // countdown updater
-      const cdEl = document.getElementById('assignmentCountdown');
-      let intId = null;
-      function updateCountdown(){
-        const now = Date.now();
-        let diff = Math.max(0, endTs - now);
-        const d = Math.floor(diff / (24*3600*1000)); diff %= 24*3600*1000;
-        const h = Math.floor(diff / (3600*1000)); diff %= 3600*1000;
-        const m = Math.floor(diff / (60*1000)); diff %= 60*1000;
-        const s = Math.floor(diff / 1000);
-        cdEl.innerText = `${d}d ${h}h ${m}m ${s}s`;
-        if(endTs <= now){ clearInterval(intId); cdEl.innerText = 'Completed (estimated)'; }
-      }
-      updateCountdown();
-      intId = setInterval(updateCountdown, 1000);
-
-      // button behavior
-      document.getElementById('goChatBtn').addEventListener('click', ()=> {
+      openModal(html, { closable: false });
+      document.getElementById('receivedOk').addEventListener('click', ()=> {
+        closeModal();
+        // Redirect technician to chat; clients will be redirected by their own polling when server status = accepted.
         const qs = 'jobId=' + encodeURIComponent(jobId || job.id) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-        // ensure chat.html exists in your project
         window.location.href = 'chat.html?' + qs;
       });
-      document.getElementById('assignmentClose').addEventListener('click', ()=> {
-        clearInterval(intId);
-        closeModal();
-      });
-
-      if(autoRedirect){
-        // short delay then redirect to chat automatically (technician side)
-        setTimeout(()=> {
-          if(modalBackdrop.style.display === 'flex'){
-            // redirect now
-            const qs = 'jobId=' + encodeURIComponent(jobId || job.id) + (techId ? ('&techId=' + encodeURIComponent(techId)) : '');
-            window.location.href = 'chat.html?' + qs;
-          }
-        }, 900); // small pause to let modal show
-      }
     }
 
-    // Accept/Decline flow for technicians
+    // Accept/Decline flow for technicians with 3-minute expiry
     async function promptAcceptDecline(job){
       if(!job || !job.id) return;
-      // show nice modal instead of window.confirm
-      showJobRequestModal(job, async function onAccept(){
-        // send accept to server
-        const techId = getUserId();
+
+      const jobId = job.id;
+
+      // If we already saw this job before, skip (persisted)
+      try {
+        if(localStorage.getItem('wc_jobSeen_' + jobId)) {
+          // already shown once, do not re-prompt
+          return;
+        }
+      } catch(e){ /* ignore localStorage errors */ }
+
+      // mark as seen locally so we don't re-prompt across reloads
+      try { localStorage.setItem('wc_jobSeen_' + jobId, '1'); } catch(e){}
+
+      // best-effort: tell server we received/showed the job (optional endpoint)
+      (async function ackJob(){
         try {
-          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(job.id) + '/respond', {
+          await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/ack', {
+            method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ techId: getUserId() })
+          });
+        } catch(e){ /* ignore if not supported */ }
+      })();
+
+      // Start expiry timer (3 minutes = 180000ms)
+      const EXPIRY_MS = 3 * 60 * 1000;
+      pendingTimers[jobId] = { timeoutId: setTimeout(async ()=>{
+        // If the job is still pending on server, send 'expire' (auto-decline)
+        try {
+          await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/respond', {
             method: 'POST', headers: { 'Content-Type':'application/json' },
-            body: JSON.stringify({ techId: techId, action: 'accept' })
+            body: JSON.stringify({ techId: getUserId(), action: 'expire' })
+          });
+          // clean-up local seen so the job won't be re-prompted if server re-queues it later
+          localStorage.removeItem('wc_jobSeen_' + jobId);
+          delete pendingTimers[jobId];
+          console.info('Pending job expired automatically', jobId);
+        } catch(err){ console.warn('Error expiring job', err); }
+      }, EXPIRY_MS) };
+
+      // show the modal for accept/decline
+      showJobRequestModal(job, async function onAccept(){
+        // clear expiry timer (they accepted)
+        if(pendingTimers[jobId] && pendingTimers[jobId].timeoutId) { clearTimeout(pendingTimers[jobId].timeoutId); delete pendingTimers[jobId]; }
+
+        // call backend to accept
+        try {
+          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/respond', {
+            method: 'POST', headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ techId: getUserId(), action: 'accept' })
           });
           const js = await resp.json().catch(()=>null);
           if(resp.ok && js && js.success){
-            // show accepted then assignment modal, redirect to chat
-            showAcceptedThenAssignment(job, job.id, techId);
+            // show the "job received" image modal and OK will redirect to chat
+            showJobReceivedModal(job, jobId, getUserId());
           } else {
             const msg = js && js.message ? js.message : ('HTTP ' + resp.status);
             showErrorPopup('Server error', msg);
+            // clear seen flag so technician can be prompted again later if appropriate
+            try { localStorage.removeItem('wc_jobSeen_' + jobId); } catch(e){}
           }
         } catch(err){
           showErrorPopup('Network error', String(err));
+          try { localStorage.removeItem('wc_jobSeen_' + jobId); } catch(e){}
         }
       }, async function onDecline(){
-        // decline -> inform server and continue
-        const techId = getUserId();
+        // clear expiry timer
+        if(pendingTimers[jobId] && pendingTimers[jobId].timeoutId) { clearTimeout(pendingTimers[jobId].timeoutId); delete pendingTimers[jobId]; }
+
+        // send decline
         try {
-          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(job.id) + '/respond', {
+          const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/respond', {
             method: 'POST', headers: { 'Content-Type':'application/json' },
-            body: JSON.stringify({ techId: techId, action: 'decline' })
+            body: JSON.stringify({ techId: getUserId(), action: 'decline' })
           });
           const js = await resp.json().catch(()=>null);
           if(resp.ok && js && js.success){
             showToast('Job declined', 2000);
+            // keep the seen flag so we don't re-prompt for same job (server may reassign)
           } else {
             showErrorPopup('Server error', js && js.message ? js.message : ('HTTP ' + resp.status));
+            try { localStorage.removeItem('wc_jobSeen_' + jobId); } catch(e){}
           }
         } catch(err){
           showErrorPopup('Network error', String(err));
+          try { localStorage.removeItem('wc_jobSeen_' + jobId); } catch(e){}
         }
       });
     }
 
     // Poll assigned jobs and prompt (interval)
     let assignedPollInterval = null;
-    const promptedJobs = new Set();
     async function pollAssignedJobs(techId){
       const jobs = await fetchAssignedJobs(techId);
       if(!jobs) return;
       for(const job of jobs){
-        // We consider jobs having status pending_accept to be presented for accept/decline
-        if(job.status === 'pending_accept' && !promptedJobs.has(job.id)){
-          promptedJobs.add(job.id);
+        // If job is pending_accept, prompt once
+        if(job.status === 'pending_accept'){
+          try {
+            // If we've already seen it (persisted), skip
+            if(localStorage.getItem('wc_jobSeen_' + job.id)) {
+              // but ensure a timer exists to expire it if no action yet (in case page reloaded)
+              if(!pendingTimers[job.id]) {
+                // start a shorter timer — attempt to fetch how old this job is (optional)
+                pendingTimers[job.id] = { timeoutId: setTimeout(async ()=>{
+                  try {
+                    await fetch(API_BASE + '/api/job/' + encodeURIComponent(job.id) + '/respond', {
+                      method: 'POST', headers: { 'Content-Type':'application/json' },
+                      body: JSON.stringify({ techId: getUserId(), action: 'expire' })
+                    });
+                    localStorage.removeItem('wc_jobSeen_' + job.id);
+                    delete pendingTimers[job.id];
+                  } catch(e){}
+                }, 3 * 60 * 1000) };
+              }
+              continue;
+            }
+          } catch(e){}
+          // show prompt
           await promptAcceptDecline(job);
+        }
+        // handle other statuses if needed (e.g. assigned -> optionally open chat)
+        if(job.status === 'assigned' || job.status === 'accepted'){
+          // If job already assigned to this tech, optionally redirect or show job info
+          // We'll not auto-redirect here to be non-intrusive.
+          // You may choose to open chat automatically if you want:
+          // window.location.href = 'chat.html?jobId=' + encodeURIComponent(job.id) + '&techId=' + encodeURIComponent(techId);
         }
       }
     }
@@ -449,7 +472,11 @@
       pollAssignedJobs(techId);
       assignedPollInterval = setInterval(()=> pollAssignedJobs(techId), 5000);
     }
-    function stopAssignedPolling(){ if(assignedPollInterval){ clearInterval(assignedPollInterval); assignedPollInterval = null; } }
+    function stopAssignedPolling(){ if(assignedPollInterval){ clearInterval(assignedPollInterval); assignedPollInterval = null; } 
+      // clear any pending timers to avoid stray expiries
+      Object.keys(pendingTimers).forEach(k => { try { clearTimeout(pendingTimers[k].timeoutId); } catch(e){} });
+      for(const k in pendingTimers) delete pendingTimers[k];
+    }
 
     // Toggle handler
     async function handleSwitchToggle(e){
@@ -526,7 +553,7 @@
 
     // Job rules
     document.getElementById('jobRulesBtn').addEventListener('click', ()=> {
-      const txt = `Job rules:\n- You have 60s to accept a job.\n- Keep communication in-app.\n- Accept only jobs you can do.`;
+      const txt = `Job rules:\n- You have 3 minutes to accept a job (auto-expire).\n- Keep communication in-app.\n- Accept only jobs you can do.`;
       openModal(`<h3>Job Rules</h3><div class="muted">${txt.replace(/\n/g,'<br>')}</div><div class="modal-actions"><button id="closeRules" class="btn">Close</button></div>`);
       document.getElementById('closeRules').addEventListener('click', closeModal);
     });
