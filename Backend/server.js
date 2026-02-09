@@ -19,7 +19,33 @@ const pool = new Pool({
 // open CORS
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' })); // allow some room for base64 if demo
+//multi upload
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
+// ensure upload dir exists
+const UPLOAD_DIR = path.join(__dirname, 'uploads', 'kyc');
+try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch (e) { /* ignore */ }
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    // keep original name with timestamp prefix to avoid collisions
+    const name = Date.now() + '-' + file.originalname.replace(/\s+/g, '_');
+    cb(null, name);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    // adjust as needed
+    fileSize: 50 * 1024 * 1024 // 50MB per file
+  }
+});
 // DB init & migrations (idempotent)
 // Create core tables if missing, and run safe ALTERs to add missing columns for older DBs.
 const initSql = `
