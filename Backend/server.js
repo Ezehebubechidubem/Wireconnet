@@ -275,34 +275,121 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Login
-app.post('/api/login', async (req,res) =>{
-  try{
-    const { login, password } = req.body;
-    if(!login || !password) return res.status(400).json({ success:false, message:'Login and password required' });
+// Login (updated: supports admin via env, staff with redirect, and normal users)
+app.post('/api/login', async (req, res) => {
+  try {
+    const { login, password, email } = req.body || {};
+    if (!login || !password) return res.status(400).json({ success: false, message: 'Login and password required' });
 
+    const loginValue = String(login).trim();
+    const payloadEmail = email ? String(email).trim() : null;
+
+    // ---------- ADMIN (env-driven) ----------
+    // Set ADMIN_USERNAME and ADMIN_PASSWORD_HASH (bcrypt hash) in your environment
+    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+    const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
+
+    if (loginValue === ADMIN_USERNAME || (payloadEmail && payloadEmail === ADMIN_USERNAME)) {
+      // If ADMIN_PASSWORD_HASH is present, compare with bcrypt
+      if (ADMIN_PASSWORD_HASH && await bcrypt.compare(password, ADMIN_PASSWORD_HASH)) {
+        // Admin signed in
+        return res.json({
+          success: true,
+          message: 'Admin login successful',
+          role: 'admin',
+          user: null
+        });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // ---------- LOOKUP USER IN DB ----------
     const client = await pool.connect();
     try {
       const q = `SELECT * FROM users WHERE email=$1 OR username=$1 OR phone=$1 LIMIT 1`;
-      const r = await client.query(q, [login]);
-      if(!r.rows.length) return res.status(404).json({ success:false, message:'User not found' });
+      const r = await client.query(q, [loginValue]);
+      if (!r.rows.length) return res.status(404).json({ success: false, message: 'User not found' });
       const user = r.rows[0];
-      const ok = await bcrypt.compare(password, user.password_hash);
-      if(!ok) return res.status(401).json({ success:false, message:'Incorrect password' });
 
+      // verify password
+      const ok = await bcrypt.compare(password, user.password_hash);
+      if (!ok) return res.status(401).json({ success: false, message: 'Incorrect password' });
+
+      // normalize role
+      const roleRaw = (user.role || '').toString().toLowerCase();
+
+      // build safeUser to return (same fields as before)
       const safeUser = {
-        id: user.id, role: user.role, email: user.email, phone: user.phone,
-        fullname: user.fullname, username: user.username, state: user.state, lga: user.lga,
-        city: user.city, gender: user.gender, specializations: user.specializations, kyc_status: user.kyc_status,
-        avatar_url: user.avatar_url, profile_complete: user.profile_complete,
-        account_details: user.account_details, online: user.online, lat: user.lat, lng: user.lng, created_at: user.created_at
+        id: user.id,
+        role: user.role,
+        email: user.email,
+        phone: user.phone,
+        fullname: user.fullname,
+        username: user.username,
+        state: user.state,
+        lga: user.lga,
+        city: user.city,
+        gender: user.gender,
+        specializations: user.specializations,
+        kyc_status: user.kyc_status,
+        avatar_url: user.avatar_url,
+        profile_complete: user.profile_complete,
+        account_details: user.account_details,
+        online: user.online,
+        lat: user.lat,
+        lng: user.lng,
+        created_at: user.created_at
       };
 
-      return res.json({ success:true, message:'Login successful', user: safeUser });
-    } finally { client.release(); }
-  }catch(e){
+      // ---------- STAFF FLOW ----------
+      // Treat users with role 'staff' specially and return a redirect based on staff role.
+      // You can customize ROLE_ROUTES to match your admin UI routes for different staff roles.
+      if (roleRaw === 'staff') {
+        const BASE = process.env.ADMIN_UI_BASE || 'https://your-admin-ui.example.com'; // update if needed
+        const ROLE_ROUTES = {
+          'customer-support': `${BASE}/support`,
+          'customer support': `${BASE}/support`,
+          'transaction-review': `${BASE}/review`,
+          'transaction review': `${BASE}/review`,
+          'scaling': `${BASE}/scaling`,
+          'api manager': `${BASE}/api-manager`,
+          'api-manager': `${BASE}/api-manager`,
+          'developer': `${BASE}/developer`,
+          'kyc': `${BASE}/kyc`,
+          'fraud': `${BASE}/fraud`,
+          'log': `${BASE}/logs`,
+          'notification': `${BASE}/notifications`
+        };
+        const normalizedRole = (user.specializations && user.specializations[0]) ? String(user.specializations[0]).toLowerCase() : (user.staff_role || '');
+        // try to derive redirect from stored role (fallback to generic staff page)
+        const redirect = ROLE_ROUTES[normalizedRole] || ROLE_ROUTES[(user.role || '').toLowerCase()] || `${BASE}/staff`;
+
+        return res.json({
+          success: true,
+          message: 'Staff login successful',
+          role: 'staff',
+          user: safeUser,
+          redirect
+        });
+      }
+
+      // ---------- TECH / CLIENT (regular users) ----------
+      // Keep existing behavior: return user object and role (worker/client/etc.)
+      // If you want to normalize role names, do it here
+      if (roleRaw === 'worker' || roleRaw === 'technician') {
+        return res.json({ success: true, message: 'Login successful', role: 'worker', user: safeUser });
+      }
+
+      // default: client/other user
+      return res.json({ success: true, message: 'Login successful', role: roleRaw || 'client', user: safeUser });
+
+    } finally {
+      client.release();
+    }
+
+  } catch (e) {
     console.error('Server error /api/login', e);
-    return res.status(500).json({ success:false, message:'Server error' });
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
