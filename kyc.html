@@ -8,73 +8,71 @@
     :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280}
     *{box-sizing:border-box}
     body{font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:#111}
-    .wrap{max-width:720px;margin:20px auto;padding:16px}
+    .wrap{max-width:720px;margin:18px auto;padding:14px}
     .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
     .logo{display:flex;align-items:center;justify-content:center;margin-bottom:8px}
     .logo img{width:100%;max-width:320px;height:auto;display:block}
-    label{display:block;margin-top:12px;font-weight:700;color:#111}
-    .input, .choose-btn { width:100%; padding:10px; border-radius:8px; border:1px solid #e6e9ef; background:#fff; display:block; text-align:left }
-    .choose-btn{cursor:pointer; background:#fff; color:#111; display:inline-flex; align-items:center; gap:12px; justify-content:center}
-    .choose-btn .txt{flex:1}
+    label{display:block;margin-top:12px;font-weight:700;color:#111;font-size:15px}
+    .input, .choose-btn { width:100%; padding:12px; border-radius:10px; border:1px solid #e6e9ef; background:#fff; display:block; text-align:left; font-size:14px }
+    .choose-btn{cursor:pointer; display:flex;align-items:center;gap:10px; justify-content:space-between}
+    .choose-btn small{color:var(--muted);font-weight:600}
     .small{font-size:13px;color:var(--muted);margin-top:6px}
     .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
     .muted{color:var(--muted);font-size:13px}
-    .file-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .thumb{width:88px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e6eef9;background:#fafafa;display:flex;align-items:center;justify-content:center;position:relative}
+    .file-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .thumb{width:90px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e6eef9;background:#fafafa;display:flex;align-items:center;justify-content:center;position:relative}
     .thumb img, .thumb video{max-width:100%;max-height:100%;display:block}
-    .thumb .remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
+    .thumb .remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
     .error{color:#b91c1c;font-weight:700;margin-top:8px}
     .hidden{display:none}
-    footer{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    footer{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
     @media (max-width:480px){ .thumb{width:72px;height:60px} .logo img{max-width:240px} }
-    /* hide native file inputs, we trigger them via buttons/labels */
+    /* hide native file inputs; we trigger them via labels */
     input[type="file"].native { display:none; }
-    select.input { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"><path d="M2 4l4 4 4-4" fill="none" stroke="%23000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center; padding-right:36px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <!-- logo only header (no heading text) -->
+      <!-- logo-only header -->
       <div class="logo">
         <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
       </div>
 
       <!-- ID type selector (before id number) -->
-      <label for="id_type">Choose ID type</label>
-      <select id="id_type" class="input">
+      <label for="id_type">ID type</label>
+      <select id="id_type" class="input" aria-label="ID type">
         <option value="national_id">National ID</option>
         <option value="driver_license">Driver's License</option>
         <option value="passport">Passport</option>
       </select>
 
       <label for="id_number">ID number</label>
-      <input id="id_number" type="text" class="input" placeholder="Enter ID number">
+      <input id="id_number" class="input" type="text" placeholder="Enter ID number" />
 
+      <!-- front/back file inputs: hidden native with capture attribute -->
       <label for="id_front_btn">Front picture (ID)</label>
-      <!-- hidden native input; capture asks mobile to offer camera -->
-      <input id="id_front" class="native" type="file" accept="image/*" capture="environment" />
-      <label id="id_front_btn" class="choose-btn" for="id_front">
-        <span class="txt">Choose file — front</span>
-        <small style="color:var(--muted)">Tap to use camera or files</small>
+      <input id="id_front" class="native" type="file" accept="image/*" capture="environment">
+      <label id="id_front_btn" class="choose-btn" for="id_front" aria-hidden="false">
+        <span>Choose file — front</span>
+        <small>Camera or files</small>
       </label>
 
       <label for="id_back_btn">Back picture (ID)</label>
-      <input id="id_back" class="native" type="file" accept="image/*" capture="environment" />
+      <input id="id_back" class="native" type="file" accept="image/*" capture="environment">
       <label id="id_back_btn" class="choose-btn" for="id_back">
-        <span class="txt">Choose file — back</span>
-        <small style="color:var(--muted)">Tap to use camera or files</small>
+        <span>Choose file — back</span>
+        <small>Camera or files</small>
       </label>
 
-      <!-- container for preview thumbnails -->
       <div id="id_preview" class="file-row" aria-live="polite"></div>
 
+      <!-- videos: required -->
       <label for="videos_input_btn" style="margin-top:12px">Work video (required)</label>
-      <!-- videos input: allow device camera recording and files; mobile will show camera option -->
-      <input id="videos_input" class="native" type="file" accept="video/*" capture="camcorder" multiple />
+      <input id="videos_input" class="native" type="file" accept="video/*" capture="camcorder" multiple>
       <label id="videos_input_btn" class="choose-btn" for="videos_input">
-        <span class="txt">Choose videos (up to 2)</span>
-        <small style="color:var(--muted)">Record or choose from files</small>
+        <span>Choose videos (up to 2)</span>
+        <small>Record or files</small>
       </label>
       <div class="small">Up to 2 videos. Each ≤ 3 minutes.</div>
       <div id="videos_preview" class="file-row"></div>
@@ -82,7 +80,7 @@
       <div id="validationErrors" class="error hidden" role="alert"></div>
 
       <footer>
-        <button id="submitBtn" class="btn">Submit KYC</button>
+        <button id="submitBtn" class="btn">Submit</button>
         <div class="muted">All docs go to admin</div>
       </footer>
 
@@ -90,7 +88,7 @@
     </div>
   </div>
 
-  <!-- simple modal for responses -->
+  <!-- modal -->
   <div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000">
     <div style="background:#fff;padding:16px;border-radius:10px;max-width:320px;text-align:center">
       <div id="modalText">Processing...</div>
@@ -100,12 +98,13 @@
 
 <script>
 (function(){
+  // set API root for your backend
   const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
   const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
   if(!me){ alert('Please login'); window.location.href = 'login.html'; return; }
 
-  // DOM
-  const idType = document.getElementById('id_type');
+  // elements
+  const idTypeEl = document.getElementById('id_type');
   const idNumberEl = document.getElementById('id_number');
   const idFrontEl = document.getElementById('id_front');
   const idBackEl = document.getElementById('id_back');
@@ -118,17 +117,15 @@
   const statusEl = document.getElementById('status');
   const validationErrors = document.getElementById('validationErrors');
 
-  const overlay = document.getElementById('overlay');
-  const modalText = document.getElementById('modalText');
-  const modalClose = document.getElementById('modalClose');
+  const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
   // state
   let idFiles = { front: null, back: null };
   let videoFiles = [];
-
   const MAX_VIDEOS = 2;
   const MAX_VIDEO_SECONDS = 180; // 3 minutes
 
+  // helpers
   function showModal(msg){ modalText.textContent = msg; overlay.style.display = 'flex'; }
   function hideModal(){ overlay.style.display = 'none'; }
   modalClose.addEventListener('click', hideModal);
@@ -142,7 +139,7 @@
     validationErrors.classList.add('hidden');
   }
 
-  // preview helpers
+  // previews
   function renderIdPreview(){
     idPreview.innerHTML = '';
     const list = [];
@@ -156,7 +153,7 @@
       rm.addEventListener('click', ()=> {
         URL.revokeObjectURL(img.src);
         if(item.label === 'Front'){ idFiles.front = null; idFrontEl.value = ''; }
-        else if(item.label === 'Back'){ idFiles.back = null; idBackEl.value = ''; }
+        else { idFiles.back = null; idBackEl.value = ''; }
         renderIdPreview();
       });
       box.appendChild(rm);
@@ -182,19 +179,19 @@
     });
   }
 
-  // handlers
+  // input handlers
   idFrontEl.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.front = f; renderIdPreview(); }
-    else { idFiles.front = null; idFrontEl.value=''; }
+    else { idFiles.front = null; idFrontEl.value=''; renderIdPreview(); }
   });
 
   idBackEl.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.back = f; renderIdPreview(); }
-    else { idFiles.back = null; idBackEl.value=''; }
+    else { idFiles.back = null; idBackEl.value=''; renderIdPreview(); }
   });
 
   videosInput.addEventListener('change', async (e)=>{
@@ -215,7 +212,7 @@
     renderVideoPreview();
   });
 
-  // verify video durations (returns array of error msgs)
+  // validate durations (client-side)
   function validateVideoDurations(files){
     const checks = files.map(f => new Promise((resolve) => {
       const url = URL.createObjectURL(f);
@@ -241,7 +238,7 @@
     statusEl.textContent = '';
 
     const idNumber = (idNumberEl.value || '').trim();
-    const idTypeVal = idType.value || 'unknown';
+    const idType = idTypeEl.value || 'unknown';
     if(!idNumber){ showValidation('Enter ID number'); return; }
     if(!idFiles.front){ showValidation('Upload front picture of ID'); return; }
     if(!idFiles.back){ showValidation('Upload back picture of ID'); return; }
@@ -251,25 +248,27 @@
     const durationProblems = await validateVideoDurations(videoFiles);
     if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
+    // Build FormData for multipart upload. IMPORTANT:
+    // Your backend route /api/kyc/submit must accept multipart/form-data and handle file fields:
+    // - id_images[] (front/back)
+    // - work_videos[] (video files)
     const form = new FormData();
     form.append('userId', me.id);
-    form.append('id_type', idTypeVal);
+    form.append('id_type', idType);
     form.append('id_number', idNumber);
-
-    // append id images
     form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
     form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
-
-    // append videos
     videoFiles.forEach(f => form.append('work_videos', f, f.name));
 
+    // hint optional
     form.append('_multipart','1');
 
     try{
       showModal('Uploading — please wait...');
-      const resp = await fetch(`${API_BASE}/api/kyc/submit`, { method:'POST', body: form, credentials:'include' });
+      const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
       let data = null;
-      try{ data = await resp.json(); } catch(e){ data = null; }
+      try{ data = await resp.json(); }catch(e){ data = null; }
+
       if(resp.ok && data && data.success){
         me.kyc_status = 'pending';
         localStorage.setItem('wc_user', JSON.stringify(me));
@@ -284,7 +283,7 @@
     }
   });
 
-  // try saving geo (unchanged)
+  // try to save geo unobtrusively
   (function trySaveGeo(){
     try{
       if(navigator.geolocation){
