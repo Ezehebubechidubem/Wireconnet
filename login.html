@@ -110,25 +110,29 @@
     const togglePassword = document.getElementById('togglePassword');
     const eyeOpen = document.getElementById('eyeOpen');
     const eyeClosed = document.getElementById('eyeClosed');
+
+    // small helpers
+    function showLoading(){ overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); loadingView.style.display='flex'; resultView.style.display='none'; }
+    function showResult(success,title,message){ loadingView.style.display='none'; resultView.style.display='flex'; resultEmoji.textContent = success ? '✅' : '❌'; resultTitle.textContent = title; resultText.textContent = message; }
+    function hideOverlay(){ overlay.style.display='none'; overlay.setAttribute('aria-hidden','true'); }
+
+    function redirectToClientDashboard(){ window.location.href = 'dashboard.html'; }
+    function redirectToTechDashboard(){ window.location.href = 'technician.html'; }
+    function redirectToAdmin(){ window.location.href = 'admin.html'; }
+
+    // toggle password eye
     togglePassword.addEventListener('click', () => {
       const pw = document.getElementById('password');
       if (pw.type === 'password') { pw.type = 'text'; eyeOpen.style.display='none'; eyeClosed.style.display='block'; }
       else { pw.type = 'password'; eyeOpen.style.display='block'; eyeClosed.style.display='none'; }
     });
 
-    function showLoading(){ overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); loadingView.style.display='flex'; resultView.style.display='none'; }
-    function showResult(success,title,message){ loadingView.style.display='none'; resultView.style.display='flex'; resultEmoji.textContent = success ? '✅' : '❌'; resultTitle.textContent = title; resultText.textContent = message; }
-    function hideOverlay(){ overlay.style.display='none'; overlay.setAttribute('aria-hidden','true'); }
-    function overlaySequenceFailure(){ if(overlay.style.display!=='flex') overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); }
-
-    function redirectToClientDashboard(){ window.location.href = 'dashboard.html'; }
-    function redirectToTechDashboard(){ window.location.href = 'technician.html'; }
-
+    // submit handler
     document.getElementById('submitBtn').addEventListener('click', async () => {
       const identifier = document.getElementById('identifier').value.trim();
       const password = document.getElementById('password').value;
-      if(!identifier){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Please enter your username, email or phone.'),300); return overlaySequenceFailure(); }
-      if(!password || password.length < 6){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Password must be at least 6 characters.'),300); return overlaySequenceFailure(); }
+      if(!identifier){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Please enter your username, email or phone.'),300); return; }
+      if(!password || password.length < 6){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Password must be at least 6 characters.'),300); return; }
 
       showLoading();
       const payload = { login: identifier, password };
@@ -147,30 +151,53 @@
           return;
         }
 
-        if(data && data.success && data.user){
-          // save session info
-          try { localStorage.setItem('wc_user', JSON.stringify(data.user)); } catch(e){}
-          try { localStorage.setItem('userId', data.user.id); } catch(e){}
-          try { localStorage.setItem('userRole', data.user.role || 'client'); } catch(e){}
-          if(data.token){ try{ localStorage.setItem('wc_token', data.token); } catch(e){} }
+        // now resp.ok
+        if(data && data.success){
+          // save user if present
+          if(data.user){
+            try { localStorage.setItem('wc_user', JSON.stringify(data.user)); } catch(e){}
+            try { localStorage.setItem('userId', data.user.id); } catch(e){}
+            try { localStorage.setItem('userRole', data.user.role || 'client'); } catch(e){}
+          } else {
+            // maybe admin: clear prior wc_user but flag admin
+            try { localStorage.removeItem('wc_user'); } catch(e){}
+          }
+          if(data.token){ try { localStorage.setItem('wc_token', data.token); } catch(e){} }
 
-          showResult(true,'Login successful', data.message || 'Redirecting...');
-          setTimeout(()=> {
-            hideOverlay();
-            // decide redirect by role
-            const role = (data.user.role || '').toString().toLowerCase();
-            if(role === 'worker' || role === 'technician' || role === 'tech') {
-              redirectToTechDashboard();
-            } else {
-              // default: client
-              redirectToClientDashboard();
-            }
-          }, 900);
+          // show success then redirect according to role / redirect field
+          const role = (data.role || (data.user && data.user.role) || '').toString().toLowerCase();
+
+          // If server supplied a redirect (staff), prefer it
+          if(role === 'staff' && data.redirect){
+            showResult(true,'Staff login','Redirecting to staff console...');
+            setTimeout(()=> { window.location.href = data.redirect; }, 800);
+            return;
+          }
+
+          if(role === 'admin'){
+            showResult(true,'Admin login','Redirecting to admin console...');
+            setTimeout(()=> { redirectToAdmin(); }, 800);
+            return;
+          }
+
+          if(role === 'worker' || role === 'technician'){
+            showResult(true,'Login successful','Redirecting to technician dashboard...');
+            setTimeout(()=> { redirectToTechDashboard(); }, 800);
+            return;
+          }
+
+          // default client
+          showResult(true,'Login successful','Redirecting to dashboard...');
+          setTimeout(()=> { redirectToClientDashboard(); }, 800);
+          return;
+
         } else {
           const msg = (data && data.message) ? data.message : 'Invalid credentials.';
           showResult(false,'Login failed', msg);
         }
+
       } catch(err){
+        console.error('Login fetch error', err);
         showResult(false,'Login failed','Network error. Try again later.');
       }
     });
