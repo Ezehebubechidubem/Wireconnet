@@ -20,13 +20,14 @@
     .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
     .muted{color:var(--muted);font-size:13px}
     .file-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    .thumb{width:90px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e6eef9;background:#fafafa;display:flex;align-items:center;justify-content:center;position:relative}
+    .thumb{width:120px;height:96px;border-radius:8px;overflow:hidden;border:1px solid #e6eef9;background:#fafafa;display:flex;align-items:center;justify-content:center;position:relative;flex-direction:column;padding:6px}
     .thumb img, .thumb video{max-width:100%;max-height:100%;display:block}
-    .thumb .remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+    .thumb .label { font-size:12px; color:var(--muted); margin-top:6px; font-weight:700 }
+    .thumb .remove{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
     .error{color:#b91c1c;font-weight:700;margin-top:8px}
     .hidden{display:none}
     footer{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-    @media (max-width:480px){ .thumb{width:72px;height:60px} .logo img{max-width:240px} }
+    @media (max-width:480px){ .thumb{width:96px;height:76px} .logo img{max-width:240px} }
     /* hide native file inputs; we'll trigger them via labels/buttons */
     input[type="file"].native { display:none; }
     /* modal */
@@ -172,7 +173,7 @@
   const dbgLast = document.getElementById('dbgLast');
 
   // state
-  let idFiles = { front: null, back: null };
+  let idFiles = { front: null, back: null }; // separate keys now
   let videoFiles = [];
   let currentTarget = null; // 'front' | 'back' | 'videos'
   const MAX_VIDEOS = 2;
@@ -206,17 +207,22 @@
   // previews
   function renderIdPreview(){
     idPreview.innerHTML = '';
-    const list = [];
-    if(idFiles.front) list.push({ f: idFiles.front, label: 'Front' });
-    if(idFiles.back) list.push({ f: idFiles.back, label: 'Back' });
-    list.forEach((item, idx) => {
+    // ensure fixed placement: front then back (mirrors screenshot placement)
+    const order = [
+      { key: 'front', file: idFiles.front, label: 'Front' },
+      { key: 'back',  file: idFiles.back,  label: 'Back' }
+    ];
+    order.forEach((item) => {
+      if(!item.file) return;
       const box = document.createElement('div'); box.className = 'thumb';
-      const img = document.createElement('img'); img.src = URL.createObjectURL(item.f); img.alt = item.label;
+      const img = document.createElement('img'); img.src = URL.createObjectURL(item.file); img.alt = item.label;
       box.appendChild(img);
+      const lbl = document.createElement('div'); lbl.className = 'label'; lbl.innerText = item.label;
+      box.appendChild(lbl);
       const rm = document.createElement('div'); rm.className = 'remove'; rm.innerText = '×';
       rm.addEventListener('click', ()=> {
         URL.revokeObjectURL(img.src);
-        if(item.label === 'Front'){ idFiles.front = null; idFrontNative.value = ''; }
+        if(item.key === 'front'){ idFiles.front = null; idFrontNative.value = ''; }
         else { idFiles.back = null; idBackNative.value = ''; }
         renderIdPreview();
       });
@@ -361,7 +367,7 @@
     const durationProblems = await validateVideoDurations(videoFiles);
     if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
-    // Build FormData with both id_images[] and id_images keys for compatibility
+    // Build FormData: IMPORTANT - append front and back as separate keys
     const form = new FormData();
     // primary fields the backend expects
     form.append('userId', me.id);
@@ -370,7 +376,13 @@
     form.append('id_name', idName);
     form.append('id_number', idNumber);
 
-    // append images both ways (some parsers expect key 'id_images', others 'id_images[]')
+    // === NEW: append front/back separately ===
+    if(idFiles.front) form.append('id_front', idFiles.front, idFiles.front.name || 'id_front.jpg');
+    if(idFiles.back)  form.append('id_back',  idFiles.back,  idFiles.back.name  || 'id_back.jpg');
+
+    // For backward compatibility with older backends that expect arrays,
+    // you *can* also append them as id_images/id_images[] — optional.
+    // If you prefer to remove the array-style fields entirely, delete the block below.
     try {
       form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
       form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
