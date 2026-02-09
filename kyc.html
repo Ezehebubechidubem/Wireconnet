@@ -29,6 +29,12 @@
     @media (max-width:480px){ .thumb{width:72px;height:60px} .logo img{max-width:240px} }
     /* hide native file inputs; we trigger them via labels */
     input[type="file"].native { display:none; }
+    /* simple modal style */
+    .modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:2000; }
+    .modal{ background:#fff; padding:14px; border-radius:10px; width:320px; max-width:90%; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.18); }
+    .modal .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
+    .modal button{ padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
+    .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
   </style>
 </head>
 <body>
@@ -39,7 +45,7 @@
         <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
       </div>
 
-      <!-- ID type selector (before id number) -->
+      <!-- ID type selector (before id name and id number) -->
       <label for="id_type">ID type</label>
       <select id="id_type" class="input" aria-label="ID type">
         <option value="national_id">National ID</option>
@@ -47,20 +53,24 @@
         <option value="passport">Passport</option>
       </select>
 
+      <!-- NEW: ID name (added as requested) -->
+      <label for="id_name">Name on ID</label>
+      <input id="id_name" class="input" type="text" placeholder="Name exactly as on the ID" />
+
       <label for="id_number">ID number</label>
       <input id="id_number" class="input" type="text" placeholder="Enter ID number" />
 
-      <!-- front/back file inputs: hidden native with capture attribute -->
+      <!-- front/back file inputs: hidden native with capture attribute (kept as-is) -->
       <label for="id_front_btn">Front picture (ID)</label>
       <input id="id_front" class="native" type="file" accept="image/*" capture="environment">
-      <label id="id_front_btn" class="choose-btn" for="id_front" aria-hidden="false">
+      <label id="id_front_btn" class="choose-btn" data-target="front" tabindex="0">
         <span>Choose file — front</span>
         <small>Camera or files</small>
       </label>
 
       <label for="id_back_btn">Back picture (ID)</label>
       <input id="id_back" class="native" type="file" accept="image/*" capture="environment">
-      <label id="id_back_btn" class="choose-btn" for="id_back">
+      <label id="id_back_btn" class="choose-btn" data-target="back" tabindex="0">
         <span>Choose file — back</span>
         <small>Camera or files</small>
       </label>
@@ -70,7 +80,7 @@
       <!-- videos: required -->
       <label for="videos_input_btn" style="margin-top:12px">Work video (required)</label>
       <input id="videos_input" class="native" type="file" accept="video/*" capture="camcorder" multiple>
-      <label id="videos_input_btn" class="choose-btn" for="videos_input">
+      <label id="videos_input_btn" class="choose-btn" data-target="videos" tabindex="0">
         <span>Choose videos (up to 2)</span>
         <small>Record or files</small>
       </label>
@@ -88,7 +98,20 @@
     </div>
   </div>
 
-  <!-- modal -->
+  <!-- pop modal to choose Camera vs Upload -->
+  <div class="modal-backdrop" id="choiceModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="choiceTitle">
+      <div id="choiceTitle" style="font-weight:800">Choose upload method</div>
+      <div class="muted" style="margin-top:8px">Use camera to take a new photo/video or choose from your files</div>
+      <div class="actions">
+        <button id="cameraBtn" class="btn-outline">Use Camera</button>
+        <button id="filesBtn" class="btn">Upload from files</button>
+      </div>
+      <div style="margin-top:10px"><button id="choiceCancel" class="btn-outline">Cancel</button></div>
+    </div>
+  </div>
+
+  <!-- modal for upload status -->
   <div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000">
     <div style="background:#fff;padding:16px;border-radius:10px;max-width:320px;text-align:center">
       <div id="modalText">Processing...</div>
@@ -98,34 +121,59 @@
 
 <script>
 (function(){
-  // set API root for your backend
   const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
   const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
   if(!me){ alert('Please login'); window.location.href = 'login.html'; return; }
 
-  // elements
+  // DOM
   const idTypeEl = document.getElementById('id_type');
+  const idNameEl = document.getElementById('id_name');
   const idNumberEl = document.getElementById('id_number');
-  const idFrontEl = document.getElementById('id_front');
-  const idBackEl = document.getElementById('id_back');
-  const idPreview = document.getElementById('id_preview');
 
-  const videosInput = document.getElementById('videos_input');
+  // native (kept) inputs
+  const idFrontNative = document.getElementById('id_front');
+  const idBackNative = document.getElementById('id_back');
+  const videosNative = document.getElementById('videos_input');
+
+  // visible labels / buttons
+  const idFrontBtn = document.getElementById('id_front_btn');
+  const idBackBtn  = document.getElementById('id_back_btn');
+  const videosBtn  = document.getElementById('videos_input_btn');
+
+  const idPreview = document.getElementById('id_preview');
   const videosPreview = document.getElementById('videos_preview');
 
   const submitBtn = document.getElementById('submitBtn');
   const statusEl = document.getElementById('status');
   const validationErrors = document.getElementById('validationErrors');
 
+  const choiceModal = document.getElementById('choiceModal');
+  const cameraBtn = document.getElementById('cameraBtn');
+  const filesBtn = document.getElementById('filesBtn');
+  const choiceCancel = document.getElementById('choiceCancel');
+
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
   // state
   let idFiles = { front: null, back: null };
   let videoFiles = [];
+  let currentTarget = null; // 'front' | 'back' | 'videos'
   const MAX_VIDEOS = 2;
   const MAX_VIDEO_SECONDS = 180; // 3 minutes
 
-  // helpers
+  // show/hide modals
+  function openChoice(target){
+    currentTarget = target;
+    choiceModal.style.display = 'flex';
+  }
+  function closeChoice(){
+    choiceModal.style.display = 'none';
+    currentTarget = null;
+  }
+  cameraBtn.addEventListener('click', ()=> handleChoice('camera'));
+  filesBtn.addEventListener('click', ()=> handleChoice('files'));
+  choiceCancel.addEventListener('click', closeChoice);
+
   function showModal(msg){ modalText.textContent = msg; overlay.style.display = 'flex'; }
   function hideModal(){ overlay.style.display = 'none'; }
   modalClose.addEventListener('click', hideModal);
@@ -139,7 +187,7 @@
     validationErrors.classList.add('hidden');
   }
 
-  // previews
+  // preview helpers (same as before)
   function renderIdPreview(){
     idPreview.innerHTML = '';
     const list = [];
@@ -152,8 +200,8 @@
       const rm = document.createElement('div'); rm.className = 'remove'; rm.innerText = '×';
       rm.addEventListener('click', ()=> {
         URL.revokeObjectURL(img.src);
-        if(item.label === 'Front'){ idFiles.front = null; idFrontEl.value = ''; }
-        else { idFiles.back = null; idBackEl.value = ''; }
+        if(item.label === 'Front'){ idFiles.front = null; idFrontNative.value = ''; }
+        else { idFiles.back = null; idBackNative.value = ''; }
         renderIdPreview();
       });
       box.appendChild(rm);
@@ -179,22 +227,20 @@
     });
   }
 
-  // input handlers
-  idFrontEl.addEventListener('change', (e)=>{
+  // Existing native change handlers (kept for fallback if user uses native inputs directly)
+  idFrontNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.front = f; renderIdPreview(); }
-    else { idFiles.front = null; idFrontEl.value=''; renderIdPreview(); }
+    else { idFiles.front = null; idFrontNative.value=''; renderIdPreview(); }
   });
-
-  idBackEl.addEventListener('change', (e)=>{
+  idBackNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.back = f; renderIdPreview(); }
-    else { idFiles.back = null; idBackEl.value=''; renderIdPreview(); }
+    else { idFiles.back = null; idBackNative.value=''; renderIdPreview(); }
   });
-
-  videosInput.addEventListener('change', async (e)=>{
+  videosNative.addEventListener('change', async (e)=>{
     clearValidation();
     const files = Array.from(e.target.files || []);
     for(const f of files){
@@ -202,17 +248,95 @@
       if(!f.type.startsWith('video/')) continue;
       videoFiles.push(f);
     }
-    // validate durations
     const problems = await validateVideoDurations(videoFiles);
     if(problems.length){
       showValidation(problems.join('\n'));
       videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
     }
-    videosInput.value = '';
+    videosNative.value = '';
     renderVideoPreview();
   });
 
-  // validate durations (client-side)
+  // attach click handlers to visible buttons (they open our choice modal)
+  idFrontBtn.addEventListener('click', ()=> openChoice('front'));
+  idBackBtn.addEventListener('click', ()=> openChoice('back'));
+  videosBtn.addEventListener('click', ()=> openChoice('videos'));
+
+  // keyboard accessibility (Enter)
+  [idFrontBtn, idBackBtn, videosBtn].forEach(btn=>{
+    btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
+  });
+
+  // handle choice: create temporary file input with appropriate capture attr and click it
+  async function handleChoice(kind){
+    closeChoice();
+    clearValidation();
+    if(!['front','back','videos'].includes(currentTarget)){
+      // if currentTarget null, but kind passed, set currentTarget to kind
+    }
+    const target = currentTarget || kind;
+    let accept = 'image/*';
+    let capture = 'environment';
+    let multiple = false;
+    if(target === 'videos'){
+      accept = 'video/*';
+      capture = 'camcorder';
+      multiple = true;
+    } else {
+      accept = 'image/*';
+      capture = 'environment';
+      multiple = false;
+    }
+
+    if(kind === 'files'){ // open file chooser without capture attribute
+      capture = null;
+    } // else keep capture for camera
+
+    // create temporary input
+    const tmp = document.createElement('input');
+    tmp.type = 'file';
+    tmp.accept = accept;
+    if(multiple) tmp.multiple = true;
+    if(capture) tmp.setAttribute('capture', capture);
+
+    // listening to selection
+    tmp.addEventListener('change', async (ev)=>{
+      const files = Array.from(ev.target.files || []);
+      if(target === 'front' || target === 'back'){
+        const f = files[0];
+        if(!f) return;
+        if(!f.type.startsWith('image/')) { showValidation('Select an image file'); return; }
+        // assign to state and also mirror to native input's value by not possible; instead set native input file is not possible programmatically
+        // we keep native inputs as-is (they are for fallback). We update our state & preview directly:
+        if(target === 'front'){ idFiles.front = f; idFrontNative.value = ''; } // clear native input
+        else { idFiles.back = f; idBackNative.value = ''; }
+        renderIdPreview();
+      } else if(target === 'videos'){
+        // append respecting MAX_VIDEOS
+        for(const f of files){
+          if(videoFiles.length >= MAX_VIDEOS) break;
+          if(!f.type.startsWith('video/')) continue;
+          videoFiles.push(f);
+        }
+        const problems = await validateVideoDurations(videoFiles);
+        if(problems.length){
+          showValidation(problems.join('\n'));
+          videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
+        }
+        renderVideoPreview();
+      }
+      // remove tmp input afterwards
+      tmp.remove();
+    });
+
+    // click the input to open chooser / camera
+    document.body.appendChild(tmp); // required for some browsers
+    tmp.click();
+
+    // note: some browsers (esp desktop) ignore capture; on mobile it triggers camera
+  }
+
+  // validate video durations (client-side)
   function validateVideoDurations(files){
     const checks = files.map(f => new Promise((resolve) => {
       const url = URL.createObjectURL(f);
@@ -232,13 +356,16 @@
     return Promise.all(checks).then(results => results.filter(Boolean));
   }
 
-  // submit
+  // final submit (keeps same endpoints & behavior)
   submitBtn.addEventListener('click', async ()=>{
     clearValidation();
     statusEl.textContent = '';
 
     const idNumber = (idNumberEl.value || '').trim();
+    const idName = (idNameEl.value || '').trim();
     const idType = idTypeEl.value || 'unknown';
+
+    if(!idName){ showValidation('Enter name on ID'); return; }
     if(!idNumber){ showValidation('Enter ID number'); return; }
     if(!idFiles.front){ showValidation('Upload front picture of ID'); return; }
     if(!idFiles.back){ showValidation('Upload back picture of ID'); return; }
@@ -248,26 +375,26 @@
     const durationProblems = await validateVideoDurations(videoFiles);
     if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
-    // Build FormData for multipart upload. IMPORTANT:
-    // Your backend route /api/kyc/submit must accept multipart/form-data and handle file fields:
-    // - id_images[] (front/back)
-    // - work_videos[] (video files)
     const form = new FormData();
     form.append('userId', me.id);
     form.append('id_type', idType);
+    form.append('id_name', idName);
     form.append('id_number', idNumber);
+
+    // append id images
     form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
     form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
+
+    // append videos
     videoFiles.forEach(f => form.append('work_videos', f, f.name));
 
-    // hint optional
     form.append('_multipart','1');
 
     try{
       showModal('Uploading — please wait...');
       const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
       let data = null;
-      try{ data = await resp.json(); }catch(e){ data = null; }
+      try{ data = await resp.json(); } catch(e){ data = null; }
 
       if(resp.ok && data && data.success){
         me.kyc_status = 'pending';
@@ -283,7 +410,7 @@
     }
   });
 
-  // try to save geo unobtrusively
+  // unobtrusive geo save as before
   (function trySaveGeo(){
     try{
       if(navigator.geolocation){
