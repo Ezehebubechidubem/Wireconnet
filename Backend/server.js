@@ -216,6 +216,15 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
 
 // ------------------ End helpers ------------------
 
+//Testing password
+app.get('/test-admin', async (req,res)=>{
+ const ok = await bcrypt.compare(
+   "PUT_YOUR_REAL_PASSWORD_HERE",
+   process.env.ADMIN_PASSWORD_HASH
+ );
+
+ res.json({match: ok});
+});
 // Registration
 app.post('/api/register', async (req, res) => {
   try {
