@@ -35,6 +35,12 @@
     .modal .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
     .modal button{ padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
     .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
+
+    /* Debug panel */
+    .debug-toggle { margin-top:12px; display:flex; gap:8px; align-items:center; }
+    .debug-panel { margin-top:12px; background:#0b1220; color:#e6f0ff; padding:12px; border-radius:10px; font-family:monospace; font-size:13px; max-height:260px; overflow:auto; white-space:pre-wrap; display:none; }
+    .debug-controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .pill { background:#e6eef9; color:#0b1220; padding:6px 8px; border-radius:999px; font-weight:700; font-size:12px }
   </style>
 </head>
 <body>
@@ -94,6 +100,15 @@
       </footer>
 
       <div id="status" class="muted" style="margin-top:8px"></div>
+
+      <div class="debug-toggle">
+        <button id="dbgToggleBtn" class="btn-outline">Server debug</button>
+        <div style="margin-left:auto" class="debug-controls">
+          <div class="pill" id="dbgLast">No log</div>
+        </div>
+      </div>
+
+      <div id="debugPanel" class="debug-panel" aria-live="polite"></div>
     </div>
   </div>
 
@@ -121,6 +136,8 @@
 <script>
 (function(){
   const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
+
+  // validate user logged in
   const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
   if(!me){ alert('Please login'); window.location.href = 'login.html'; return; }
 
@@ -150,6 +167,10 @@
 
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
+  const dbgToggleBtn = document.getElementById('dbgToggleBtn');
+  const debugPanel = document.getElementById('debugPanel');
+  const dbgLast = document.getElementById('dbgLast');
+
   // state
   let idFiles = { front: null, back: null };
   let videoFiles = [];
@@ -164,7 +185,6 @@
   }
   function closeChoice(){
     choiceModal.style.display = 'none';
-    // currentTarget persists briefly; but will be replaced next action
   }
   cameraBtn.addEventListener('click', ()=> handleChoiceMode('camera'));
   filesBtn.addEventListener('click', ()=> handleChoiceMode('files'));
@@ -274,21 +294,16 @@
     if(!currentTarget) return;
 
     if(currentTarget === 'front' || currentTarget === 'back'){
-      // set or remove capture on native input and click it
       const native = (currentTarget === 'front') ? idFrontNative : idBackNative;
       if(mode === 'camera') native.setAttribute('capture','environment');
       else native.removeAttribute('capture');
-      // trigger file chooser
       native.click();
     } else if(currentTarget === 'videos'){
-      // set or remove capture, allow multiple
       if(mode === 'camera') videosNative.setAttribute('capture','camcorder');
       else videosNative.removeAttribute('capture');
-      // ensure multiple attribute (already present in DOM)
       videosNative.click();
     }
 
-    // reset currentTarget after click
     currentTarget = null;
   }
 
@@ -312,6 +327,22 @@
     return Promise.all(checks).then(results => results.filter(Boolean));
   }
 
+  // Debug UI toggle
+  dbgToggleBtn.addEventListener('click', ()=>{
+    if(debugPanel.style.display === 'block'){
+      debugPanel.style.display = 'none';
+    } else {
+      debugPanel.style.display = 'block';
+      dbgLast.innerText = 'Opened: ' + (new Date()).toLocaleTimeString();
+    }
+  });
+
+  function appendDebug(msg){
+    const time = new Date().toISOString();
+    debugPanel.textContent = `--- ${time} ---\n` + String(msg) + `\n\n` + debugPanel.textContent;
+    dbgLast.innerText = 'Last: ' + (new Date()).toLocaleTimeString();
+  }
+
   // submit
   submitBtn.addEventListener('click', async ()=>{
     clearValidation();
@@ -330,33 +361,74 @@
     const durationProblems = await validateVideoDurations(videoFiles);
     if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
+    // Build FormData with both id_images[] and id_images keys for compatibility
     const form = new FormData();
+    // primary fields the backend expects
     form.append('userId', me.id);
+    form.append('user_id', me.id); // extra compatibility
     form.append('id_type', idType);
     form.append('id_name', idName);
     form.append('id_number', idNumber);
-    form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
-    form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
-    videoFiles.forEach(f => form.append('work_videos', f, f.name));
-    form.append('_multipart','1');
 
+    // append images both ways (some parsers expect key 'id_images', others 'id_images[]')
+    try {
+      form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
+      form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
+
+      form.append('id_images[]', idFiles.front, idFiles.front.name || 'id_front.jpg');
+      form.append('id_images[]', idFiles.back, idFiles.back.name || 'id_back.jpg');
+    } catch(e){
+      console.warn('append file failed', e);
+    }
+
+    // videos - append both keys as well
+    videoFiles.forEach(f => {
+      form.append('work_videos', f, f.name);
+      form.append('work_videos[]', f, f.name);
+    });
+
+    // helpful marker (not required) but doesn't hurt
+    form.append('_multipart', '1');
+
+    // Debug: print summary of formdata (files names and scalar fields)
+    const entries = [];
+    for(const pair of form.entries()){
+      const key = pair[0];
+      const val = pair[1];
+      if(val instanceof File){
+        entries.push(`${key}: File(${val.name}, ${val.type}, ${Math.round(val.size/1024)}KB)`);
+      } else {
+        entries.push(`${key}: ${String(val)}`);
+      }
+    }
+    appendDebug(`Sending KYC POST ${API_BASE + '/api/kyc/submit'}\nFormData summary:\n${entries.join('\n')}`);
+
+    // show UI feedback
+    showModal('Uploading — please wait...');
     try{
-      showModal('Uploading — please wait...');
       const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
-      let data = null;
-      try{ data = await resp.json(); } catch(e){ data = null; }
+      const rawText = await resp.text().catch(()=>null);
+      let parsed = null;
+      try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; }
 
-      if(resp.ok && data && data.success){
+      appendDebug(`<= HTTP ${resp.status} ${resp.statusText}\nResponse text: ${rawText || '(empty)'}\nParsed JSON:\n${JSON.stringify(parsed,null,2)}`);
+
+      if(resp.ok && parsed && parsed.success){
         me.kyc_status = 'pending';
-        localStorage.setItem('wc_user', JSON.stringify(me));
+        try{ localStorage.setItem('wc_user', JSON.stringify(me)); }catch(e){}
         showModal('Submitted — awaiting review');
         setTimeout(()=> { hideModal(); window.location.href = 'dashboard.html'; }, 1200);
       } else {
-        showModal('Submission failed: ' + ((data && data.message) ? data.message : ('HTTP ' + resp.status)));
+        const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
+        hideModal();
+        showValidation('Submission failed: ' + msg);
+        appendDebug('Submission failed detail: ' + msg);
       }
     }catch(err){
+      hideModal();
+      showValidation('Network error while submitting. Try again.');
+      appendDebug('Network ERROR: ' + String(err.stack||err));
       console.error(err);
-      showModal('Network error while submitting. Try again.');
     }
   });
 
