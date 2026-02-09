@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — Login (with debug)</title>
+  <title>WireConnect — Login</title>
   <style>
     :root{
       --bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280;--danger:#ef4444;
@@ -31,8 +31,6 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .result-emoji{font-size:36px}.result-title{font-weight:700;margin-top:6px}.result-msg{color:#334155;margin-top:6px;font-size:14px}
     .result-close{margin-top:12px;padding:8px 14px;border-radius:8px;border:0;cursor:pointer;background:#0b5cff;color:white}
-    .debug-box{margin-top:12px;background:#0f1724;color:#e6eef9;padding:12px;border-radius:8px;font-family:monospace;font-size:13px;white-space:pre-wrap;max-height:220px;overflow:auto;border:1px solid rgba(255,255,255,0.04)}
-    .debug-toggle{margin-top:10px;display:inline-block;cursor:pointer;color:var(--accent);font-weight:700}
     @media(max-width:820px){.wrap{padding:12px}}
   </style>
 </head>
@@ -74,13 +72,6 @@
         <div class="actions" style="margin-top:16px;">
           <button type="button" id="submitBtn">Sign in</button>
         </div>
-
-        <!-- DEBUG PANEL: visible on the page -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-          <div class="muted">Server debug</div>
-          <div id="debugToggle" class="debug-toggle">Show / Hide</div>
-        </div>
-        <pre id="debugBox" class="debug-box" style="display:none">No debug messages yet.</pre>
       </form>
     </main>
   </div>
@@ -119,14 +110,6 @@
     const togglePassword = document.getElementById('togglePassword');
     const eyeOpen = document.getElementById('eyeOpen');
     const eyeClosed = document.getElementById('eyeClosed');
-    const debugBox = document.getElementById('debugBox');
-    const debugToggle = document.getElementById('debugToggle');
-
-    togglePassword.addEventListener('click', () => {
-      const pw = document.getElementById('password');
-      if (pw.type === 'password') { pw.type = 'text'; eyeOpen.style.display='none'; eyeClosed.style.display='block'; }
-      else { pw.type = 'password'; eyeOpen.style.display='block'; eyeClosed.style.display='none'; }
-    });
 
     function showLoading(){ overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); loadingView.style.display='flex'; resultView.style.display='none'; }
     function showResult(success,title,message){ loadingView.style.display='none'; resultView.style.display='flex'; resultEmoji.textContent = success ? '✅' : '❌'; resultTitle.textContent = title; resultText.textContent = message; }
@@ -136,98 +119,86 @@
     function redirectToClientDashboard(){ window.location.href = 'dashboard.html'; }
     function redirectToTechDashboard(){ window.location.href = 'technician.html'; }
 
-    // debug helper: append and keep timestamp
-    function appendDebug(txt){
-      const time = new Date().toISOString();
-      const prev = debugBox.textContent || '';
-      const next = `--- ${time} ---\n${txt}\n\n${prev}`;
-      debugBox.textContent = next;
-      console.log('[DEBUG]', txt);
+    // helper: safe setter for localStorage
+    function safeSetItem(k,v){
+      try { localStorage.setItem(k, v); } catch(e) { /* ignore */ }
     }
 
-    // toggle debug box visibility
-    debugToggle.addEventListener('click', ()=> {
-      const s = debugBox.style.display === 'none' ? 'block' : 'none';
-      debugBox.style.display = s;
+    // password show/hide
+    togglePassword.addEventListener('click', () => {
+      const pw = document.getElementById('password');
+      if (pw.type === 'password') { pw.type = 'text'; eyeOpen.style.display='none'; eyeClosed.style.display='block'; }
+      else { pw.type = 'password'; eyeOpen.style.display='block'; eyeClosed.style.display='none'; }
     });
 
     document.getElementById('submitBtn').addEventListener('click', async () => {
       const identifier = document.getElementById('identifier').value.trim();
       const password = document.getElementById('password').value;
-      if(!identifier){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Please enter your username, email or phone.'),300); appendDebug('Client validation failed: identifier empty'); return overlaySequenceFailure(); }
-      if(!password || password.length < 6){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Password must be at least 6 characters.'),300); appendDebug('Client validation failed: password too short'); return overlaySequenceFailure(); }
+      if(!identifier){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Please enter your username, email or phone.'),300); return overlaySequenceFailure(); }
+      if(!password || password.length < 6){ showLoading(); setTimeout(()=> showResult(false,'Login failed','Password must be at least 6 characters.'),300); return overlaySequenceFailure(); }
 
       showLoading();
-      appendDebug(`Sending login request to ${LOGIN_ENDPOINT} with identifier="${identifier}" (password hidden)`);
-
       const payload = { login: identifier, password };
 
       try {
         const resp = await fetch(LOGIN_ENDPOINT, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify(payload),
-          credentials: 'include'
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), credentials:'include'
         });
 
-        // Grab raw text first to make sure we can display it even if non-JSON was returned
-        const rawText = await resp.text().catch(()=>null);
-        let parsed = null;
-        try { parsed = rawText ? JSON.parse(rawText) : null; } catch(e) { parsed = null; }
+        const respText = await resp.text().catch(()=>null);
+        let data;
+        try { data = respText ? JSON.parse(respText) : null; } catch(e){ data = null; }
 
-        // Show debug content
-        const debugContent = [
-          `HTTP ${resp.status} ${resp.statusText}`,
-          `Request payload: ${JSON.stringify(payload)}`,
-          `Response text: ${rawText || '(empty)'}`,
-          `Parsed JSON: ${parsed ? JSON.stringify(parsed, null, 2) : '(not JSON or parse failed)'}`
-        ].join('\n\n');
-        appendDebug(debugContent);
-
-        // If not OK, display server message (if available) and keep debug visible
         if(!resp.ok){
-          const serverMsg = (parsed && parsed.message) ? parsed.message : (rawText || `HTTP ${resp.status}`);
+          const serverMsg = data && data.message ? data.message : `HTTP ${resp.status}`;
           showResult(false,'Login failed', serverMsg);
-          // Keep debug open for troubleshooting
-          debugBox.style.display = 'block';
           return;
         }
 
-        // Success path
-        if(parsed && parsed.success && parsed.user){
-          // Save session info
-          try { localStorage.setItem('wc_user', JSON.stringify(parsed.user)); } catch(e){ appendDebug('localStorage write failed: ' + String(e)); }
-          try { localStorage.setItem('userId', parsed.user.id); } catch(e){}
-          try { localStorage.setItem('userRole', parsed.user.role || 'client'); } catch(e){}
-          if(parsed.token){ try{ localStorage.setItem('wc_token', parsed.token); } catch(e){} }
+        if(data && data.success){
+          // Admin branch: backend returns role: 'admin' and user: null
+          if(data.role && data.role.toString().toLowerCase() === 'admin'){
+            safeSetItem('wc_is_admin', '1');
+            showResult(true,'Admin login successful', data.message || 'Redirecting to admin console...');
+            setTimeout(()=> {
+              hideOverlay();
+              window.location.href = 'Admin/admin.html';
+            }, 800);
+            return;
+          }
 
-          showResult(true,'Login successful', parsed.message || 'Redirecting...');
-          appendDebug('Login success — saved user to localStorage.');
+          // Regular user/staff branch
+          if(data.user){
+            try { safeSetItem('wc_user', JSON.stringify(data.user)); } catch(e){}
+            try { safeSetItem('userId', data.user.id); } catch(e){}
+            try { safeSetItem('userRole', data.role || (data.user.role || 'client')); } catch(e){}
+            if(data.token){ try{ safeSetItem('wc_token', data.token); } catch(e){} }
 
-          setTimeout(()=> {
-            hideOverlay();
-            const role = (parsed.user.role || '').toString().toLowerCase();
-            if(role === 'worker' || role === 'technician' || role === 'tech') {
-              redirectToTechDashboard();
-            } else {
-              redirectToClientDashboard();
-            }
-          }, 800);
+            showResult(true,'Login successful', data.message || 'Redirecting...');
+            setTimeout(()=> {
+              hideOverlay();
+              const role = (data.role || (data.user && data.user.role) || '').toString().toLowerCase();
+              if(role === 'worker' || role === 'technician' || role === 'tech'){
+                redirectToTechDashboard();
+              } else if(role === 'staff' && data.redirect){
+                window.location.href = data.redirect;
+              } else {
+                redirectToClientDashboard();
+              }
+            }, 900);
+            return;
+          }
+
+          // fallback success (no user object)
+          showResult(true, 'Login result', data.message || 'Login completed.');
+          setTimeout(()=> { hideOverlay(); }, 900);
           return;
+        } else {
+          const msg = data && data.message ? data.message : 'Invalid credentials';
+          showResult(false,'Login failed', msg);
         }
-
-        // If we reach here, response was OK but shape unexpected
-        const fallbackMsg = (parsed && parsed.message) ? parsed.message : 'Unexpected server response';
-        showResult(false,'Login failed', fallbackMsg);
-        debugBox.style.display = 'block';
-        appendDebug('Unexpected success response shape: ' + JSON.stringify(parsed));
-
       } catch(err){
-        // network / fetch errors
-        const errMsg = (err && err.message) ? err.message : String(err);
-        appendDebug('Network / fetch error: ' + errMsg + (err && err.stack ? '\n' + err.stack : ''));
-        showResult(false,'Login failed','Network error. Check debug for details.');
-        debugBox.style.display = 'block';
+        showResult(false,'Login failed','Network error. Try again later.');
       }
     });
 
