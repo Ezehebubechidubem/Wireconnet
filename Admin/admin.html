@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — Admin Dashboard</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#ffffff; --accent:#1154ff; --muted:#6b7280;
+      --shadow: 0 8px 30px rgba(16,24,40,0.06);
+      --accent-2:#0738d6;
+    }
+    *{box-sizing:border-box;font-family:Inter, system-ui, Arial, sans-serif}
+    body{margin:0;background:var(--bg);color:#0b1220}
+    .layout{display:flex;min-height:100vh}
+    aside{
+      width:300px;padding:22px;border-right:1px solid #e8eef8;background:#fff;
+      transition:transform .24s ease;box-shadow:0 0 0 rgba(0,0,0,0);
+    }
+    aside.hidden{transform:translateX(-110%);position:fixed;z-index:900;left:0;top:0;height:100%}
+    .brand{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .brand img{height:52px;width:auto}
+    .nav{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+    .nav a{display:flex;gap:8px;align-items:center;padding:10px;border-radius:10px;text-decoration:none;color:#0b1220;font-weight:700}
+    .nav a:hover{background:#f3f7ff}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #eef3fb;background:linear-gradient(90deg,#fff,#fff)}
+    .hamburger{display:none;font-size:22px;cursor:pointer;padding:6px 8px;border-radius:8px}
+    main{flex:1;padding:20px}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:var(--shadow)}
+    .metric-title{font-size:13px;color:var(--muted)}
+    .metric-value{font-size:22px;font-weight:900;margin-top:8px}
+    .panel{margin-bottom:14px}
+    .controls{display:flex;gap:8px;align-items:center}
+    .search{padding:8px;border-radius:8px;border:1px solid #e6eef9}
+    .btn{background:linear-gradient(180deg,var(--accent),var(--accent-2));color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:800}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border-bottom:1px solid #eef3fb;text-align:left;font-size:13px}
+    .muted{color:var(--muted);font-size:13px}
+    .empty{color:var(--muted);padding:12px}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1100}
+    .popup{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:18px;border-radius:10px;box-shadow:0 12px 40px rgba(10,20,40,0.24);z-index:1200}
+    @media(max-width:920px){
+      aside{position:fixed;left:0;top:0;height:100%;z-index:900}
+      .hamburger{display:block}
+      .metrics{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay" id="overlay"></div>
+  <div class="popup" id="popup">
+    <div id="popupMessage"></div>
+    <div style="text-align:right;margin-top:12px"><button id="popupClose" class="btn" style="background:#eef3ff;color:var(--accent)">Close</button></div>
+  </div>
+
+  <div class="layout">
+    <aside id="sidebar">
+      <div class="brand">
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+        <div>
+          <div style="font-weight:900">WireConnect</div>
+          <div class="muted" style="font-size:12px">Admin Console</div>
+        </div>
+      </div>
+
+      <nav class="nav" id="menu">
+        <a href="#" data-panel="overview">🏠 Overview</a>
+        <a href="#" data-panel="kyc">🪪 KYC Monitoring</a>
+        <a href="#" data-panel="jobs">🔧 Jobs Monitor</a>
+        <a href="#" data-panel="errors">🐞 Server Errors (Debug)</a>
+        <a href="#" data-panel="security">🛡️ Security Issues</a>
+        <a href="#" id="logout">🚪 Logout</a>
+      </nav>
+
+      <div style="margin-top:18px;color:var(--muted);font-size:13px">
+        Logged in as <strong id="adminName">Admin</strong>
+        <div style="margin-top:8px">
+          <button id="refreshAll" class="btn" style="padding:8px 10px;background:#eef3ff;color:var(--accent)">Refresh</button>
+        </div>
+      </div>
+    </aside>
+
+    <div style="flex:1">
+      <header>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="hamburger" id="hamburgerBtn">☰</div>
+          <div>
+            <div style="font-weight:900">WireConnect — Admin</div>
+            <div class="muted" style="font-size:13px">Monitor users, KYC, jobs, and system health</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="muted" id="lastUpdated">Last updated: —</div>
+        </div>
+      </header>
+
+      <main>
+        <section class="metrics" aria-live="polite">
+          <div class="card">
+            <div class="metric-title">Active users (24h)</div>
+            <div id="activeUsers" class="metric-value">—</div>
+            <div class="muted" id="activeHint">—</div>
+          </div>
+          <div class="card">
+            <div class="metric-title">Online users</div>
+            <div id="onlineUsers" class="metric-value">—</div>
+            <div class="muted" id="onlineHint">—</div>
+          </div>
+          <div class="card">
+            <div class="metric-title">Offline users</div>
+            <div id="offlineUsers" class="metric-value">—</div>
+            <div class="muted" id="offlineHint">—</div>
+          </div>
+          <div class="card">
+            <div class="metric-title">Pending KYC</div>
+            <div id="pendingKYC" class="metric-value">—</div>
+            <div class="muted" id="kycHint">Quick view</div>
+          </div>
+        </section>
+
+        <!-- dynamic content area -->
+        <section id="contentArea" class="panel card">
+          <div id="panelHeader" style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong id="panelTitle">Overview</strong>
+              <div class="muted" id="panelSubtitle">Summary view</div>
+            </div>
+            <div class="controls">
+              <input id="panelSearch" class="search" placeholder="Search (users, job id, errors)" />
+              <button id="panelRefresh" class="btn">Refresh</button>
+            </div>
+          </div>
+
+          <div id="panelBody" style="margin-top:12px">
+            <!-- Overview default content -->
+            <div id="overview" class="panelSection">
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="card" style="flex:1;min-width:260px">
+                  <strong>Recent KYC requests</strong>
+                  <div id="overviewKyc" style="margin-top:8px" class="muted">Loading…</div>
+                </div>
+                <div class="card" style="flex:1;min-width:260px">
+                  <strong>Recent job assignments</strong>
+                  <div id="overviewJobs" style="margin-top:8px" class="muted">Loading…</div>
+                </div>
+                <div class="card" style="flex:1;min-width:260px">
+                  <strong>Recent server errors</strong>
+                  <div id="overviewErrors" style="margin-top:8px" class="muted">Loading…</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- KYC -->
+            <div id="kyc" class="panelSection" style="display:none">
+              <h3 style="margin:0 0 8px 0">KYC Monitoring</h3>
+              <div class="muted">Pending requests below — click a row to view details.</div>
+              <table id="kycTable" style="margin-top:12px">
+                <thead><tr><th>ID</th><th>User</th><th>Type</th><th>Submitted</th><th>Status</th></tr></thead>
+                <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+              </table>
+            </div>
+
+            <!-- Jobs -->
+            <div id="jobs" class="panelSection" style="display:none">
+              <h3 style="margin:0 0 8px 0">Jobs Monitor</h3>
+              <div class="muted">Recent / active jobs. Click job id to inspect.</div>
+              <table id="jobsTable" style="margin-top:12px">
+                <thead><tr><th>Job ID</th><th>Client</th><th>Type</th><th>State</th><th>Status</th></tr></thead>
+                <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+              </table>
+            </div>
+
+            <!-- Errors -->
+            <div id="errors" class="panelSection" style="display:none">
+              <h3 style="margin:0 0 8px 0">Server Errors & Debug</h3>
+              <div class="muted">Recent server errors and stack traces (last 24h)</div>
+              <table id="errorsTable" style="margin-top:12px">
+                <thead><tr><th>When</th><th>Path</th><th>Message</th><th>Count</th></tr></thead>
+                <tbody><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+              </table>
+            </div>
+
+            <!-- Security -->
+            <div id="security" class="panelSection" style="display:none">
+              <h3 style="margin:0 0 8px 0">Security Issues</h3>
+              <div class="muted">Alerts: failed logins, suspicious activity</div>
+              <table id="securityTable" style="margin-top:12px">
+                <thead><tr><th>When</th><th>Type</th><th>Subject</th><th>Details</th></tr></thead>
+                <tbody><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+              </table>
+            </div>
+
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : (location.origin.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com'));
+  const adminToken = localStorage.getItem('wc_admin_token') || localStorage.getItem('wc_token') || null;
+
+  // UI refs
+  const sidebar = document.getElementById('sidebar');
+  const hamburgerBtn = document.getElementById('hamburgerBtn');
+  const overlay = document.getElementById('overlay');
+  const popup = document.getElementById('popup');
+  const popupMessage = document.getElementById('popupMessage');
+  const popupClose = document.getElementById('popupClose');
+  const lastUpdated = document.getElementById('lastUpdated');
+  const panelTitle = document.getElementById('panelTitle');
+  const panelSubtitle = document.getElementById('panelSubtitle');
+  const panelSections = document.querySelectorAll('.panelSection');
+  const navLinks = document.querySelectorAll('#menu a[data-panel]');
+  const adminName = document.getElementById('adminName');
+
+  // metric elements
+  const activeUsersEl = document.getElementById('activeUsers');
+  const onlineUsersEl = document.getElementById('onlineUsers');
+  const offlineUsersEl = document.getElementById('offlineUsers');
+  const pendingKYCEl = document.getElementById('pendingKYC');
+
+  // helper: show popup
+  function showPopup(msg){
+    popupMessage.innerText = msg;
+    popup.style.display = 'block';
+    overlay.style.display = 'block';
+  }
+  function closePopup(){
+    popup.style.display = 'none';
+    overlay.style.display = 'none';
+  }
+  popupClose.addEventListener('click', closePopup);
+  overlay.addEventListener('click', closePopup);
+
+  // collapse sidebar on mobile
+  hamburgerBtn.addEventListener('click', ()=> sidebar.classList.toggle('hidden'));
+
+  // logout (clears admin token)
+  document.getElementById('logout').addEventListener('click', (e)=> {
+    e.preventDefault();
+    localStorage.removeItem('wc_admin_token');
+    localStorage.removeItem('wc_token');
+    showPopup('Logged out (token cleared). Refresh to re-login.');
+  });
+
+  // choose panel
+  navLinks.forEach(a=>{
+    a.addEventListener('click',(ev)=>{
+      ev.preventDefault();
+      const panel = a.getAttribute('data-panel') || 'overview';
+      openPanel(panel);
+      if(window.innerWidth < 920) sidebar.classList.add('hidden');
+    });
+  });
+
+  function openPanel(name){
+    panelSections.forEach(s => s.style.display = 'none');
+    const el = document.getElementById(name);
+    if(el) el.style.display = 'block';
+    panelTitle.innerText = (name[0].toUpperCase() + name.slice(1));
+    panelSubtitle.innerText = {overview:'Summary view', kyc:'Pending KYC requests', jobs:'Active & recent jobs', errors:'Server errors (debug)', security:'Security alerts'}[name] || '';
+    // load panel data
+    if(name === 'overview') loadOverview();
+    if(name === 'kyc') loadKyc();
+    if(name === 'jobs') loadJobs();
+    if(name === 'errors') loadErrors();
+    if(name === 'security') loadSecurity();
+    // store current panel
+    window.__wc_currentPanel = name;
+  }
+
+  // network helper with auth header if available
+  async function apiFetch(path, opts = {}){
+    const headers = Object.assign({ }, opts.headers || {});
+    if(adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+    try{
+      const r = await fetch(API_BASE + path, Object.assign({ headers }, opts));
+      if(r.status === 404) return { ok:false, notfound:true, status:r.status };
+      const json = await r.json().catch(()=>null);
+      return { ok: r.ok, status: r.status, body: json };
+    }catch(e){
+      return { ok:false, error: String(e) };
+    }
+  }
+
+  // Load metrics: tries /api/admin/metrics, fallback message if not present
+  async function loadMetrics(){
+    activeUsersEl.textContent = '—';
+    onlineUsersEl.textContent = '—';
+    offlineUsersEl.textContent = '—';
+    pendingKYCEl.textContent = '—';
+    const res = await apiFetch('/api/admin/metrics');
+    if(res.ok && res.body && res.body.success){
+      const b = res.body;
+      activeUsersEl.textContent = b.active_users ?? b.active ?? '—';
+      onlineUsersEl.textContent = b.online_users ?? b.online ?? '—';
+      offlineUsersEl.textContent = b.offline_users ?? b.offline ?? '—';
+      pendingKYCEl.textContent = b.pending_kyc ?? b.pendingKyc ?? '—';
+      lastUpdated.innerText = 'Last updated: ' + (new Date()).toLocaleTimeString();
+      return;
+    }
+    // fallback: try to compute from /api/dashboard if available (best-effort)
+    const dash = await apiFetch('/api/dashboard?role=client');
+    if(dash.ok && dash.body && dash.body.success){
+      // not ideal for counts but we can at least show some values
+      activeUsersEl.textContent = dash.body.leaderboard ? dash.body.leaderboard.length : '—';
+      onlineUsersEl.textContent = '—';
+      offlineUsersEl.textContent = '—';
+      pendingKYCEl.textContent = '—';
+      lastUpdated.innerText = 'Last updated: ' + (new Date()).toLocaleTimeString();
+      return;
+    }
+    // final fallback: show helpful hint
+    activeUsersEl.textContent = 'N/A';
+    onlineUsersEl.textContent = 'N/A';
+    offlineUsersEl.textContent = 'N/A';
+    pendingKYCEl.textContent = 'N/A';
+    lastUpdated.innerText = 'No metrics endpoint found';
+  }
+
+  // Overview cards
+  async function loadOverview(){
+    document.getElementById('overviewKyc').innerText = 'Loading…';
+    document.getElementById('overviewJobs').innerText = 'Loading…';
+    document.getElementById('overviewErrors').innerText = 'Loading…';
+
+    // KYC: try /api/kyc/pending
+    const k = await apiFetch('/api/kyc/pending');
+    if(k.ok && k.body && k.body.success){
+      const list = k.body.requests || k.body || [];
+      document.getElementById('overviewKyc').innerHTML = `${list.length} pending — <a href="#" data-panel="kyc">Open KYC</a>`;
+    } else {
+      document.getElementById('overviewKyc').innerHTML = `<span class="muted">No KYC endpoint</span>`;
+    }
+
+    // jobs: try /api/admin/jobs or /api/dashboard fallback for jobs count
+    const j = await apiFetch('/api/admin/jobs');
+    if(j.ok && j.body && j.body.success){
+      const jobs = j.body.jobs || [];
+      document.getElementById('overviewJobs').innerHTML = `${jobs.length} recent — <a href="#" data-panel="jobs">Open Jobs</a>`;
+    } else {
+      // fallback try jobs created recently from /api/dashboard or show hint
+      document.getElementById('overviewJobs').innerHTML = `<span class="muted">Jobs endpoint not found</span>`;
+    }
+
+    // errors: try /api/admin/errors
+    const e = await apiFetch('/api/admin/errors');
+    if(e.ok && e.body && e.body.success){
+      document.getElementById('overviewErrors').innerHTML = `${(e.body.errors||[]).length} recent — <a href="#" data-panel="errors">Open Errors</a>`;
+    } else {
+      document.getElementById('overviewErrors').innerHTML = `<span class="muted">Errors endpoint not found</span>`;
+    }
+  }
+
+  // KYC panel
+  async function loadKyc(){
+    const tbody = document.querySelector('#kycTable tbody');
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
+    const res = await apiFetch('/api/kyc/pending');
+    if(res.ok && res.body && Array.isArray(res.body.requests)){
+      const rows = res.body.requests;
+      if(rows.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No pending requests</td></tr>`; return; }
+      tbody.innerHTML = rows.map(r => `<tr data-id="${r.id}">
+        <td>${r.id}</td>
+        <td>${r.username || r.fullname || r.user_id || '-'}</td>
+        <td>${r.id_type || '-'}</td>
+        <td>${new Date(r.submitted_at || r.created_at || Date.now()).toLocaleString()}</td>
+        <td>${r.status || '-'}</td>
+      </tr>`).join('');
+      // click handler to open detail (best-effort)
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', ()=>{
+        const id = tr.getAttribute('data-id');
+        showPopup('KYC request ID: ' + id + '\nOpen admin KYC review page to inspect documents.');
+      }));
+      return;
+    }
+    if(res.notfound) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">Endpoint /api/kyc/pending not found on server</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Failed to load KYC (${res.error||res.status})</td></tr>`;
+  }
+
+  // Jobs panel
+  async function loadJobs(){
+    const tbody = document.querySelector('#jobsTable tbody');
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
+    // try admin jobs endpoint first
+    let res = await apiFetch('/api/admin/jobs');
+    if(res.ok && res.body && Array.isArray(res.body.jobs)){
+      const rows = res.body.jobs;
+      if(rows.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No jobs found</td></tr>`; return; }
+      tbody.innerHTML = rows.map(j => `<tr data-id="${j.id}">
+        <td>${j.id}</td>
+        <td>${j.client_name || j.client_id || '-'}</td>
+        <td>${j.job_type || '-'}</td>
+        <td>${j.state || '-'}</td>
+        <td>${j.status || '-'}</td>
+      </tr>`).join('');
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', ()=> {
+        const id = tr.getAttribute('data-id');
+        showPopup('Job: ' + id + '\nOpen job details page to inspect.');
+      }));
+      return;
+    }
+    // fallback — attempt /api/dashboard?role=client to show something
+    res = await apiFetch('/api/dashboard?role=client');
+    if(res.ok && res.body && Array.isArray(res.body.leaderboard)){
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">No admin jobs endpoint. Dashboard returns some data but not jobs.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Failed to load jobs (no endpoint)</td></tr>`;
+  }
+
+  // Errors panel
+  async function loadErrors(){
+    const tbody = document.querySelector('#errorsTable tbody');
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
+    const res = await apiFetch('/api/admin/errors');
+    if(res.ok && res.body && Array.isArray(res.body.errors)){
+      const rows = res.body.errors;
+      if(rows.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="empty">No recent errors</td></tr>`; return; }
+      tbody.innerHTML = rows.map(e => `<tr>
+        <td>${new Date(e.when || e.created_at).toLocaleString()}</td>
+        <td>${e.path || '-'}</td>
+        <td style="max-width:480px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(e.message || e.msg || '').slice(0,200)}</td>
+        <td>${e.count || 1}</td>
+      </tr>`).join('');
+      return;
+    }
+    if(res.notfound){
+      tbody.innerHTML = `<tr><td colspan="4" class="empty">Endpoint /api/admin/errors not found</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Failed to load errors (${res.error||res.status})</td></tr>`;
+  }
+
+  // Security panel
+  async function loadSecurity(){
+    const tbody = document.querySelector('#securityTable tbody');
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
+    const res = await apiFetch('/api/admin/security');
+    if(res.ok && res.body && Array.isArray(res.body.alerts)){
+      const rows = res.body.alerts;
+      if(rows.length === 0){ tbody.innerHTML = `<tr><td colspan="4" class="empty">No security alerts</td></tr>`; return; }
+      tbody.innerHTML = rows.map(a => `<tr>
+        <td>${new Date(a.when || a.created_at).toLocaleString()}</td>
+        <td>${a.type || '-'}</td>
+        <td>${a.subject || '-'}</td>
+        <td style="max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(a.details||'').slice(0,200)}</td>
+      </tr>`).join('');
+      return;
+    }
+    if(res.notfound){
+      tbody.innerHTML = `<tr><td colspan="4" class="empty">Endpoint /api/admin/security not found</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Failed to load security alerts (${res.error||res.status})</td></tr>`;
+  }
+
+  // refresh handlers
+  document.getElementById('refreshAll').addEventListener('click', () => {
+    loadMetrics();
+    const current = window.__wc_currentPanel || 'overview';
+    openPanel(current);
+  });
+  document.getElementById('panelRefresh').addEventListener('click', () => {
+    const current = window.__wc_currentPanel || 'overview';
+    openPanel(current);
+  });
+
+  // auto-refresh metrics every 15s; panel reload every 8s (if visible)
+  loadMetrics();
+  setInterval(loadMetrics, 15000);
+  openPanel('overview');
+  setInterval(()=> {
+    const panel = window.__wc_currentPanel || 'overview';
+    if(panel === 'overview') loadOverview();
+    else if(panel === 'kyc') loadKyc();
+    else if(panel === 'jobs') loadJobs();
+    else if(panel === 'errors') loadErrors();
+    else if(panel === 'security') loadSecurity();
+  }, 8000);
+
+  // attempt to set admin name from stored user
+  try {
+    const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
+    if(me && (me.fullname || me.username)) adminName.innerText = me.fullname || me.username;
+  } catch(e){}
+
+  // expose debug helpers
+  window.adminUI = {
+    openPanel, loadMetrics, loadKyc, loadJobs, loadErrors, loadSecurity
+  };
+
+})();
+</script>
+</body>
+</html>
