@@ -62,6 +62,32 @@ CREATE TABLE IF NOT EXISTS articles (
   body TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+-- Add transaction and disputes tables (run once)
+CREATE TABLE IF NOT EXISTS transactions (
+  id TEXT PRIMARY KEY,
+  job_id TEXT REFERENCES jobs(id),
+  client_id TEXT REFERENCES users(id),
+  tech_id TEXT REFERENCES users(id),
+  amount NUMERIC,
+  currency TEXT DEFAULT 'NGN',
+  method TEXT,
+  status TEXT,
+  metadata JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS disputes (
+  id TEXT PRIMARY KEY,
+  job_id TEXT REFERENCES jobs(id),
+  claimant_id TEXT REFERENCES users(id),
+  defendant_id TEXT REFERENCES users(id),
+  reason TEXT,
+  details TEXT,
+  status TEXT DEFAULT 'open',
+  admin_note TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
