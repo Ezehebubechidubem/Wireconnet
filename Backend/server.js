@@ -427,7 +427,155 @@ app.post('/api/login', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+// ---------- Admin helper endpoints (overview & logs) ----------
+/*
+  GET /api/admin/metrics
+  GET /api/admin/users
+  GET /api/admin/kyc-logs
+  GET /api/admin/job-logs
+  GET /api/admin/transactions  -- optional (requires transactions table)
+  GET /api/admin/disputes     -- optional (requires disputes table)
+*/
 
+app.get('/api/admin/metrics', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    try {
+      const rOnlineTech = await client.query(`SELECT COUNT(*)::int as count FROM users WHERE role='worker' AND online = true`);
+      const rOfflineTech = await client.query(`SELECT COUNT(*)::int as count FROM users WHERE role='worker' AND (online = false OR online IS NULL)`);
+      const rOnlineClient = await client.query(`SELECT COUNT(*)::int as count FROM users WHERE role='client' AND online = true`);
+      const rOfflineClient = await client.query(`SELECT COUNT(*)::int as count FROM users WHERE role='client' AND (online = false OR online IS NULL)`);
+      const rActive = await client.query(`SELECT COUNT(*)::int as count FROM users`);
+
+      return res.json({
+        success: true,
+        metrics: {
+          online_tech_count: rOnlineTech.rows[0].count,
+          offline_tech_count: rOfflineTech.rows[0].count,
+          online_client_count: rOnlineClient.rows[0].count,
+          offline_client_count: rOfflineClient.rows[0].count,
+          active_users_count: rActive.rows[0].count
+        }
+      });
+    } finally { client.release(); }
+  } catch (e) {
+    console.error('/api/admin/metrics', e);
+    return res.status(500).json({ success:false, message:'Server error', error: e.message });
+  }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  // filters: role=worker|client, online=1|0, limit, offset
+  try {
+    const role = req.query.role || null;
+    const onlineQ = (req.query.online !== undefined) ? (req.query.online === '1' ? true : false) : null;
+    const limit = Math.min(200, Number(req.query.limit) || 50);
+    const offset = Number(req.query.offset) || 0;
+
+    const clauses = [];
+    const params = [];
+    let idx = 1;
+    if(role){ clauses.push(`role = $${idx++}`); params.push(role); }
+    if(onlineQ !== null){ clauses.push(`online = $${idx++}`); params.push(onlineQ); }
+
+    const where = clauses.length ? ('WHERE ' + clauses.join(' AND ')) : '';
+    const q = `SELECT id, role, fullname, username, email, phone, state, city, lga, avatar_url, online, lat, lng, created_at
+               FROM users
+               ${where}
+               ORDER BY created_at DESC
+               LIMIT $${idx++} OFFSET $${idx++}`;
+    params.push(limit, offset);
+
+    const r = await pool.query(q, params);
+    return res.json({ success:true, users: r.rows });
+  } catch(e){
+    console.error('/api/admin/users', e);
+    return res.status(500).json({ success:false, message:'Server error', error:e.message });
+  }
+});
+
+app.get('/api/admin/kyc-logs', async (req,res) => {
+  try {
+    const limit = Math.min(200, Number(req.query.limit) || 50);
+    const offset = Number(req.query.offset) || 0;
+    // join kyc_requests with users for name and avatar
+    const rows = (await pool.query(`
+      SELECT k.id, k.user_id, k.id_type, k.id_number, k.id_images, k.status, k.notes, k.submitted_at, u.username, u.fullname, u.avatar_url
+      FROM kyc_requests k
+      JOIN users u ON u.id = k.user_id
+      ORDER BY k.submitted_at DESC
+      LIMIT $1 OFFSET $2
+    `,[limit, offset])).rows;
+    return res.json({ success:true, logs: rows });
+  } catch(e){
+    console.error('/api/admin/kyc-logs', e);
+    return res.status(500).json({ success:false, message:'Server error', error:e.message });
+  }
+});
+
+app.get('/api/admin/job-logs', async (req,res) => {
+  try {
+    const limit = Math.min(200, Number(req.query.limit) || 50);
+    const offset = Number(req.query.offset) || 0;
+    const rows = (await pool.query(`
+      SELECT j.id, j.job_type, j.price, j.status, j.created_at,
+             c.id as client_id, c.fullname as client_name, c.avatar_url as client_avatar,
+             t.id as tech_id, t.fullname as tech_name, t.avatar_url as tech_avatar
+      FROM jobs j
+      LEFT JOIN users c ON c.id = j.client_id
+      LEFT JOIN users t ON t.id = j.assigned_tech_id
+      ORDER BY j.created_at DESC
+      LIMIT $1 OFFSET $2
+    `,[limit, offset])).rows;
+    return res.json({ success:true, jobs: rows });
+  } catch(e){
+    console.error('/api/admin/job-logs', e);
+    return res.status(500).json({ success:false, message:'Server error', error:e.message });
+  }
+});
+
+// Optional: transactions (requires transactions table)
+app.get('/api/admin/transactions', async (req,res) => {
+  try {
+    const limit = Math.min(200, Number(req.query.limit) || 50);
+    const offset = Number(req.query.offset) || 0;
+    const rows = (await pool.query(`
+      SELECT tr.id, tr.job_id, tr.amount, tr.currency, tr.status, tr.method, tr.created_at,
+             c.id as client_id, c.fullname as client_name,
+             t.id as tech_id, t.fullname as tech_name
+      FROM transactions tr
+      LEFT JOIN users c ON c.id = tr.client_id
+      LEFT JOIN users t ON t.id = tr.tech_id
+      ORDER BY tr.created_at DESC
+      LIMIT $1 OFFSET $2
+    `,[limit, offset])).rows;
+    return res.json({ success:true, transactions: rows });
+  } catch(e){
+    console.error('/api/admin/transactions', e);
+    return res.status(500).json({ success:false, message:'Server error', error:e.message });
+  }
+});
+
+// Optional: disputes (requires disputes table)
+app.get('/api/admin/disputes', async (req,res) => {
+  try {
+    const limit = Math.min(200, Number(req.query.limit) || 50);
+    const offset = Number(req.query.offset) || 0;
+    const rows = (await pool.query(`
+      SELECT d.id, d.job_id, d.claimant_id, d.defendant_id, d.reason, d.details, d.status, d.created_at, d.updated_at,
+             c.fullname as claimant_name, def.fullname as defendant_name
+      FROM disputes d
+      LEFT JOIN users c ON c.id = d.claimant_id
+      LEFT JOIN users def ON def.id = d.defendant_id
+      ORDER BY d.created_at DESC
+      LIMIT $1 OFFSET $2
+    `,[limit, offset])).rows;
+    return res.json({ success:true, disputes: rows });
+  } catch(e){
+    console.error('/api/admin/disputes', e);
+    return res.status(500).json({ success:false, message:'Server error', error:e.message });
+  }
+});
 // Dashboard
 app.get('/api/dashboard', async (req,res)=>{
   try{
