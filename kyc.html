@@ -3,90 +3,80 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — KYC Submission</title>
+  <title>WireConnect — KYC</title>
   <style>
     :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280}
-    body{font-family:Inter,Segoe UI,Roboto,Arial;background:var(--bg);margin:0;color:#111}
-    .wrap{max-width:720px;margin:28px auto;padding:18px}
-    .card{background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
-    .topbar{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-    .logo img{height:64px; object-fit:contain}
-    h2{margin:0}
-    label{display:block;margin-top:10px;font-weight:600}
-    input,textarea,select,button{font-family:inherit}
-    input,textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef}
-    .btn{background:var(--accent);color:white;padding:10px;border-radius:8px;border:0;cursor:pointer;margin-top:12px}
+    *{box-sizing:border-box}
+    body{font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:#111}
+    .wrap{max-width:720px;margin:20px auto;padding:16px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
+    .logo{display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+    .logo img{width:100%;max-width:320px;height:auto;display:block}
+    label{display:block;margin-top:12px;font-weight:700;color:#111}
+    input[type="file"], input[type="text"], textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid #e6e9ef; background:#fff }
+    .small{font-size:13px;color:var(--muted);margin-top:6px}
+    .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
     .muted{color:var(--muted);font-size:13px}
-    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.5);z-index:1200}
-    .modal{background:white;padding:18px;border-radius:12px;width:320px;text-align:center}
-    .small{font-size:13px;color:#666}
-    .file-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .row{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .file-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .thumb{width:88px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e6eef9;background:#fafafa;display:flex;align-items:center;justify-content:center;position:relative}
     .thumb img, .thumb video{max-width:100%;max-height:100%;display:block}
     .thumb .remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px}
-    .info { font-size:13px; color:#374151; margin-top:6px; }
-    .error { color:#b91c1c; margin-top:8px; font-weight:700; }
-    .hint { font-size:13px; color:#475569; margin-top:6px; font-style:italic; }
-    .flex-row { display:flex; gap:12px; align-items:center; }
-    .required { color:#b91c1c; margin-left:6px; font-weight:700 }
+    .error{color:#b91c1c;font-weight:700;margin-top:8px}
+    .hidden{display:none}
+    footer{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    @media (max-width:480px){ .thumb{width:72px;height:60px} .logo img{max-width:240px} }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="topbar">
-        <div class="logo">
-          <!-- same logo used across pages -->
-          <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
-        </div>
-        <div style="flex:1">
-          <h2>KYC Submission</h2>
-          <div class="muted">Submit a valid ID and a short proof-of-work video (required).</div>
-        </div>
+      <!-- logo only header (no heading text) -->
+      <div class="logo">
+        <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
       </div>
 
-      <label>ID Type</label>
-      <select id="id_type">
-        <option value="national_id">National ID</option>
-        <option value="driver_license">Driver's License</option>
-        <option value="passport">Passport</option>
-        <option value="other">Other</option>
-      </select>
+      <!-- Simple labels only (as requested) -->
+      <label for="id_number">ID number</label>
+      <input id="id_number" type="text" placeholder="Enter ID number">
 
-      <label>ID Number</label>
-      <input id="id_number" placeholder="ID number" />
+      <label for="id_front">Front picture (ID)</label>
+      <input id="id_front" type="file" accept="image/*">
 
-      <label>ID images (front/back or more) <span class="required" title="Required">*</span></label>
-      <div class="small">You can upload up to 3 images. Use camera or choose files. JPEG/PNG recommended.</div>
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-        <input id="id_images_input" type="file" accept="image/*" capture="environment" multiple aria-label="Upload ID images (camera or file)">
-        <button id="openIdCamera" class="btn" style="background:#fff;color:var(--accent);border:1px solid rgba(11,92,255,0.12);">Use Camera</button>
+      <label for="id_back">Back picture (ID)</label>
+      <input id="id_back" type="file" accept="image/*">
+
+      <!-- optional additional image slot created on demand -->
+      <div id="addImageRow" class="row" style="margin-top:8px">
+        <button id="addIdImageBtn" class="btn" style="background:#fff;color:var(--accent);border:1px solid rgba(11,92,255,0.12)">Add another ID image</button>
+        <div class="muted" style="font-weight:600">Optional</div>
       </div>
-      <div id="id_images_preview" class="file-row" aria-live="polite"></div>
 
-      <label style="margin-top:12px">Work videos (required) <span class="required">*</span></label>
-      <div class="small">Upload up to 2 videos. Each video must be ≤ 3 minutes (180 seconds). MP4/WebM preferred.</div>
-      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-        <input id="videos_input" type="file" accept="video/*" capture="camera" multiple aria-label="Upload work videos (camera or file)">
-        <button id="openVideoCamera" class="btn" style="background:#fff;color:var(--accent);border:1px solid rgba(11,92,255,0.12);">Record / Use Camera</button>
-      </div>
-      <div id="videos_preview" class="file-row" aria-live="polite"></div>
-      <div id="validationErrors" class="error" role="alert" style="display:none"></div>
+      <div id="extraIdContainer" class="file-row"></div>
+      <div id="id_preview" class="file-row" aria-live="polite"></div>
 
-      <label style="margin-top:8px">Notes (optional)</label>
-      <textarea id="notes" placeholder="Any extra info" rows="3"></textarea>
+      <label for="videos_input" style="margin-top:12px">Work video (required)</label>
+      <input id="videos_input" type="file" accept="video/*" multiple>
+      <div class="small">Up to 2 videos. Each ≤ 3 minutes.</div>
+      <div id="videos_preview" class="file-row"></div>
 
-      <div style="display:flex;gap:8px;align-items:center; margin-top:12px">
+      <label for="notes" style="margin-top:12px">Notes (optional)</label>
+      <textarea id="notes" rows="3" placeholder="Any extra info (optional)"></textarea>
+
+      <div id="validationErrors" class="error hidden" role="alert"></div>
+
+      <footer>
         <button id="submitBtn" class="btn">Submit KYC</button>
-        <div class="muted" style="margin-left:auto">All documents are sent to admin for review.</div>
-      </div>
+        <div class="muted">All docs go to admin</div>
+      </footer>
 
-      <div id="status" class="muted" style="margin-top:10px"></div>
+      <div id="status" class="muted" style="margin-top:8px"></div>
     </div>
   </div>
 
-  <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal" id="modalCard">
+  <!-- simple modal for responses -->
+  <div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000">
+    <div style="background:#fff;padding:16px;border-radius:10px;max-width:320px;text-align:center">
       <div id="modalText">Processing...</div>
       <div style="margin-top:10px"><button id="modalClose" class="btn" style="background:#eef3ff;color:var(--accent)">OK</button></div>
     </div>
@@ -94,322 +84,245 @@
 
 <script>
 (function(){
-  // API root (same logic as earlier pages)
   const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
-
-  // require logged-in user
   const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
-  if(!me){ alert('Please login before submitting KYC.'); window.location.href = 'login.html'; return; }
+  if(!me){ alert('Please login'); window.location.href = 'login.html'; return; }
 
   // DOM
-  const idTypeEl = document.getElementById('id_type');
   const idNumberEl = document.getElementById('id_number');
-  const idImagesInput = document.getElementById('id_images_input');
-  const idImagesPreview = document.getElementById('id_images_preview');
-  const openIdCameraBtn = document.getElementById('openIdCamera');
+  const idFrontEl = document.getElementById('id_front');
+  const idBackEl = document.getElementById('id_back');
+  const addIdImageBtn = document.getElementById('addIdImageBtn');
+  const extraIdContainer = document.getElementById('extraIdContainer');
+  const idPreview = document.getElementById('id_preview');
 
   const videosInput = document.getElementById('videos_input');
   const videosPreview = document.getElementById('videos_preview');
-  const openVideoCameraBtn = document.getElementById('openVideoCamera');
 
   const notesEl = document.getElementById('notes');
   const submitBtn = document.getElementById('submitBtn');
   const statusEl = document.getElementById('status');
-  const modal = document.getElementById('overlay');
-  const modalText = document.getElementById('modalText');
-  const modalClose = document.getElementById('modalClose');
   const validationErrors = document.getElementById('validationErrors');
 
-  // config
-  const MAX_ID_IMAGES = 3;
+  const overlay = document.getElementById('overlay');
+  const modalText = document.getElementById('modalText');
+  const modalClose = document.getElementById('modalClose');
+
+  // state
+  let extraIdInputs = []; // array of input elements
+  let extraIdFiles = [];  // corresponding File objects
+  let idFiles = { front: null, back: null }; // File objects
+  let videoFiles = []; // File objects
+
+  const MAX_EXTRA_ID = 3;     // allow up to 3 extra if needed
   const MAX_VIDEOS = 2;
-  const MAX_VIDEO_SECONDS = 180; // 3 minutes
+  const MAX_VIDEO_SECONDS = 180;
 
-  // state holders (File objects)
-  let idImageFiles = []; // array of File
-  let videoFiles = [];   // array of File
-
-  // helpers: show modal
-  function showModal(msg){
-    modalText.textContent = msg;
-    modal.style.display = 'flex';
-    modal.setAttribute('aria-hidden','false');
-  }
-  function hideModal(){
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden','true');
-  }
+  function showModal(msg){ modalText.textContent = msg; overlay.style.display = 'flex'; }
+  function hideModal(){ overlay.style.display = 'none'; }
   modalClose.addEventListener('click', hideModal);
 
-  // small UI helpers
-  function clearValidation(){
-    validationErrors.style.display = 'none';
-    validationErrors.textContent = '';
-  }
   function showValidation(msg){
-    validationErrors.style.display = 'block';
     validationErrors.textContent = msg;
+    validationErrors.classList.remove('hidden');
+  }
+  function clearValidation(){
+    validationErrors.textContent = '';
+    validationErrors.classList.add('hidden');
   }
 
-  // render previews for images
-  function renderIdPreviews(){
-    idImagesPreview.innerHTML = '';
-    idImageFiles.forEach((file, idx) => {
-      const box = document.createElement('div');
-      box.className = 'thumb';
-      const img = document.createElement('img');
-      img.alt = 'ID image';
-      img.src = URL.createObjectURL(file);
+  // preview helpers
+  function renderIdPreview(){
+    idPreview.innerHTML = '';
+    const list = [];
+    if(idFiles.front) list.push({ f: idFiles.front, label: 'Front' });
+    if(idFiles.back) list.push({ f: idFiles.back, label: 'Back' });
+    extraIdFiles.forEach(f=> list.push({ f, label: 'Extra' }));
+    list.forEach((item, idx) => {
+      const box = document.createElement('div'); box.className = 'thumb';
+      const img = document.createElement('img'); img.src = URL.createObjectURL(item.f); img.alt = item.label;
       box.appendChild(img);
-      const rm = document.createElement('div');
-      rm.className = 'remove';
-      rm.title = 'Remove';
-      rm.innerText = '×';
+      const rm = document.createElement('div'); rm.className = 'remove'; rm.innerText = '×';
       rm.addEventListener('click', ()=> {
         URL.revokeObjectURL(img.src);
-        idImageFiles.splice(idx,1);
-        renderIdPreviews();
+        // remove from state
+        if(idx === 0 && idFiles.front) { idFiles.front = null; idFrontEl.value = ''; }
+        else if(idx === 1 && idFiles.back && idFiles.front) { idFiles.back = null; idBackEl.value = ''; }
+        else {
+          // extra index calculation
+          const extrasStart = (idFiles.front ? 1 : 0) + (idFiles.back ? 1 : 0);
+          const extraIdx = idx - extrasStart;
+          if(extraIdx >= 0) {
+            extraIdFiles.splice(extraIdx,1);
+            // also remove corresponding extra input (if present)
+            const inp = extraIdInputs[extraIdx];
+            if(inp){ extraIdContainer.removeChild(inp); extraIdInputs.splice(extraIdx,1); }
+          }
+        }
+        renderIdPreview();
       });
       box.appendChild(rm);
-      idImagesPreview.appendChild(box);
+      idPreview.appendChild(box);
     });
   }
 
-  // render previews for videos and show duration
-  function renderVideoPreviews(){
+  function renderVideoPreview(){
     videosPreview.innerHTML = '';
     videoFiles.forEach((file, idx) => {
-      const box = document.createElement('div');
-      box.className = 'thumb';
-      // show poster frame via video element
-      const vid = document.createElement('video');
-      vid.muted = true;
-      vid.playsInline = true;
-      vid.controls = false;
-      vid.preload = 'metadata';
+      const box = document.createElement('div'); box.className = 'thumb';
+      const vid = document.createElement('video'); vid.preload='metadata'; vid.muted=true; vid.playsInline=true;
       vid.src = URL.createObjectURL(file);
-      // show duration overlay when metadata loaded
-      const durLabel = document.createElement('div');
-      durLabel.className = 'info';
-      durLabel.style.position = 'absolute';
-      durLabel.style.bottom = '4px';
-      durLabel.style.left = '6px';
-      durLabel.style.right = '6px';
-      durLabel.style.fontSize = '11px';
-      durLabel.style.background = 'rgba(0,0,0,0.35)';
-      durLabel.style.color = '#fff';
-      durLabel.style.padding = '2px 6px';
-      durLabel.style.borderRadius = '6px';
-      durLabel.style.textAlign = 'center';
-      durLabel.innerText = '...';
-      vid.addEventListener('loadedmetadata', ()=> {
-        const sec = Math.floor(vid.duration || 0);
-        const mm = Math.floor(sec/60);
-        const ss = sec % 60;
-        durLabel.innerText = `${mm}m ${String(ss).padStart(2,'0')}s`;
-      });
       box.appendChild(vid);
-      box.appendChild(durLabel);
-      const rm = document.createElement('div');
-      rm.className = 'remove';
-      rm.title = 'Remove';
-      rm.innerText = '×';
+      const rm = document.createElement('div'); rm.className='remove'; rm.innerText='×';
       rm.addEventListener('click', ()=> {
         URL.revokeObjectURL(vid.src);
         videoFiles.splice(idx,1);
-        renderVideoPreviews();
+        renderVideoPreview();
       });
       box.appendChild(rm);
       videosPreview.appendChild(box);
     });
   }
 
-  // when user picks ID images (file input)
-  idImagesInput.addEventListener('change', (ev) => {
+  // file input handlers
+  idFrontEl.addEventListener('change', (e)=>{
     clearValidation();
-    const files = Array.from(ev.target.files || []);
-    // append but enforce max
-    for(const f of files){
-      if(idImageFiles.length >= MAX_ID_IMAGES) break;
-      // basic type check
-      if(!f.type.startsWith('image/')) continue;
-      idImageFiles.push(f);
-    }
-    // if more than max, slice
-    if(idImageFiles.length > MAX_ID_IMAGES) idImageFiles = idImageFiles.slice(0, MAX_ID_IMAGES);
-    // reset input so same file can be re-chosen later
-    idImagesInput.value = '';
-    renderIdPreviews();
+    const f = e.target.files && e.target.files[0];
+    if(f && f.type.startsWith('image/')) { idFiles.front = f; renderIdPreview(); }
+    else { idFiles.front = null; idFrontEl.value=''; }
+  });
+  idBackEl.addEventListener('change', (e)=>{
+    clearValidation();
+    const f = e.target.files && e.target.files[0];
+    if(f && f.type.startsWith('image/')) { idFiles.back = f; renderIdPreview(); }
+    else { idFiles.back = null; idBackEl.value=''; }
   });
 
-  // when user picks videos
-  videosInput.addEventListener('change', async (ev) => {
+  addIdImageBtn.addEventListener('click', (e)=>{
+    e.preventDefault();
     clearValidation();
-    const files = Array.from(ev.target.files || []);
+    if(extraIdInputs.length >= MAX_EXTRA_ID) { showValidation('Max extra ID images reached'); return; }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'block';
+    input.addEventListener('change', (ev)=>{
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      if(!f.type.startsWith('image/')) { showValidation('Select an image file'); return; }
+      extraIdFiles.push(f);
+      renderIdPreview();
+    });
+    extraIdInputs.push(input);
+    extraIdContainer.appendChild(input);
+    // auto-click to open chooser
+    input.click();
+  });
+
+  videosInput.addEventListener('change', async (e)=>{
+    clearValidation();
+    const files = Array.from(e.target.files || []);
+    // append respecting max
     for(const f of files){
       if(videoFiles.length >= MAX_VIDEOS) break;
       if(!f.type.startsWith('video/')) continue;
       videoFiles.push(f);
     }
-    if(videoFiles.length > MAX_VIDEOS) videoFiles = videoFiles.slice(0, MAX_VIDEOS);
-    videosInput.value = '';
-    // validate durations for newly added files
+    // validate durations
     const problems = await validateVideoDurations(videoFiles);
     if(problems.length){
       showValidation(problems.join('\n'));
       // remove offending files
       videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
     }
-    renderVideoPreviews();
+    videosInput.value = '';
+    renderVideoPreview();
   });
 
-  // "Use Camera" buttons simply forward-click the file inputs with capture attr (mobile browsers usually open camera)
-  openIdCameraBtn.addEventListener('click', ()=> {
-    idImagesInput.click();
-  });
-  openVideoCameraBtn.addEventListener('click', ()=> {
-    videosInput.click();
-  });
-
-  // returns array of error messages (empty if ok)
-  async function validateVideoDurations(files){
-    const errors = [];
-    for(const f of files){
-      try{
-        const dur = await readVideoDuration(f);
-        if(dur > MAX_VIDEO_SECONDS){
-          errors.push(`"${f.name}" is ${Math.round(dur)}s — over ${MAX_VIDEO_SECONDS}s (3 min) maximum`);
-        }
-      }catch(err){
-        // if we can't read metadata, be conservative and allow; but notify
-        console.warn('Could not read duration for', f.name, err);
-      }
-    }
-    return errors;
-  }
-
-  // helper: read video file duration via a temporary video element
-  function readVideoDuration(file){
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const vid = document.createElement('video');
-      vid.preload = 'metadata';
-      vid.src = url;
-      const onLoaded = () => {
-        const d = vid.duration;
-        cleanup();
-        resolve(isFinite(d) ? d : 0);
+  // verify video durations (returns array of error msgs)
+  function validateVideoDurations(files){
+    const checks = files.map(f => new Promise((resolve) => {
+      const url = URL.createObjectURL(f);
+      const v = document.createElement('video'); v.preload='metadata';
+      v.src = url;
+      const onloaded = ()=> {
+        const d = v.duration || 0;
+        URL.revokeObjectURL(url);
+        v.remove();
+        if(d > MAX_VIDEO_SECONDS) resolve(`"${f.name}" is ${Math.round(d)}s — over ${MAX_VIDEO_SECONDS}s`);
+        else resolve(null);
       };
-      const onErr = (e) => { cleanup(); reject(e || new Error('Could not load video metadata')); };
-      function cleanup(){
-        vid.removeEventListener('loadedmetadata', onLoaded);
-        vid.removeEventListener('error', onErr);
-        try{ URL.revokeObjectURL(url); }catch(e){}
-      }
-      vid.addEventListener('loadedmetadata', onLoaded);
-      vid.addEventListener('error', onErr);
-    });
+      const onerror = ()=> { URL.revokeObjectURL(url); v.remove(); resolve(null); };
+      v.addEventListener('loadedmetadata', onloaded, {once:true});
+      v.addEventListener('error', onerror, {once:true});
+    } ));
+    return Promise.all(checks).then(results => results.filter(Boolean));
   }
 
-  // final submit handler
-  submitBtn.addEventListener('click', async () => {
+  // final submit
+  submitBtn.addEventListener('click', async ()=>{
     clearValidation();
     statusEl.textContent = '';
-    // basic validations
-    const idNumber = idNumberEl.value && idNumberEl.value.trim();
-    if(!idNumber){
-      showValidation('Please enter your ID number.');
-      return;
-    }
-    if(idImageFiles.length === 0){
-      showValidation('Please upload at least one ID image (front or back).');
-      return;
-    }
-    if(videoFiles.length === 0){
-      showValidation('Please upload at least one work video (required).');
-      return;
-    }
-    if(videoFiles.length > MAX_VIDEOS){
-      showValidation(`Please upload no more than ${MAX_VIDEOS} videos.`);
-      return;
-    }
-    if(idImageFiles.length > MAX_ID_IMAGES){
-      showValidation(`Please upload no more than ${MAX_ID_IMAGES} ID images.`);
-      return;
-    }
 
-    // validate durations before sending
+    const idNumber = (idNumberEl.value || '').trim();
+    if(!idNumber){ showValidation('Enter ID number'); return; }
+    if(!idFiles.front){ showValidation('Upload front picture of ID'); return; }
+    if(!idFiles.back){ showValidation('Upload back picture of ID'); return; }
+    if(videoFiles.length === 0){ showValidation('Upload at least one work video (required)'); return; }
+    if(videoFiles.length > MAX_VIDEOS){ showValidation('Max 2 videos allowed'); return; }
+
+    // validate durations again before send
     const durationProblems = await validateVideoDurations(videoFiles);
-    if(durationProblems.length){
-      showValidation(durationProblems.join('\n'));
-      return;
-    }
+    if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
     // Build FormData
     const form = new FormData();
     form.append('userId', me.id);
-    form.append('id_type', idTypeEl.value);
+    form.append('id_type', 'unknown'); // frontend kept minimal; backend can ignore or you can add a select if needed
     form.append('id_number', idNumber);
     form.append('notes', notesEl.value || '');
-    // append images (field name id_images[])
-    idImageFiles.forEach((file, i) => {
-      form.append('id_images', file, file.name);
-    });
-    // append videos (field name work_videos[])
-    videoFiles.forEach((file, i) => {
-      form.append('work_videos', file, file.name);
-    });
-    // add a hint flag so backend can detect multipart
-    form.append('_multipart', '1');
+
+    // append id files: front, back, extras
+    form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
+    form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
+    extraIdFiles.forEach(f => form.append('id_images', f, f.name));
+
+    // append videos
+    videoFiles.forEach(f => form.append('work_videos', f, f.name));
+
+    // hint to server that this is multipart
+    form.append('_multipart','1');
 
     try{
-      showModal('Uploading documents — please wait...');
-      // POST as multipart/form-data (no Content-Type so browser sets boundary)
-      const resp = await fetch(`${API_BASE}/api/kyc/submit`, {
-        method: 'POST',
-        body: form,
-        // include credentials only if you need cookies; your existing endpoints used CORS with credentials earlier
-        credentials: 'include'
-      });
+      showModal('Uploading — please wait...');
+      const resp = await fetch(`${API_BASE}/api/kyc/submit`, { method:'POST', body: form, credentials:'include' });
       let data = null;
       try{ data = await resp.json(); } catch(e){ data = null; }
       if(resp.ok && data && data.success){
-        // update local user kyc_status to pending
-        try{
-          me.kyc_status = 'pending';
-          localStorage.setItem('wc_user', JSON.stringify(me));
-        }catch(e){}
-        showModal('KYC submitted successfully. Await admin review.');
-        // optional redirect after short delay
-        setTimeout(()=> {
-          hideModal();
-          window.location.href = 'dashboard.html';
-        }, 1400);
+        // mark local user as pending
+        me.kyc_status = 'pending';
+        localStorage.setItem('wc_user', JSON.stringify(me));
+        showModal('Submitted — awaiting review');
+        setTimeout(()=> { hideModal(); window.location.href = 'dashboard.html'; }, 1200);
       } else {
-        // parse error message
-        const msg = (data && data.message) ? data.message : `Server error${resp.status ? ' (HTTP ' + resp.status + ')' : ''}`;
-        showModal('Submission failed: ' + msg);
+        showModal('Submission failed: ' + ((data && data.message) ? data.message : ('HTTP ' + resp.status)));
       }
     }catch(err){
-      console.error('Network error while submitting KYC', err);
-      showModal('Network error while submitting. Please try again.');
+      console.error(err);
+      showModal('Network error while submitting. Try again.');
     }
   });
 
-  // accessibility: allow drop of images/videos into preview area (nice to have)
-  ;['dragenter','dragover','dragleave','drop'].forEach(ev => {
-    document.addEventListener(ev, (e)=>{ /* prevent default to allow drop on inputs */ }, {passive:false});
-  });
-
-  // note: backend must accept multipart/form-data.
-  // If you don't yet have multipart handling in backend, you will need to add middleware (e.g. multer) to parse file uploads.
-  // Example expected form fields:
-  // - userId (string)
-  // - id_type (string)
-  // - id_number (string)
-  // - notes (string)
-  // - id_images (files) [multiple fields with same name]
-  // - work_videos (files) [multiple fields with same name]
+  // helper: auto-save last-known coords if available (unchanged)
+  (function trySaveGeo(){
+    try{
+      if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(pos=>{
+          try{ localStorage.setItem('wc_last_lat', String(pos.coords.latitude)); localStorage.setItem('wc_last_lng', String(pos.coords.longitude)); }catch(e){}
+        }, ()=>{}, { maximumAge: 10000, timeout: 3500 });
+      }
+    }catch(e){}
+  })();
 
 })();
 </script>
