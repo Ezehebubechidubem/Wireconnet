@@ -17,6 +17,7 @@
       width:300px;padding:22px;border-right:1px solid #e8eef8;background:#fff;
       transition:transform .24s ease;box-shadow:0 0 0 rgba(0,0,0,0);
     }
+    /* hidden class used to hide sidebar on mobile; default is visible on desktop */
     aside.hidden{transform:translateX(-110%);position:fixed;z-index:900;left:0;top:0;height:100%}
     .brand{display:flex;align-items:center;gap:12px;margin-bottom:12px}
     .brand img{height:52px;width:auto}
@@ -39,19 +40,25 @@
     .muted{color:var(--muted);font-size:13px}
     .empty{color:var(--muted);padding:12px}
     .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1100}
-    .popup{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:18px;border-radius:10px;box-shadow:0 12px 40px rgba(10,20,40,0.24);z-index:1200}
+    .popup{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:18px;border-radius:10px;box-shadow:0 12px 40px rgba(10,20,40,0.24);z-index:1200;max-width:92%;width:760px}
+    .small-btn{padding:6px 10px;border-radius:8px;border:1px solid #e6eef9;background:#fff;cursor:pointer}
+    .green{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;padding:8px 12px;border-radius:8px}
     @media(max-width:920px){
       aside{position:fixed;left:0;top:0;height:100%;z-index:900}
       .hamburger{display:block}
       .metrics{grid-template-columns:repeat(2,1fr)}
+      /* Hide sidebar by default for small screens so it only opens via hamburger */
+      aside { transform: translateX(-110%); }
     }
   </style>
 </head>
 <body>
   <div class="overlay" id="overlay"></div>
+
+  <!-- Reusable popup / modal used for KYC and Jobs details -->
   <div class="popup" id="popup">
     <div id="popupMessage"></div>
-    <div style="text-align:right;margin-top:12px"><button id="popupClose" class="btn" style="background:#eef3ff;color:var(--accent)">Close</button></div>
+    <div id="popupActions" style="text-align:right;margin-top:12px"></div>
   </div>
 
   <div class="layout">
@@ -84,7 +91,7 @@
     <div style="flex:1">
       <header>
         <div style="display:flex;align-items:center;gap:12px">
-          <div class="hamburger" id="hamburgerBtn">☰</div>
+          <div class="hamburger" id="hamburgerBtn" title="Open / Close menu">☰</div>
           <div>
             <div style="font-weight:900">WireConnect — Admin</div>
             <div class="muted" style="font-size:13px">Monitor users, KYC, jobs, and system health</div>
@@ -200,7 +207,9 @@
 
 <script>
 (function(){
-  const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : (location.origin.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com'));
+  // API base detection
+  const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
+  // admin token or normal token
   const adminToken = localStorage.getItem('wc_admin_token') || localStorage.getItem('wc_token') || null;
 
   // UI refs
@@ -209,6 +218,7 @@
   const overlay = document.getElementById('overlay');
   const popup = document.getElementById('popup');
   const popupMessage = document.getElementById('popupMessage');
+  const popupActions = document.getElementById('popupActions');
   const popupClose = document.getElementById('popupClose');
   const lastUpdated = document.getElementById('lastUpdated');
   const panelTitle = document.getElementById('panelTitle');
@@ -223,28 +233,33 @@
   const offlineUsersEl = document.getElementById('offlineUsers');
   const pendingKYCEl = document.getElementById('pendingKYC');
 
-  // helper: show popup
-  function showPopup(msg){
-    popupMessage.innerText = msg;
+  // helper: popup show/close
+  function showPopupHtml(html, actionsHtml = '') {
+    popupMessage.innerHTML = html;
+    popupActions.innerHTML = actionsHtml;
     popup.style.display = 'block';
     overlay.style.display = 'block';
   }
   function closePopup(){
     popup.style.display = 'none';
     overlay.style.display = 'none';
+    popupMessage.innerHTML = '';
+    popupActions.innerHTML = '';
   }
-  popupClose.addEventListener('click', closePopup);
   overlay.addEventListener('click', closePopup);
 
-  // collapse sidebar on mobile
-  hamburgerBtn.addEventListener('click', ()=> sidebar.classList.toggle('hidden'));
+  // MANUAL sidebar toggling:
+  // On small screens sidebar is hidden by default (CSS does that). Hamburger toggles the "hidden" class.
+  hamburgerBtn.addEventListener('click', ()=> {
+    sidebar.classList.toggle('hidden');
+  });
 
   // logout (clears admin token)
   document.getElementById('logout').addEventListener('click', (e)=> {
     e.preventDefault();
     localStorage.removeItem('wc_admin_token');
     localStorage.removeItem('wc_token');
-    showPopup('Logged out (token cleared). Refresh to re-login.');
+    showPopupHtml('Logged out (token cleared). Refresh to re-login.');
   });
 
   // choose panel
@@ -253,6 +268,7 @@
       ev.preventDefault();
       const panel = a.getAttribute('data-panel') || 'overview';
       openPanel(panel);
+      // don't auto-toggle the sidebar to open; only close on small screens for UX
       if(window.innerWidth < 920) sidebar.classList.add('hidden');
     });
   });
@@ -269,30 +285,32 @@
     if(name === 'jobs') loadJobs();
     if(name === 'errors') loadErrors();
     if(name === 'security') loadSecurity();
-    // store current panel
     window.__wc_currentPanel = name;
   }
 
-  // network helper with auth header if available
-  async function apiFetch(path, opts = {}){
-    const headers = Object.assign({ }, opts.headers || {});
+  // Generic fetch helper that injects Authorization (if token available)
+  async function apiFetch(path, opts = {}) {
+    const headers = Object.assign({}, opts.headers || {});
     if(adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
-    try{
+    try {
       const r = await fetch(API_BASE + path, Object.assign({ headers }, opts));
-      if(r.status === 404) return { ok:false, notfound:true, status:r.status };
-      const json = await r.json().catch(()=>null);
-      return { ok: r.ok, status: r.status, body: json };
-    }catch(e){
+      const text = await r.text().catch(()=>null);
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch(e){ json = null; }
+      return { ok: r.ok, status: r.status, text, body: json };
+    } catch(e) {
       return { ok:false, error: String(e) };
     }
   }
 
-  // Load metrics: tries /api/admin/metrics, fallback message if not present
+  // ---- Metrics loader ----
   async function loadMetrics(){
     activeUsersEl.textContent = '—';
     onlineUsersEl.textContent = '—';
     offlineUsersEl.textContent = '—';
     pendingKYCEl.textContent = '—';
+
+    // try admin metrics endpoint first (best)
     const res = await apiFetch('/api/admin/metrics');
     if(res.ok && res.body && res.body.success){
       const b = res.body;
@@ -303,78 +321,67 @@
       lastUpdated.innerText = 'Last updated: ' + (new Date()).toLocaleTimeString();
       return;
     }
-    // fallback: try to compute from /api/dashboard if available (best-effort)
-    const dash = await apiFetch('/api/dashboard?role=client');
-    if(dash.ok && dash.body && dash.body.success){
-      // not ideal for counts but we can at least show some values
-      activeUsersEl.textContent = dash.body.leaderboard ? dash.body.leaderboard.length : '—';
-      onlineUsersEl.textContent = '—';
-      offlineUsersEl.textContent = '—';
-      pendingKYCEl.textContent = '—';
-      lastUpdated.innerText = 'Last updated: ' + (new Date()).toLocaleTimeString();
-      return;
+
+    // fallback: try to detect pending KYC / basic info from existing endpoints
+    const k = await apiFetch('/api/kyc/pending');
+    if(k.ok && k.body && Array.isArray(k.body.requests)){
+      pendingKYCEl.textContent = k.body.requests.length;
+    } else {
+      pendingKYCEl.textContent = 'N/A';
     }
-    // final fallback: show helpful hint
-    activeUsersEl.textContent = 'N/A';
-    onlineUsersEl.textContent = 'N/A';
-    offlineUsersEl.textContent = 'N/A';
-    pendingKYCEl.textContent = 'N/A';
-    lastUpdated.innerText = 'No metrics endpoint found';
+
+    lastUpdated.innerText = 'Last updated: ' + (new Date()).toLocaleTimeString();
   }
 
-  // Overview cards
+  // ---- Overview ----
   async function loadOverview(){
     document.getElementById('overviewKyc').innerText = 'Loading…';
     document.getElementById('overviewJobs').innerText = 'Loading…';
     document.getElementById('overviewErrors').innerText = 'Loading…';
 
-    // KYC: try /api/kyc/pending
     const k = await apiFetch('/api/kyc/pending');
-    if(k.ok && k.body && k.body.success){
-      const list = k.body.requests || k.body || [];
+    if(k.ok && k.body && k.body.requests) {
+      const list = k.body.requests || [];
       document.getElementById('overviewKyc').innerHTML = `${list.length} pending — <a href="#" data-panel="kyc">Open KYC</a>`;
     } else {
       document.getElementById('overviewKyc').innerHTML = `<span class="muted">No KYC endpoint</span>`;
     }
 
-    // jobs: try /api/admin/jobs or /api/dashboard fallback for jobs count
     const j = await apiFetch('/api/admin/jobs');
-    if(j.ok && j.body && j.body.success){
+    if(j.ok && j.body && Array.isArray(j.body.jobs)) {
       const jobs = j.body.jobs || [];
       document.getElementById('overviewJobs').innerHTML = `${jobs.length} recent — <a href="#" data-panel="jobs">Open Jobs</a>`;
     } else {
-      // fallback try jobs created recently from /api/dashboard or show hint
       document.getElementById('overviewJobs').innerHTML = `<span class="muted">Jobs endpoint not found</span>`;
     }
 
-    // errors: try /api/admin/errors
     const e = await apiFetch('/api/admin/errors');
-    if(e.ok && e.body && e.body.success){
+    if(e.ok && e.body && Array.isArray(e.body.errors)){
       document.getElementById('overviewErrors').innerHTML = `${(e.body.errors||[]).length} recent — <a href="#" data-panel="errors">Open Errors</a>`;
     } else {
       document.getElementById('overviewErrors').innerHTML = `<span class="muted">Errors endpoint not found</span>`;
     }
   }
 
-  // KYC panel
+  // ---- KYC panel & actions ----
   async function loadKyc(){
     const tbody = document.querySelector('#kycTable tbody');
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
     const res = await apiFetch('/api/kyc/pending');
     if(res.ok && res.body && Array.isArray(res.body.requests)){
       const rows = res.body.requests;
-      if(rows.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No pending requests</td></tr>`; return; }
+      if(rows.length === 0){ tbody.innerHTML = `<tr><td colspan="5" class="empty">No pending requests</td></tr>`; return; }
       tbody.innerHTML = rows.map(r => `<tr data-id="${r.id}">
         <td>${r.id}</td>
-        <td>${r.username || r.fullname || r.user_id || '-'}</td>
-        <td>${r.id_type || '-'}</td>
+        <td>${escapeHtml(r.username || r.fullname || r.user_id || '-')}</td>
+        <td>${escapeHtml(r.id_type || '-')}</td>
         <td>${new Date(r.submitted_at || r.created_at || Date.now()).toLocaleString()}</td>
-        <td>${r.status || '-'}</td>
+        <td>${escapeHtml(r.status || '-')}</td>
       </tr>`).join('');
-      // click handler to open detail (best-effort)
-      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', ()=>{
+      // click --> open modal with details + approve/decline
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', async ()=>{
         const id = tr.getAttribute('data-id');
-        showPopup('KYC request ID: ' + id + '\nOpen admin KYC review page to inspect documents.');
+        await showKycDetailModal(id);
       }));
       return;
     }
@@ -385,49 +392,183 @@
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Failed to load KYC (${res.error||res.status})</td></tr>`;
   }
 
-  // Jobs panel
+  // show KYC detail and provide Approve / Decline actions
+  async function showKycDetailModal(reqId){
+    // fetch detail if endpoint available (fallback to list data)
+    let detail = null;
+    // some APIs return request object directly at GET /api/kyc/:id — try it
+    const tryRes = await apiFetch('/api/kyc/' + encodeURIComponent(reqId));
+    if(tryRes.ok && tryRes.body && tryRes.body.request){
+      detail = tryRes.body.request;
+    } else {
+      // fallback to retrieving the pending list and find entry
+      const listRes = await apiFetch('/api/kyc/pending');
+      if(listRes.ok && listRes.body && Array.isArray(listRes.body.requests)){
+        detail = listRes.body.requests.find(x => String(x.id) === String(reqId));
+      }
+    }
+
+    const html = `
+      <h3>KYC Request #${escapeHtml(reqId)}</h3>
+      <div style="margin-top:8px">
+        <strong>User:</strong> ${escapeHtml((detail && (detail.username||detail.fullname))||'-')}<br>
+        <strong>Type:</strong> ${escapeHtml((detail && detail.id_type) || '-')}<br>
+        <strong>Number:</strong> ${escapeHtml((detail && detail.id_number) || '-')}<br>
+        <strong>Submitted:</strong> ${new Date((detail && (detail.submitted_at||detail.created_at))||Date.now()).toLocaleString()}<br>
+        <div style="margin-top:8px"><strong>Notes:</strong><div class="muted" style="margin-top:6px">${escapeHtml((detail && detail.notes) || '(no notes)')}</div></div>
+        <div style="margin-top:10px">${(detail && detail.id_images && detail.id_images.length) ? ('<strong>Images:</strong><div style="display:flex;gap:8px;margin-top:6px">' + detail.id_images.map(i=>`<img src="${escapeHtml(i)}" style="height:80px;border-radius:6px;object-fit:cover">`).join('') + '</div>') : ''}</div>
+      </div>
+    `;
+
+    const adminId = getAdminIdForActions();
+    const actionsHtml = `
+      <button id="kycApprove" class="btn" style="margin-right:8px">Approve</button>
+      <button id="kycDecline" class="small-btn">Decline</button>
+      <button id="kycClose" class="small-btn" style="margin-left:8px">Close</button>
+    `;
+
+    showPopupHtml(html, actionsHtml);
+
+    document.getElementById('kycClose').addEventListener('click', closePopup);
+    document.getElementById('kycApprove').addEventListener('click', async ()=>{
+      document.getElementById('kycApprove').disabled = true;
+      await kycDecision(reqId, 'approve', adminId);
+      document.getElementById('kycApprove').disabled = false;
+    });
+    document.getElementById('kycDecline').addEventListener('click', async ()=>{
+      document.getElementById('kycDecline').disabled = true;
+      await kycDecision(reqId, 'decline', adminId);
+      document.getElementById('kycDecline').disabled = false;
+    });
+  }
+
+  // call backend to approve/decline
+  async function kycDecision(reqId, decision, adminId){
+    try {
+      const payload = { adminId: adminId || 'admin', decision: decision === 'approve' ? 'approve' : 'decline', adminNote: (decision === 'decline' ? 'Declined by admin' : 'Approved by admin') };
+      const res = await apiFetch('/api/kyc/' + encodeURIComponent(reqId) + '/decision', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if(res.ok && res.body && res.body.success){
+        showPopupHtml(`<div class="green">${decision === 'approve' ? 'KYC approved' : 'KYC declined'}</div>`,
+          `<button id="okBtn" class="btn">OK</button>`);
+        document.getElementById('okBtn').addEventListener('click', ()=>{ closePopup(); loadKyc(); loadMetrics(); });
+        return;
+      } else {
+        showPopupHtml(`<div class="muted">Failed: ${escapeHtml((res.body && res.body.message) || res.error || res.status)}</div>`,
+          `<button id="okBtn" class="btn">OK</button>`);
+        document.getElementById('okBtn').addEventListener('click', closePopup);
+      }
+    } catch(e){
+      showPopupHtml(`<div class="muted">Network error: ${escapeHtml(String(e))}</div>`, `<button id="okBtn" class="btn">OK</button>`);
+      document.getElementById('okBtn').addEventListener('click', closePopup);
+    }
+  }
+
+  // ---- Jobs panel & actions ----
   async function loadJobs(){
     const tbody = document.querySelector('#jobsTable tbody');
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
-    // try admin jobs endpoint first
+    // Try admin jobs endpoint
     let res = await apiFetch('/api/admin/jobs');
     if(res.ok && res.body && Array.isArray(res.body.jobs)){
       const rows = res.body.jobs;
-      if(rows.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="empty">No jobs found</td></tr>`; return; }
+      if(rows.length === 0){ tbody.innerHTML = `<tr><td colspan="5" class="empty">No jobs found</td></tr>`; return; }
       tbody.innerHTML = rows.map(j => `<tr data-id="${j.id}">
         <td>${j.id}</td>
-        <td>${j.client_name || j.client_id || '-'}</td>
-        <td>${j.job_type || '-'}</td>
-        <td>${j.state || '-'}</td>
-        <td>${j.status || '-'}</td>
+        <td>${escapeHtml(j.client_name || j.client_id || '-')}</td>
+        <td>${escapeHtml(j.job_type || '-')}</td>
+        <td>${escapeHtml(j.state || '-')}</td>
+        <td>${escapeHtml(j.status || '-')}</td>
       </tr>`).join('');
-      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', ()=> {
-        const id = tr.getAttribute('data-id');
-        showPopup('Job: ' + id + '\nOpen job details page to inspect.');
-      }));
+      tbody.querySelectorAll('tr[data-id]').forEach(tr => tr.addEventListener('click', ()=> showJobDetailModal(tr.getAttribute('data-id'))));
       return;
     }
-    // fallback — attempt /api/dashboard?role=client to show something
+
+    // Fallback to /api/dashboard info (if admin jobs not available)
     res = await apiFetch('/api/dashboard?role=client');
-    if(res.ok && res.body && Array.isArray(res.body.leaderboard)){
-      tbody.innerHTML = `<tr><td colspan="5" class="empty">No admin jobs endpoint. Dashboard returns some data but not jobs.</td></tr>`;
+    if(res.ok && res.body){
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">No admin jobs endpoint. Dashboard returned data but not jobs.</td></tr>`;
       return;
     }
     tbody.innerHTML = `<tr><td colspan="5" class="empty">Failed to load jobs (no endpoint)</td></tr>`;
   }
 
-  // Errors panel
+  async function showJobDetailModal(jobId){
+    // fetch job status
+    const res = await apiFetch('/api/job/' + encodeURIComponent(jobId) + '/status');
+    if(!res.ok || !res.body || !res.body.success){
+      showPopupHtml(`<div class="muted">Could not fetch job details. (${res.error || res.status})</div>`, `<button id="closeBtn" class="btn">Close</button>`);
+      document.getElementById('closeBtn').addEventListener('click', closePopup);
+      return;
+    }
+    const job = res.body.job;
+    // construct detail HTML
+    const html = `<h3>Job ${escapeHtml(jobId)}</h3>
+      <div style="margin-top:8px">
+        <strong>Status:</strong> ${escapeHtml(job.status || '-')}<br>
+        <strong>Assigned tech:</strong> ${escapeHtml(job.assigned_tech_id || '(none)')}<br>
+        <strong>Assigned at:</strong> ${job.assigned_at ? new Date(job.assigned_at).toLocaleString() : '-'}<br>
+        <strong>Expires at:</strong> ${job.expires_at ? new Date(job.expires_at).toLocaleString() : '-'}<br>
+      </div>`;
+
+    // actions: if assigned tech present add toggle for online/offline
+    let actionsHtml = `<button id="closeJob" class="small-btn">Close</button>`;
+    if(job.assigned_tech_id){
+      actionsHtml = `
+        <button id="setOnline" class="btn">Set Tech Online</button>
+        <button id="setOffline" class="small-btn">Set Tech Offline</button>
+        <button id="closeJob" class="small-btn" style="margin-left:8px">Close</button>
+      `;
+    }
+    showPopupHtml(html, actionsHtml);
+
+    document.getElementById('closeJob').addEventListener('click', closePopup);
+    if(job.assigned_tech_id){
+      document.getElementById('setOnline').addEventListener('click', async ()=>{
+        await setTechOnline(job.assigned_tech_id, true);
+        closePopup();
+        loadJobs();
+      });
+      document.getElementById('setOffline').addEventListener('click', async ()=>{
+        await setTechOnline(job.assigned_tech_id, false);
+        closePopup();
+        loadJobs();
+      });
+    }
+  }
+
+  // call backend to set tech online/offline
+  async function setTechOnline(techId, online){
+    try{
+      const payload = { techId: techId, online: !!online, lat: null, lng: null };
+      const r = await apiFetch('/api/tech/status', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if(r.ok && r.body && r.body.success){
+        showPopupHtml(`<div class="green">Technician ${online ? 'set online' : 'set offline'} successfully</div>`,
+          `<button id="okBtn" class="btn">OK</button>`);
+        document.getElementById('okBtn').addEventListener('click', ()=> { closePopup(); loadMetrics(); });
+        return;
+      } else {
+        showPopupHtml(`<div class="muted">Failed: ${escapeHtml((r.body && r.body.message) || r.error || r.status)}</div>`,
+          `<button id="okBtn" class="btn">OK</button>`);
+        document.getElementById('okBtn').addEventListener('click', closePopup);
+      }
+    }catch(e){
+      showPopupHtml(`<div class="muted">Network error: ${escapeHtml(String(e))}</div>`, `<button id="okBtn" class="btn">OK</button>`);
+      document.getElementById('okBtn').addEventListener('click', closePopup);
+    }
+  }
+
+  // ---- Errors panel ----
   async function loadErrors(){
     const tbody = document.querySelector('#errorsTable tbody');
     tbody.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
     const res = await apiFetch('/api/admin/errors');
     if(res.ok && res.body && Array.isArray(res.body.errors)){
       const rows = res.body.errors;
-      if(rows.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="empty">No recent errors</td></tr>`; return; }
+      if(rows.length === 0){ tbody.innerHTML = `<tr><td colspan="4" class="empty">No recent errors</td></tr>`; return; }
       tbody.innerHTML = rows.map(e => `<tr>
         <td>${new Date(e.when || e.created_at).toLocaleString()}</td>
-        <td>${e.path || '-'}</td>
-        <td style="max-width:480px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(e.message || e.msg || '').slice(0,200)}</td>
+        <td>${escapeHtml(e.path || '-')}</td>
+        <td style="max-width:480px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml((e.message || e.msg || '').slice(0,200))}</td>
         <td>${e.count || 1}</td>
       </tr>`).join('');
       return;
@@ -439,7 +580,7 @@
     tbody.innerHTML = `<tr><td colspan="4" class="empty">Failed to load errors (${res.error||res.status})</td></tr>`;
   }
 
-  // Security panel
+  // ---- Security panel ----
   async function loadSecurity(){
     const tbody = document.querySelector('#securityTable tbody');
     tbody.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
@@ -449,9 +590,9 @@
       if(rows.length === 0){ tbody.innerHTML = `<tr><td colspan="4" class="empty">No security alerts</td></tr>`; return; }
       tbody.innerHTML = rows.map(a => `<tr>
         <td>${new Date(a.when || a.created_at).toLocaleString()}</td>
-        <td>${a.type || '-'}</td>
-        <td>${a.subject || '-'}</td>
-        <td style="max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(a.details||'').slice(0,200)}</td>
+        <td>${escapeHtml(a.type || '-')}</td>
+        <td>${escapeHtml(a.subject || '-')}</td>
+        <td style="max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml((a.details||'').slice(0,200))}</td>
       </tr>`).join('');
       return;
     }
@@ -486,16 +627,18 @@
     else if(panel === 'security') loadSecurity();
   }, 8000);
 
-  // attempt to set admin name from stored user
+  // try to show admin name from stored user
   try {
     const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
     if(me && (me.fullname || me.username)) adminName.innerText = me.fullname || me.username;
   } catch(e){}
 
-  // expose debug helpers
-  window.adminUI = {
-    openPanel, loadMetrics, loadKyc, loadJobs, loadErrors, loadSecurity
-  };
+  // utility helpers
+  function escapeHtml(str){ if(!str && str !== 0) return ''; return String(str).replace(/[&<>"'`=\/]/g, function(ch){ return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;' })[ch]; }); }
+  function getAdminIdForActions(){ try { const me = JSON.parse(localStorage.getItem('wc_user') || 'null'); return (me && me.id) ? me.id : (localStorage.getItem('userId') || 'admin'); } catch(e){ return (localStorage.getItem('userId') || 'admin'); } }
+
+  // expose a few helpers for debug from console
+  window.adminUI = { openPanel, loadMetrics, loadKyc, loadJobs, loadErrors, loadSecurity, setTechOnline };
 
 })();
 </script>
