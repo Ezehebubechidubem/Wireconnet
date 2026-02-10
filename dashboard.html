@@ -176,6 +176,39 @@
     /* keep regular menu links visible but not changed */
     .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
 
+    /* KYC badge styles (added) */
+    .kyc-badge {
+      display:inline-block;
+      margin-left:8px;
+      padding:4px 8px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      vertical-align:middle;
+      color:#fff;
+    }
+    .kyc-unverified { background:#9aa0a6; } /* ash */
+    .kyc-pending    { background:#f59e0b; } /* yellow */
+    .kyc-verified   { background:#10b981; } /* green */
+    .kyc-rejected   { background:#ef4444; } /* red */
+
+    /* dot + blinking */
+    .kdot {
+      width:12px; height:12px; border-radius:50%;
+      display:inline-block; margin-left:8px; vertical-align:middle;
+      box-shadow:0 0 8px rgba(0,0,0,0.12);
+      animation: kdot-blink 1s infinite;
+    }
+    @keyframes kdot-blink {
+      0% { opacity:1; transform:scale(1); }
+      50% { opacity:0.25; transform:scale(0.85); }
+      100% { opacity:1; transform:scale(1); }
+    }
+    .kdot-unverified { background:#9aa0a6; box-shadow: 0 0 8px rgba(154,160,166,0.45); }
+    .kdot-pending    { background:#f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.45); }
+    .kdot-verified   { background:#10b981; box-shadow: 0 0 8px rgba(16,185,129,0.45); }
+    .kdot-rejected   { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.45); }
+
     /* keep existing button classes for Learn More, etc. */
     .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
     .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
@@ -235,7 +268,15 @@
     <div id="menuDropdown" class="menu-dropdown" role="menu" aria-hidden="true">
       <a class="menu-link" href="profile.html">Profile</a>
       <a class="menu-link" href="settings.html">Settings</a>
-      <a class="menu-link" href="kyc.html">KYC</a>
+
+      <!-- KYC link with badge & dot -->
+      <a class="menu-link" href="kyc.html" id="kycMenuLink" style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="flex:1">KYC</span>
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span id="kycBadge" class="kyc-badge kyc-unverified">Unverified</span>
+          <span id="kycDot" class="kdot kdot-unverified" title="KYC status"></span>
+        </span>
+      </a>
 
       <!-- LOGOUT added above Book Job as requested -->
       <a id="logoutBtn" class="menu-link" href="#">Logout</a>
@@ -333,27 +374,12 @@
     const toastEl = document.getElementById('toast');
     const logoutBtn = document.getElementById('logoutBtn');
 
-    // hamburger toggle (unchanged)
-    (function(){
-      const btn = hamburgerBtn, menu = menuDropdown;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const shown = menu.style.display === 'block';
-        menu.style.display = shown ? 'none' : 'block';
-        btn.setAttribute('aria-expanded', String(!shown));
-        menu.setAttribute('aria-hidden', String(shown));
-      });
-      document.addEventListener('click', (e) => {
-        const container = document.querySelector('.hamburger-container');
-        if(!container.contains(e.target)){
-          menu.style.display = 'none';
-          btn.setAttribute('aria-expanded', 'false');
-          menu.setAttribute('aria-hidden', 'true');
-        }
-      });
-    })();
+    // KYC elements
+    const kycBadge = document.getElementById('kycBadge');
+    const kycDot = document.getElementById('kycDot');
+    const kycMenuLink = document.getElementById('kycMenuLink');
 
-    // toast helper
+    // small helper: show toast
     function showToast(msg, ms = 3000){
       toastEl.innerText = msg;
       toastEl.style.display = 'block';
@@ -434,6 +460,152 @@
       }
     }
 
+    // ---------- KYC badge logic ----------
+    // currentKycStatus: 'verified'|'pending'|'rejected'|'unverified'|null
+    let currentKycStatus = null;
+
+    async function updateKycBadge(){
+      try {
+        const userId = getUserId();
+        if(!userId){
+          // not signed in: show Unverified (ash) and tooltip
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Not signed in'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Not signed in'; }
+          currentKycStatus = 'unverified';
+          return;
+        }
+
+        const url = API_BASE + '/api/kyc/status/' + encodeURIComponent(userId);
+        const resp = await fetch(url, { method:'GET' });
+        if(!resp.ok){
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Unable to fetch status'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Unable to fetch status'; }
+          currentKycStatus = 'unverified';
+          return;
+        }
+
+        const data = await resp.json().catch(()=>null);
+        if(!data){
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; }
+          currentKycStatus = 'unverified';
+          return;
+        }
+
+        const latest = data.latest_request || null;
+        const user = data.user || null;
+        let status = null;
+        if(latest && latest.status) status = String(latest.status).toLowerCase();
+        else if(user && user.kyc_status) status = String(user.kyc_status).toLowerCase();
+
+        let label = 'Unverified';
+        let badgeClass = 'kyc-badge kyc-unverified';
+        let dotClass = 'kdot kdot-unverified';
+        let normalized = 'unverified';
+
+        if(status){
+          if(status === 'pending'){ label = 'Pending'; badgeClass = 'kyc-badge kyc-pending'; dotClass = 'kdot kdot-pending'; normalized = 'pending'; }
+          else if(status === 'approved' || status === 'verified'){ label = 'Verified'; badgeClass = 'kyc-badge kyc-verified'; dotClass = 'kdot kdot-verified'; normalized = 'verified'; }
+          else if(status === 'declined' || status === 'rejected' || status === 'failed'){ label = 'Rejected'; badgeClass = 'kyc-badge kyc-rejected'; dotClass = 'kdot kdot-rejected'; normalized = 'rejected'; }
+          else { label = status.charAt(0).toUpperCase() + status.slice(1); badgeClass = 'kyc-badge kyc-unverified'; dotClass = 'kdot kdot-unverified'; normalized = status; }
+        }
+
+        if(kycBadge){
+          kycBadge.textContent = label;
+          kycBadge.className = badgeClass;
+          // if admin note present, set tooltip to it so user can hover
+          if(latest && latest.admin_note){
+            kycBadge.title = 'Admin: ' + latest.admin_note;
+          } else if(latest && latest.submitted_at){
+            kycBadge.title = `Submitted: ${new Date(latest.submitted_at).toLocaleString()}`;
+          } else if(user && user.kyc_submitted_at){
+            kycBadge.title = `Submitted: ${new Date(user.kyc_submitted_at).toLocaleString()}`;
+          } else {
+            kycBadge.title = `KYC status: ${label}`;
+          }
+        }
+        if(kycDot){
+          kycDot.className = dotClass;
+          if(latest && latest.admin_note) kycDot.title = 'Admin: ' + latest.admin_note;
+          else kycDot.title = 'KYC: ' + label;
+        }
+        currentKycStatus = normalized;
+      } catch(err){
+        console.warn('updateKycBadge error', err);
+        if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Error'; }
+        if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Error'; }
+        currentKycStatus = 'unverified';
+      }
+    }
+
+    // run on load and periodically
+    (function startKycPolling(){
+      updateKycBadge();
+      setInterval(updateKycBadge, 15000); // refresh every 15s
+    })();
+
+    // intercept clicks to kyc.html: if verified, block and show message
+    function interceptKycLinks(){
+      const anchors = Array.from(document.querySelectorAll('a[href$="kyc.html"], a[href*="/kyc.html"]'));
+      anchors.forEach(a => {
+        if(a.dataset.kycHandlerAttached) return;
+        a.dataset.kycHandlerAttached = '1';
+        a.addEventListener('click', function(ev){
+          try {
+            if(currentKycStatus === null) { /* try to update but do not block */ updateKycBadge(); }
+            if(currentKycStatus === 'verified'){
+              ev.preventDefault(); ev.stopPropagation();
+              showToast('Account already verified — no need to open KYC page.', 4000);
+              return false;
+            }
+            // otherwise allow navigation
+          } catch(e){
+            console.warn('KYC link handler error', e);
+          }
+        }, { passive: false });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      interceptKycLinks();
+      // re-run intercept periodically to catch dynamically added links
+      setInterval(interceptKycLinks, 3000);
+    });
+
+    // ---------- rest of your existing logic (unchanged) ----------
+
+    // hamburger toggle (unchanged)
+    (function(){
+      const btn = hamburgerBtn, menu = menuDropdown;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const shown = menu.style.display === 'block';
+        menu.style.display = shown ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', String(!shown));
+        menu.setAttribute('aria-hidden', String(shown));
+      });
+      document.addEventListener('click', (e) => {
+        const container = document.querySelector('.hamburger-container');
+        if(!container.contains(e.target)){
+          menu.style.display = 'none';
+          btn.setAttribute('aria-expanded', 'false');
+          menu.setAttribute('aria-hidden', 'true');
+        }
+      });
+    })();
+
+    function setIndicator(online){
+      if(online){
+        indicatorDot.classList.remove('indicator-offline');
+        indicatorDot.classList.add('indicator-online');
+        indicatorText.innerText = 'Online';
+      } else {
+        indicatorDot.classList.remove('indicator-online');
+        indicatorDot.classList.add('indicator-offline');
+        indicatorText.innerText = 'Offline';
+      }
+    }
+
     // Toggle handler: ONLY ALLOW when user role === 'client'
     async function handleSwitchToggle(e){
       const checked = e.target.checked;
@@ -466,7 +638,6 @@
           lat = pos.coords.latitude; lng = pos.coords.longitude;
         }catch(err){ /* ignore */ }
       }
-
       // optimistic UI update
       setIndicator(checked);
       if(statusSwitch) statusSwitch.disabled = true;
@@ -489,12 +660,12 @@
       }
     }
 
-    // attach listener if present
+    // attach listener
     if(document.getElementById('statusSwitch')){
       document.getElementById('statusSwitch').addEventListener('change', handleSwitchToggle);
     }
 
-    // initial UI state: if no user OR role != client -> set OFFLINE and leave switch unchecked
+    // initial UI state
     (function initFromLocal(){
       const role = getUserRole();
       const isClient = role === 'client';
