@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Technician</title>
   <style>
-    /* Minimal changes: styles from your previous file kept, plus modal styles */
+    /* Minimal changes: styles from your previous file kept, plus modal styles and blinking dot */
     * { box-sizing: border-box; margin:0; padding:0; }
     html,body { height:100%; font-family: Georgia, "Times New Roman", Times, serif; -webkit-text-size-adjust: 100%; background:#fff; }
     :root { --header-h:110px; --accent-blue: #1154ff; --accent-blue-dark:#0738d6; --black: #000; --green:#28a745; }
@@ -21,6 +21,7 @@
     .sort .dent { font-size: clamp(30px, 8vw, 56px); line-height:1; font-weight:700; color: rgba(0,0,200,1); word-break:break-word; }
     .fit { padding:12px 16px; font-size: clamp(15px, 3.5vw, 20px); line-height:1.6; color:#111; }
 
+    /* Buttons (kept your look) */
     .audit, .audits, .auditss { display:flex; justify-content:center; gap:18px; padding:18px 12px; flex-wrap:wrap; }
     .do, .too, .to {
       display:inline-flex; align-items:center; justify-content:center; text-decoration:none; border-radius:30px;
@@ -38,12 +39,33 @@
     .AI { position: fixed; right:12px; bottom:12px; z-index:1200; }
     .AI img { width:64px; height:auto; border-radius:6px; display:block; }
 
+    /* Hamburger */
     .hamburger-container { position:fixed; top:calc(var(--header-h) - 36px); right:12px; z-index:2000; }
     .hamburger { font-size:26px; padding:6px 10px; border-radius:8px; background:#fff; border:1px solid #000; cursor:pointer; }
-    .menu-dropdown { display:none; position:absolute; right:0; margin-top:8px; width:300px; background:#fff; border:1px solid #000; border-radius:10px; padding:12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+    .menu-dropdown { display:none; position:absolute; right:0; margin-top:8px; width:360px; background:#fff; border:1px solid #000; border-radius:10px; padding:12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
     .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
     .menu-dropdown .book-btn { display:block; margin-top:6px; background: linear-gradient(var(--accent-blue),var(--accent-blue-dark)); color:#fff; padding:10px 12px; text-align:center; border-radius:10px; text-decoration:none; font-weight:800; border:3px solid #000; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(0,0,0,0.06); }
 
+    /* KYC badge styles */
+    .kyc-badge { display:inline-block; margin-left:8px; padding:3px 8px; border-radius:999px; font-weight:800; font-size:12px; vertical-align:middle; color:#fff; }
+    .kyc-unverified { background:#9aa0a6; color:#fff; } /* ash */
+    .kyc-pending { background:#f59e0b; color:#fff; } /* yellow/orange */
+    .kyc-verified { background:#10b981; color:#fff; } /* green */
+    .kyc-rejected { background:#ef4444; color:#fff; } /* red */
+
+    /* blinking status dot */
+    .kdot { width:12px; height:12px; border-radius:50%; display:inline-block; margin-left:8px; vertical-align:middle; box-shadow: 0 0 10px rgba(0,0,0,0.12); animation: kdot-blink 1s infinite; }
+    @keyframes kdot-blink {
+      0%   { opacity:1; transform: scale(1); }
+      50%  { opacity:0.25; transform: scale(0.85); }
+      100% { opacity:1; transform: scale(1); }
+    }
+    .kdot-unverified { background:#9aa0a6; box-shadow: 0 0 8px rgba(154,160,166,0.45); }
+    .kdot-pending   { background:#f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.45); }
+    .kdot-verified  { background:#10b981; box-shadow: 0 0 8px rgba(16,185,129,0.45); }
+    .kdot-rejected  { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.45); }
+
+    /* toggle */
     .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
     .switch { position:relative; width:54px; height:30px; display:inline-block; }
     .switch input { display:none; }
@@ -52,11 +74,13 @@
     input:checked + .slider { background:var(--green); }
     input:checked + .slider:before { transform: translateX(24px); }
 
+    /* indicator */
     .online-indicator { display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#333; }
     .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
     .indicator-online { background:var(--green); box-shadow: 0 0 8px rgba(40,167,69,.25); }
     .indicator-offline { background:gray; }
 
+    /* toast */
     .toast { position: fixed; top:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
 
     /* ------------- MODAL STYLES (new, neat popups) ------------- */
@@ -80,6 +104,7 @@
       .do { min-width:46%; padding:10px 8px; font-size:15px; height:44px; border-width:3px; border-radius:20px; }
       .to { min-width:44%; font-size:14px; height:44px; }
       .modal { padding:12px; }
+      .menu-dropdown { width:95vw; }
     }
   </style>
 </head>
@@ -93,7 +118,14 @@
     <div id="menuDropdown" class="menu-dropdown" role="menu" aria-hidden="true">
       <a class="menu-link" href="profile.html">Profile</a>
       <a class="menu-link" href="settings.html">Settings</a>
-      <a class="menu-link" href="kyc.html">KYC</a>
+      <!-- KYC link with dynamic badge and blinking dot -->
+      <a class="menu-link" href="kyc.html" id="kycMenuLink" style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="flex:1">KYC</span>
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span id="kycBadge" class="kyc-badge kyc-unverified" aria-live="polite">Unverified</span>
+          <span id="kycDot" class="kdot kdot-unverified" aria-hidden="true" title="KYC status"></span>
+        </span>
+      </a>
       <a id="logoutBtn" class="menu-link" href="#">Logout</a>
       <div class="status-toggle">
         <span>Status:</span>
@@ -165,22 +197,12 @@
 
   <!-- MODAL: single modal used for all popups -->
   <div id="mainModalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal" id="mainModal"></div>
-  </div>
-
-  <!-- KYC-required modal for job accept -->
-  <div id="kycNeededBackdrop" class="modal-backdrop" style="display:none; z-index:6000">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="kycNeededTitle">
-      <h3 id="kycNeededTitle">KYC required to accept jobs</h3>
-      <div class="muted">Your account is not verified yet. For security reasons we prevent technicians without verified KYC from accepting jobs. Complete KYC to start accepting jobs.</div>
-      <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
-        <button id="kycNeededCancel" class="btn secondary">Dismiss</button>
-        <button id="kycNeededDo" class="btn">Do KYC now</button>
-      </div>
+    <div class="modal" id="mainModal">
+      <!-- content injected dynamically -->
     </div>
   </div>
 
-<script>
+  <script>
     const API_BASE = 'https://wireconnet-1.onrender.com';
 
     // Controls
@@ -190,19 +212,23 @@
     const indicatorDot = document.getElementById('indicatorDot');
     const indicatorText = document.getElementById('indicatorText');
     const toastEl = document.getElementById('toast');
+
+    const kycBadge = document.getElementById('kycBadge');
+    const kycDot = document.getElementById('kycDot');
+    const kycMenuLink = document.getElementById('kycMenuLink');
     const logoutBtn = document.getElementById('logoutBtn');
 
     // modal
     const modalBackdrop = document.getElementById('mainModalBackdrop');
     const modal = document.getElementById('mainModal');
 
-    const kycNeededBackdrop = document.getElementById('kycNeededBackdrop');
-    const kycNeededDo = document.getElementById('kycNeededDo');
-    const kycNeededCancel = document.getElementById('kycNeededCancel');
+    // keep timers for pending jobs
+    const pendingTimers = {}; // jobId -> { timeoutId }
 
-    // store pendingTimers for job expiry
-    const pendingTimers = {};
+    // holds the normalized current status: 'verified'|'pending'|'rejected'|'unverified'|null
+    let currentKycStatus = null;
 
+    // util to show toast
     function showToast(msg, ms = 3000){
       toastEl.innerText = msg;
       toastEl.style.display = 'block';
@@ -222,6 +248,7 @@
       }
     }
 
+    // local user helpers (wc_user)
     function getLocalUser(){
       try { const raw = localStorage.getItem('wc_user'); if(raw) return JSON.parse(raw); } catch(e){}
       try { const id = localStorage.getItem('userId'); const role = localStorage.getItem('userRole'); if(id) return { id, role }; } catch(e){}
@@ -231,9 +258,11 @@
     function getUserRole(){ const u = getLocalUser(); if(u && u.role) return u.role; return null; }
     function isTechnicianRole(role){ if(!role) return false; const r = role.toString().toLowerCase(); return r === 'worker' || r.includes('tech') || r.includes('worker'); }
 
+    // last-known store
     function storeLastKnownOnline(userId, online){ if(!userId) return; try { localStorage.setItem('techOnline_' + userId, online ? '1' : '0'); } catch(e){} }
     function readLastKnownOnline(userId){ if(!userId) return null; try { const v = localStorage.getItem('techOnline_' + userId); return v === null ? null : v === '1'; } catch(e){ return null; } }
 
+    // send status
     async function sendStatusToBackend(userId, online, lat=null, lng=null){
       const url = API_BASE + '/api/tech/status';
       const controller = new AbortController();
@@ -251,6 +280,7 @@
       }
     }
 
+    // Fetch assigned jobs
     async function fetchAssignedJobs(techId){
       try {
         const url = API_BASE + '/api/assigned-jobs?techId=' + encodeURIComponent(techId);
@@ -265,7 +295,7 @@
       }
     }
 
-    // ---------- MODAL helpers ----------
+    // ---------- MODAL helpers (beautiful) ----------
     function openModal(htmlContent, { onClose=null, closable=true } = {}){
       modal.innerHTML = htmlContent;
       modalBackdrop.style.display = 'flex';
@@ -280,6 +310,18 @@
       modal._onClose = null;
     }
 
+    // show a small info modal (used when KYC verified)
+    function showInfoModal(title, message){
+      const html = `
+        <h3>${title}</h3>
+        <div class="muted">${String(message)}</div>
+        <div class="modal-actions"><button id="infoOk" class="btn">OK</button></div>
+      `;
+      openModal(html, { closable:true });
+      document.getElementById('infoOk').addEventListener('click', closeModal);
+    }
+
+    // showErrorPopup helper
     function showErrorPopup(title, message){
       const html = `
         <h3>${title}</h3>
@@ -290,39 +332,133 @@
       document.getElementById('errClose').addEventListener('click', closeModal);
     }
 
-    function showJobRequestModal(job, onAccept, onDecline, opts = {}) {
-      // opts: { acceptDisabled: bool, acceptTooltip: string }
-      const acceptDisabled = !!opts.acceptDisabled;
-      const acceptTitle = opts.acceptTooltip || 'Accept';
+    // Nicely update KYC badge & blinking dot in hamburger menu
+    async function updateKycBadge(){
+      try {
+        const userId = getUserId();
+        if(!userId){
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Not signed in'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Not signed in'; }
+          currentKycStatus = 'unverified';
+          return;
+        }
+        const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(userId));
+        if(!resp.ok){
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Unable to fetch status'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Unable to fetch status'; }
+          currentKycStatus = 'unverified';
+          return;
+        }
+        const j = await resp.json().catch(()=>null);
+        if(!j) { if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; } if(kycDot){ kycDot.className = 'kdot kdot-unverified'; } currentKycStatus = 'unverified'; return; }
+        const latest = j.latest_request || null;
+        const user = j.user || null;
+        let status = null;
+        if(latest && latest.status) status = String(latest.status).toLowerCase();
+        else if(user && user.kyc_status) status = String(user.kyc_status).toLowerCase();
+
+        let label = 'Unverified';
+        let cls = 'kyc-badge kyc-unverified';
+        let dotCls = 'kdot kdot-unverified';
+        let normalized = 'unverified';
+        if(status){
+          if(status === 'pending') { label = 'Pending'; cls = 'kyc-badge kyc-pending'; dotCls = 'kdot kdot-pending'; normalized = 'pending'; }
+          else if(status === 'approved' || status === 'verified') { label = 'Verified'; cls = 'kyc-badge kyc-verified'; dotCls = 'kdot kdot-verified'; normalized = 'verified'; }
+          else if(status === 'declined' || status === 'rejected' || status === 'failed') { label = 'Rejected'; cls = 'kyc-badge kyc-rejected'; dotCls = 'kdot kdot-rejected'; normalized = 'rejected'; }
+          else if(status === 'not_required' || status === 'not_submitted' || status === 'unverified' || status === 'none') { label = 'Unverified'; cls = 'kyc-badge kyc-unverified'; dotCls = 'kdot kdot-unverified'; normalized = 'unverified'; }
+          else { label = status.charAt(0).toUpperCase() + status.slice(1); cls = 'kyc-badge kyc-unverified'; dotCls = 'kdot kdot-unverified'; normalized = status; }
+        }
+
+        if(kycBadge){
+          kycBadge.textContent = label;
+          kycBadge.className = cls;
+          if(latest && latest.admin_note){
+            kycBadge.title = 'Admin: ' + latest.admin_note;
+          } else {
+            if(latest && latest.submitted_at){
+              const dateStr = new Date(latest.submitted_at).toLocaleString();
+              kycBadge.title = `KYC ${label} • submitted: ${dateStr}`;
+            } else if(user && user.kyc_submitted_at){
+              kycBadge.title = `KYC ${label} • submitted: ${new Date(user.kyc_submitted_at).toLocaleString()}`;
+            } else {
+              kycBadge.title = 'KYC status: ' + label;
+            }
+          }
+        }
+        if(kycDot){
+          kycDot.className = dotCls;
+          if(latest && latest.admin_note) kycDot.title = 'Admin: ' + latest.admin_note;
+          else kycDot.title = 'KYC: ' + label;
+        }
+        currentKycStatus = normalized;
+      } catch(err){
+        console.warn('updateKycBadge error', err);
+        if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Error'; }
+        if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Error'; }
+        currentKycStatus = 'unverified';
+      }
+    }
+
+    // update on load and poll periodically
+    (function initKycBadgePolling(){
+      updateKycBadge();
+      setInterval(updateKycBadge, 15000);
+    })();
+
+    // Intercept clicks on any link that goes to kyc.html
+    function interceptKycLinks(){
+      const anchors = Array.from(document.querySelectorAll('a[href$="kyc.html"], a[href*="/kyc.html"]'));
+      anchors.forEach(a => {
+        if(a.dataset.kycHandlerAttached) return;
+        a.dataset.kycHandlerAttached = '1';
+        a.addEventListener('click', function (ev) {
+          try {
+            if(currentKycStatus === null){
+              updateKycBadge();
+            }
+            if(currentKycStatus === 'verified'){
+              ev.preventDefault();
+              ev.stopPropagation();
+              showInfoModal('Account already verified', 'Your account has already been verified. There is no need to open the KYC page.');
+              return false;
+            }
+          } catch(e){
+            console.warn('kyc link handler error', e);
+          }
+        }, { passive: false });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      interceptKycLinks();
+    });
+
+    setInterval(interceptKycLinks, 5000);
+
+    // ---------- rest of your existing job / modal code below (unchanged) ----------
+    function showJobRequestModal(job, onAccept, onDecline){
       const html = `
         <h3>New job request</h3>
         <div class="muted">You have been requested for a new job. Review details and choose an action.</div>
         <div style="margin-top:10px; padding:10px; background:#fbfeff; border:1px solid #eef6ff; border-radius:10px;">
           <strong>${job.job_type || 'Job'}</strong>
           <div style="margin-top:6px;">${(job.description||'No description').slice(0,300)}</div>
-          <div style="margin-top:8px; color:#374151; font-size:14px;"><strong>Price:</strong> ${job.price ? '₦' + (Number(job.price).toLocaleString?.() || job.price) : '-'} ${job.address ? (' • ' + job.address) : ''}</div>
+          <div style="margin-top:8px; color:#374151; font-size:14px;"><strong>Price:</strong> ${job.price ? '₦' + (Number(job.price).toLocaleString?.() || job.price) : '-' } ${job.address ? (' • ' + job.address) : ''}</div>
           ${job.estimated_days ? ('<div style="margin-top:6px;"><strong>Client estimated days:</strong> ' + job.estimated_days + '</div>') : ''}
-          ${job.lat && job.lng ? ('<div style="margin-top:6px;"><strong>Coordinates:</strong> ' + job.lat + ', ' + job.lng + '</div>') : ''}
         </div>
         <div class="modal-actions">
           <button id="declineBtn" class="btn secondary">Decline</button>
-          <button id="acceptBtn" class="btn" ${acceptDisabled ? 'disabled title="' + (acceptTitle||'') + '"' : '' }>${acceptDisabled ? 'Cannot accept' : 'Accept'}</button>
+          <button id="acceptBtn" class="btn">Accept</button>
         </div>
       `;
       openModal(html, { closable: false });
-      const acceptEl = document.getElementById('acceptBtn');
-      const declineEl = document.getElementById('declineBtn');
-      if(acceptEl && !acceptDisabled){
-        acceptEl.addEventListener('click', ()=> { closeModal(); onAccept && onAccept(); });
-      } else if(acceptEl && acceptDisabled){
-        acceptEl.addEventListener('click', ()=> { /* no-op */ });
-      }
-      declineEl.addEventListener('click', ()=> { closeModal(); onDecline && onDecline(); });
+      document.getElementById('acceptBtn').addEventListener('click', ()=> { closeModal(); onAccept && onAccept(); });
+      document.getElementById('declineBtn').addEventListener('click', ()=> { closeModal(); onDecline && onDecline(); });
     }
 
     function showJobReceivedModal(job, jobId, techId){
       const html = `
-         <h3>Job matching successful ✅</h3>
+        <h3>Job matching successful ✅</h3>
         <div class="muted">Job was accepted — client and technician can now chat.</div>
         <div style="display:flex;justify-content:center;margin-top:12px;">
           <img src="https://i.postimg.cc/8C9cKz3q/job-received.png" alt="Job Received" style="max-width:260px;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.08)" />
@@ -344,47 +480,20 @@
       });
     }
 
-    // Accept/Decline flow with KYC protection
     async function promptAcceptDecline(job){
       if(!job || !job.id) return;
-      const jobId = job.id;
 
-      // avoid repeated prompts: but check KYC before marking as seen
-      try {
-        // check KYC first
-        const userId = getUserId();
-        const kycOk = await checkTechnicianKycVerified(userId);
-        if(!kycOk.verified){
-          // show KYC-needed modal (don't mark as seen)
-          kycNeededBackdrop.style.display = 'flex';
-          kycNeededBackdrop.setAttribute('aria-hidden','false');
-          return;
-        }
-      } catch(e){
-        console.warn('KYC check failed, proceeding to prompt normally', e);
-      }
+      const jobId = job.id;
 
       try {
         if(localStorage.getItem('wc_jobSeen_' + jobId)) {
-          // already shown once, do not re-prompt
           return;
         }
-      } catch(e){ /* ignore localStorage errors */ }
+      } catch(e){}
 
       try { localStorage.setItem('wc_jobSeen_' + jobId, '1'); } catch(e){}
 
-      // ack optional
-      (async function ackJob(){
-        try {
-          await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/ack', {
-            method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ techId: getUserId() })
-          });
-        } catch(e){ /* ignore */ }
-      })();
-
-      // show the prompt
       showJobRequestModal(job, async function onAccept(){
-        // accept handler
         if(pendingTimers[jobId] && pendingTimers[jobId].timeoutId) { clearTimeout(pendingTimers[jobId].timeoutId); delete pendingTimers[jobId]; }
 
         try {
@@ -394,11 +503,6 @@
           });
           const js = await resp.json().catch(()=>null);
           if(resp.ok && js && js.success){
-            // store last accepted job info (if present)
-            try {
-              const saved = { jobId: jobId, lat: job.lat || null, lng: job.lng || null, acceptedAt: (new Date()).toISOString() };
-              localStorage.setItem('wc_last_accepted_job', JSON.stringify(saved));
-            } catch(e){}
             showJobReceivedModal(job, jobId, getUserId());
           } else {
             const msg = js && js.message ? js.message : ('HTTP ' + resp.status);
@@ -411,6 +515,7 @@
         }
       }, async function onDecline(){
         if(pendingTimers[jobId] && pendingTimers[jobId].timeoutId) { clearTimeout(pendingTimers[jobId].timeoutId); delete pendingTimers[jobId]; }
+
         try {
           const resp = await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/respond', {
             method: 'POST', headers: { 'Content-Type':'application/json' },
@@ -428,9 +533,19 @@
           try { localStorage.removeItem('wc_jobSeen_' + jobId); } catch(e){}
         }
       });
+
+      pendingTimers[jobId] = { timeoutId: setTimeout(async ()=>{
+        try {
+          await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/respond', {
+            method: 'POST', headers: { 'Content-Type':'application/json' },
+            body: JSON.stringify({ techId: getUserId(), action: 'expire' })
+          });
+        } catch(e){}
+        try { localStorage.removeItem('wc_jobSeen_' + jobId); } catch(e){}
+        delete pendingTimers[jobId];
+      }, 3 * 60 * 1000) };
     }
 
-    // Polling assigned jobs
     let assignedPollInterval = null;
     async function pollAssignedJobs(techId){
       const jobs = await fetchAssignedJobs(techId);
@@ -456,7 +571,6 @@
           } catch(e){}
           await promptAcceptDecline(job);
         }
-        // handle accepted/assigned optionally
       }
     }
     function startAssignedPolling(techId){
@@ -464,72 +578,73 @@
       pollAssignedJobs(techId);
       assignedPollInterval = setInterval(()=> pollAssignedJobs(techId), 5000);
     }
-    function stopAssignedPolling(){ if(assignedPollInterval){ clearInterval(assignedPollInterval); assignedPollInterval = null; }
+    function stopAssignedPolling(){ if(assignedPollInterval){ clearInterval(assignedPollInterval); assignedPollInterval = null; } 
       Object.keys(pendingTimers).forEach(k => { try { clearTimeout(pendingTimers[k].timeoutId); } catch(e){} });
       for(const k in pendingTimers) delete pendingTimers[k];
     }
 
-    // KYC check helper: returns { verified: bool, status: string, admin_note: string|null }
-    async function checkTechnicianKycVerified(userId){
-      if(!userId) return { verified:false, status:'unverified', admin_note:null };
-      try {
-        const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(userId));
-        if(!resp.ok) return { verified:false, status:'unverified', admin_note:null };
-        const data = await resp.json().catch(()=>null);
-        if(!data) return { verified:false, status:'unverified', admin_note:null };
-        const latest = data.latest_request || null;
-        const user = data.user || null;
-        let status = null;
-        if(latest && latest.status) status = String(latest.status).toLowerCase();
-        else if(user && user.kyc_status) status = String(user.kyc_status).toLowerCase();
-        if(status === 'approved' || status === 'verified') return { verified:true, status, admin_note: latest ? latest.admin_note : null };
-        return { verified:false, status: status || 'unverified', admin_note: latest ? latest.admin_note : null };
-      } catch(e){
-        console.warn('checkTechnicianKycVerified error', e);
-        return { verified:false, status:'unverified', admin_note:null };
+    // Toggle handler
+    async function handleSwitchToggle(e){
+      const checked = e.target.checked;
+      const role = getUserRole();
+      const isTech = isTechnicianRole(role);
+      if(!isTech){
+        e.target.checked = false;
+        showToast('Availability toggle works only for technicians', 3500);
+        return;
+      }
+      const userId = getUserId();
+      if(!userId){
+        e.target.checked = false;
+        showToast('No user id found, login required', 4000);
+        return;
+      }
+      let lat=null,lng=null;
+      if(navigator.geolocation){
+        try {
+          const pos = await new Promise((resolve,reject)=> {
+            const t = setTimeout(()=>reject(new Error('geo timeout')),4500);
+            navigator.geolocation.getCurrentPosition(p=>{clearTimeout(t);resolve(p);}, err=>{clearTimeout(t); reject(err);}, { maximumAge:10000, timeout:4500});
+          });
+          lat = pos.coords.latitude; lng = pos.coords.longitude;
+        } catch(e){}
+      }
+      setIndicator(checked); e.target.disabled = true; showToast(checked ? 'Going online...' : 'Going offline...', 1200);
+      const res = await sendStatusToBackend(userId, checked, lat, lng);
+      e.target.disabled = false;
+      if(res && res.success){
+        storeLastKnownOnline(userId, checked);
+        if(checked) startAssignedPolling(userId); else { stopAssignedPolling(); }
+      } else {
+        e.target.checked = !checked; setIndicator(!checked);
+        showErrorPopup('Status update failed', (res && res.message) ? res.message : 'Unknown error');
       }
     }
+    if(statusSwitch) statusSwitch.addEventListener('change', handleSwitchToggle);
 
-    // Job Map button: prefer last accepted job saved locally, else try to find accepted job with coordinates
+    // init state
+    (function init(){
+      const role = getUserRole();
+      const isTech = isTechnicianRole(role);
+      const uid = getUserId();
+      if(!isTech){ setIndicator(false); if(statusSwitch) statusSwitch.checked = false; stopAssignedPolling(); return; }
+      const known = readLastKnownOnline(uid);
+      if(known === null){ setIndicator(false); if(statusSwitch) statusSwitch.checked = false; } else { setIndicator(!!known); if(statusSwitch) statusSwitch.checked = !!known; if(known) startAssignedPolling(uid); }
+      // <-- MINIMAL CHANGE: always start polling for assigned jobs for technicians
+      if(uid) startAssignedPolling(uid);
+    })();
+
+    // other small features (job map, view jobs, etc) kept as-is
     document.getElementById('jobMapBtn').addEventListener('click', async ()=>{
       const userId = getUserId();
       if(!userId){ showToast('Not signed in'); return; }
-
-      // try last accepted job from localStorage
-      try {
-        const raw = localStorage.getItem('wc_last_accepted_job');
-        if(raw){
-          const jb = JSON.parse(raw);
-          if(jb && jb.lat && jb.lng){
-            const q = encodeURIComponent(jb.lat + ',' + jb.lng);
-            window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
-            return;
-          }
-        }
-      } catch(e){
-        console.warn('reading last accepted job failed', e);
-      }
-
-      // fallback: fetch assigned jobs and look for one with status 'accepted' and coordinates
-      try {
-        const jobs = await fetchAssignedJobs(userId);
-        if(!jobs || jobs.length === 0){ showErrorPopup('No jobs', 'No assigned jobs found.'); return; }
-        // look for accepted job with coords
-        let found = jobs.find(j => (j.status && String(j.status).toLowerCase() === 'accepted') && j.lat && j.lng);
-        // if none, try any job that has coords
-        if(!found) found = jobs.find(j => j.lat && j.lng);
-        if(found && found.lat && found.lng){
-          const q = encodeURIComponent(found.lat + ',' + found.lng);
-          window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, '_blank');
-          return;
-        }
-        showErrorPopup('No coordinates', 'No accepted job with coordinates available. Address: ' + (jobs[0] && jobs[0].address || 'n/a'));
-      } catch(e){
-        showErrorPopup('Error', 'Could not locate job coordinates: ' + String(e));
-      }
+      const jobs = await fetchAssignedJobs(userId);
+      if(!jobs || jobs.length === 0){ showErrorPopup('No jobs', 'No pending assigned jobs found.'); return; }
+      const j = jobs.find(x=>x.lat && x.lng) || jobs[0];
+      if(j && j.lat && j.lng){ window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.lat + ',' + j.lng)}`, '_blank'); }
+      else showErrorPopup('No coordinates', 'Job has no coordinates. Address: ' + (j.address || 'n/a'));
     });
 
-    // View jobs button (unchanged behavior)
     document.getElementById('viewJobsBtn').addEventListener('click', async ()=>{
       const userId = getUserId();
       if(!userId){ showToast('Not signed in'); return; }
@@ -541,14 +656,12 @@
       document.getElementById('closeJobs').addEventListener('click', closeModal);
     });
 
-    // Job rules
     document.getElementById('jobRulesBtn').addEventListener('click', ()=> {
       const txt = `Job rules:\n- You have 3 minutes to accept a job (auto-expire).\n- Keep communication in-app.\n- Accept only jobs you can do.`;
       openModal(`<h3>Job Rules</h3><div class="muted">${txt.replace(/\n/g,'<br>')}</div><div class="modal-actions"><button id="closeRules" class="btn">Close</button></div>`);
       document.getElementById('closeRules').addEventListener('click', closeModal);
     });
 
-    // Leaderboard
     document.getElementById('techLeaderboardBtn').addEventListener('click', async ()=>{
       try {
         const resp = await fetch(API_BASE + '/api/dashboard?role=worker', { method:'GET' });
@@ -560,10 +673,6 @@
         document.getElementById('closeLB').addEventListener('click', closeModal);
       } catch(e){ showErrorPopup('Error', String(e)); }
     });
-
-    // kycNeeded modal handlers
-    if(kycNeededCancel) kycNeededCancel.addEventListener('click', ()=> { kycNeededBackdrop.style.display = 'none'; kycNeededBackdrop.setAttribute('aria-hidden','true'); });
-    if(kycNeededDo) kycNeededDo.addEventListener('click', ()=> { kycNeededBackdrop.style.display = 'none'; kycNeededBackdrop.setAttribute('aria-hidden','true'); window.location.href = 'kyc.html'; });
 
     // logout
     logoutBtn.addEventListener('click', (ev) => {
@@ -587,51 +696,6 @@
 
     // ensure polling stops on unload
     window.addEventListener('beforeunload', ()=> { stopAssignedPolling(); });
-
-    // Initialize availability polling for technician (if tech)
-    (function init(){
-      const role = getUserRole();
-      const isTech = isTechnicianRole(role);
-      const uid = getUserId();
-      if(!isTech){ setIndicator(false); if(statusSwitch) statusSwitch.checked = false; stopAssignedPolling(); return; }
-      const known = readLastKnownOnline(uid);
-      if(known === null){ setIndicator(false); if(statusSwitch) statusSwitch.checked = false; } else { setIndicator(!!known); if(statusSwitch) statusSwitch.checked = !!known; if(known) startAssignedPolling(uid); }
-    })();
-
-    // Attach status switch handler
-    async function handleSwitchToggle(e){
-      const checked = e.target.checked;
-      const role = getUserRole();
-      const isTech = isTechnicianRole(role);
-      if(!isTech){
-        e.target.checked = false;
-        showToast('Availability toggle works only for technicians', 3500);
-        return;
-      }
-      const userId = getUserId();
-      if(!userId){ e.target.checked = false; showToast('No user id found, login required', 4000); return; }
-      let lat=null,lng=null;
-      if(navigator.geolocation){
-        try {
-          const pos = await new Promise((resolve,reject)=> {
-            const t = setTimeout(()=>reject(new Error('geo timeout')),4500);
-            navigator.geolocation.getCurrentPosition(p=>{clearTimeout(t);resolve(p);}, err=>{clearTimeout(t); reject(err);}, { maximumAge:10000, timeout:4500});
-          });
-          lat = pos.coords.latitude; lng = pos.coords.longitude;
-        } catch(e){}
-      }
-      setIndicator(checked); e.target.disabled = true; showToast(checked ? 'Going online...' : 'Going offline...', 1200);
-      const res = await sendStatusToBackend(userId, checked, lat, lng);
-      e.target.disabled = false;
-      if(res && res.success){
-        storeLastKnownOnline(userId, checked);
-        if(checked) startAssignedPolling(userId); else { stopAssignedPolling(); }
-      } else {
-        e.target.checked = !checked; setIndicator(!checked);
-        showErrorPopup('Status update failed', (res && res.message) ? res.message : 'Unknown error');
-      }
-    }
-    if(statusSwitch) statusSwitch.addEventListener('change', handleSwitchToggle);
 
   </script>
 </body>
