@@ -378,14 +378,14 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- Book KYC Prompt Modal (keeps the book button enabled, shows prompt only) -->
+  <!-- Book KYC Prompt Modal (keeps the book button enabled, shows prompt only, no continue) -->
   <div id="bookKycBackdrop" class="book-kyc-backdrop" aria-hidden="true">
     <div class="book-kyc-modal" role="dialog" aria-modal="true" aria-labelledby="bookKycTitle">
       <h4 id="bookKycTitle">Verify your account to unlock trust</h4>
       <div class="muted" id="bookKycMessage">We noticed your account is not verified. Verifying your identity helps you get more trusted bookings and access to higher-value jobs.</div>
       <div class="book-kyc-actions">
-        
         <button id="bookKycDo" class="btn">Do KYC now</button>
+        <button id="bookKycClose" class="btn alt">Close</button>
       </div>
     </div>
   </div>
@@ -412,7 +412,7 @@
     const bookKycBackdrop = document.getElementById('bookKycBackdrop');
     const bookKycMessage = document.getElementById('bookKycMessage');
     const bookKycDo = document.getElementById('bookKycDo');
-    const bookKycContinue = document.getElementById('bookKycContinue');
+    const bookKycClose = document.getElementById('bookKycClose');
 
     // small helper: show toast
     function showToast(msg, ms = 3000){
@@ -605,65 +605,61 @@
       setInterval(interceptKycLinks, 3000);
     });
 
-    // ---------- BOOK button interception (new) ----------
-    // Keep the button enabled. On click: check KYC and if not verified show a friendly modal with two choices.
-    (function attachBookHandler(){
-      // find primary Book A Job anchor - prefer the main large button (class 'do' linking to book.html)
-      const bookAnchor = document.querySelector('a.do[href="book.html"], a.book-btn[href="book.html"], a[href="book.html"]');
-      if(!bookAnchor) return;
-      // make sure we only bind once
-      if(bookAnchor.dataset.bookHandlerAttached) return;
-      bookAnchor.dataset.bookHandlerAttached = '1';
+    // ---------- BOOK button interception (strict: block unless verified) ----------
+    (function attachBookHandlers(){
+      // select all anchors that point to book.html (exact or relative)
+      const bookAnchors = Array.from(document.querySelectorAll('a[href*="book.html"]'));
+      if(!bookAnchors || bookAnchors.length === 0) return;
 
-      bookAnchor.addEventListener('click', async function(ev){
-        // allow open-in-new-tab and modifier keys to function normally
-        if(ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
-        ev.preventDefault();
+      bookAnchors.forEach(bookAnchor => {
+        if(bookAnchor.dataset.bookHandlerAttached) return;
+        bookAnchor.dataset.bookHandlerAttached = '1';
 
-        // ensure latest kyc status is loaded
-        await updateKycBadge();
+        bookAnchor.addEventListener('click', async function(ev){
+          // allow modifier keys to open in new tab/window
+          if(ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+          ev.preventDefault();
 
-        // if verified -> navigate
-        if(currentKycStatus === 'verified'){
-          window.location.href = bookAnchor.href;
-          return;
-        }
+          // ensure latest kyc status is loaded
+          await updateKycBadge();
 
-        // otherwise show prompt - keep the button enabled (user can still choose Continue to Book)
-        // Craft message depending on status (admin note if rejected)
-        let message = `Your account is currently "${currentKycStatus || 'unverified'}". Verifying your identity improves trust and may be required for some jobs.`;
-        try {
-          // try to fetch admin note from /api/kyc/status/:userId for extra context (non-blocking)
-          const uid = getUserId();
-          if(uid){
-            const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(uid));
-            if(resp.ok){
-              const data = await resp.json().catch(()=>null);
-              const latest = data && data.latest_request ? data.latest_request : null;
-              if(latest && latest.admin_note){
-                message += '\n\nAdmin note: ' + latest.admin_note;
+          // If verified, proceed normally to booking page
+          if(currentKycStatus === 'verified'){
+            window.location.href = bookAnchor.href;
+            return;
+          }
+
+          // Not verified -> show modal and DO NOT offer continue-to-book
+          let message = `Your account is currently "${currentKycStatus || 'unverified'}". Verifying your identity improves trust and is required to book some jobs.`;
+          try {
+            const uid = getUserId();
+            if(uid){
+              const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(uid));
+              if(resp.ok){
+                const data = await resp.json().catch(()=>null);
+                const latest = data && data.latest_request ? data.latest_request : null;
+                if(latest && latest.admin_note){
+                  message += '\n\nAdmin note: ' + latest.admin_note;
+                }
               }
             }
-          }
-        } catch(e){ /* ignore errors */ }
+          } catch(e){ /* ignore */ }
 
-        // show modal (fill message)
-        bookKycMessage.innerText = message;
-        bookKycBackdrop.style.display = 'flex';
-        bookKycBackdrop.setAttribute('aria-hidden','false');
-
-        // attach handlers (one-time)
-        bookKycDo.onclick = function(){
-          bookKycBackdrop.style.display = 'none';
-          try { window.location.href = 'kyc.html'; } catch(e){ /* fallback */ window.location.assign('kyc.html'); }
-        };
-        bookKycContinue.onclick = function(){
-          bookKycBackdrop.style.display = 'none';
-          // continue to the booking flow
-          try { window.location.href = bookAnchor.href; } catch(e){ window.location.assign(bookAnchor.href); }
-        };
-      }, { passive: false });
+          bookKycMessage.innerText = message;
+          bookKycBackdrop.style.display = 'flex';
+          bookKycBackdrop.setAttribute('aria-hidden','false');
+        }, { passive: false });
+      });
     })();
+
+    // modal handlers: Do KYC now -> open kyc page; Close -> hide modal
+    bookKycDo.addEventListener('click', ()=> {
+      bookKycBackdrop.style.display = 'none';
+      try { window.location.href = 'kyc.html'; } catch(e){ window.location.assign('kyc.html'); }
+    });
+    bookKycClose.addEventListener('click', ()=> {
+      bookKycBackdrop.style.display = 'none';
+    });
 
     // ---------- rest of your existing logic (unchanged) ----------
 
