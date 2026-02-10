@@ -209,6 +209,23 @@
     .kdot-verified   { background:#10b981; box-shadow: 0 0 8px rgba(16,185,129,0.45); }
     .kdot-rejected   { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.45); }
 
+    /* small modal for "Do KYC?" (keeps visual minimal & consistent) */
+    .book-kyc-backdrop {
+      position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.45); z-index: 6000;
+    }
+    .book-kyc-modal {
+      width: 92%; max-width: 420px; background: #fff; padding:16px; border-radius:10px; box-shadow: 0 18px 48px rgba(2,6,23,0.25);
+      font-family: inherit;
+    }
+    .book-kyc-modal h4 { margin:0 0 8px; font-size:18px; }
+    .book-kyc-modal .muted { color:#374151; margin-bottom:12px; font-size:14px; }
+    .book-kyc-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+    .book-kyc-actions .btn {
+      padding:8px 12px; border-radius:8px; border:0; font-weight:800; cursor:pointer;
+      background: linear-gradient(#1154ff,#0738d6); color:#fff;
+    }
+    .book-kyc-actions .btn.alt { background:#fff; color:#111; border:1px solid #e6e9ef; font-weight:700; }
+
     /* keep existing button classes for Learn More, etc. */
     .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
     .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
@@ -361,6 +378,18 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Book KYC Prompt Modal (keeps the book button enabled, shows prompt only) -->
+  <div id="bookKycBackdrop" class="book-kyc-backdrop" aria-hidden="true">
+    <div class="book-kyc-modal" role="dialog" aria-modal="true" aria-labelledby="bookKycTitle">
+      <h4 id="bookKycTitle">Verify your account to unlock trust</h4>
+      <div class="muted" id="bookKycMessage">We noticed your account is not verified. Verifying your identity helps you get more trusted bookings and access to higher-value jobs.</div>
+      <div class="book-kyc-actions">
+        <button id="bookKycContinue" class="btn alt">Continue to Book</button>
+        <button id="bookKycDo" class="btn">Do KYC now</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // backend base
     const API_BASE = 'https://wireconnet-1.onrender.com';
@@ -378,6 +407,12 @@
     const kycBadge = document.getElementById('kycBadge');
     const kycDot = document.getElementById('kycDot');
     const kycMenuLink = document.getElementById('kycMenuLink');
+
+    // Book prompt modal elements
+    const bookKycBackdrop = document.getElementById('bookKycBackdrop');
+    const bookKycMessage = document.getElementById('bookKycMessage');
+    const bookKycDo = document.getElementById('bookKycDo');
+    const bookKycContinue = document.getElementById('bookKycContinue');
 
     // small helper: show toast
     function showToast(msg, ms = 3000){
@@ -399,7 +434,7 @@
       }
     }
 
-    // get user from storage (try wc_user object then fallback)
+      // get user from storage (try wc_user object then fallback)
     function getLocalUser(){
       try {
         const raw = localStorage.getItem('wc_user');
@@ -468,7 +503,6 @@
       try {
         const userId = getUserId();
         if(!userId){
-          // not signed in: show Unverified (ash) and tooltip
           if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Not signed in'; }
           if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Not signed in'; }
           currentKycStatus = 'unverified';
@@ -513,13 +547,12 @@
         if(kycBadge){
           kycBadge.textContent = label;
           kycBadge.className = badgeClass;
-          // if admin note present, set tooltip to it so user can hover
           if(latest && latest.admin_note){
             kycBadge.title = 'Admin: ' + latest.admin_note;
           } else if(latest && latest.submitted_at){
-            kycBadge.title = `Submitted: ${new Date(latest.submitted_at).toLocaleString()}`;
+            try { kycBadge.title = `Submitted: ${new Date(latest.submitted_at).toLocaleString()}` } catch(e){ kycBadge.title = `Submitted: ${latest.submitted_at}` }
           } else if(user && user.kyc_submitted_at){
-            kycBadge.title = `Submitted: ${new Date(user.kyc_submitted_at).toLocaleString()}`;
+            try { kycBadge.title = `Submitted: ${new Date(user.kyc_submitted_at).toLocaleString()}` } catch(e){ kycBadge.title = `Submitted: ${user.kyc_submitted_at}` }
           } else {
             kycBadge.title = `KYC status: ${label}`;
           }
@@ -552,7 +585,7 @@
         a.dataset.kycHandlerAttached = '1';
         a.addEventListener('click', function(ev){
           try {
-            if(currentKycStatus === null) { /* try to update but do not block */ updateKycBadge(); }
+            if(currentKycStatus === null) { updateKycBadge(); }
             if(currentKycStatus === 'verified'){
               ev.preventDefault(); ev.stopPropagation();
               showToast('Account already verified — no need to open KYC page.', 4000);
@@ -571,6 +604,66 @@
       // re-run intercept periodically to catch dynamically added links
       setInterval(interceptKycLinks, 3000);
     });
+
+    // ---------- BOOK button interception (new) ----------
+    // Keep the button enabled. On click: check KYC and if not verified show a friendly modal with two choices.
+    (function attachBookHandler(){
+      // find primary Book A Job anchor - prefer the main large button (class 'do' linking to book.html)
+      const bookAnchor = document.querySelector('a.do[href="book.html"], a.book-btn[href="book.html"], a[href="book.html"]');
+      if(!bookAnchor) return;
+      // make sure we only bind once
+      if(bookAnchor.dataset.bookHandlerAttached) return;
+      bookAnchor.dataset.bookHandlerAttached = '1';
+
+      bookAnchor.addEventListener('click', async function(ev){
+        // allow open-in-new-tab and modifier keys to function normally
+        if(ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+        ev.preventDefault();
+
+        // ensure latest kyc status is loaded
+        await updateKycBadge();
+
+        // if verified -> navigate
+        if(currentKycStatus === 'verified'){
+          window.location.href = bookAnchor.href;
+          return;
+        }
+
+        // otherwise show prompt - keep the button enabled (user can still choose Continue to Book)
+        // Craft message depending on status (admin note if rejected)
+        let message = `Your account is currently "${currentKycStatus || 'unverified'}". Verifying your identity improves trust and may be required for some jobs.`;
+        try {
+          // try to fetch admin note from /api/kyc/status/:userId for extra context (non-blocking)
+          const uid = getUserId();
+          if(uid){
+            const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(uid));
+            if(resp.ok){
+              const data = await resp.json().catch(()=>null);
+              const latest = data && data.latest_request ? data.latest_request : null;
+              if(latest && latest.admin_note){
+                message += '\n\nAdmin note: ' + latest.admin_note;
+              }
+            }
+          }
+        } catch(e){ /* ignore errors */ }
+
+        // show modal (fill message)
+        bookKycMessage.innerText = message;
+        bookKycBackdrop.style.display = 'flex';
+        bookKycBackdrop.setAttribute('aria-hidden','false');
+
+        // attach handlers (one-time)
+        bookKycDo.onclick = function(){
+          bookKycBackdrop.style.display = 'none';
+          try { window.location.href = 'kyc.html'; } catch(e){ /* fallback */ window.location.assign('kyc.html'); }
+        };
+        bookKycContinue.onclick = function(){
+          bookKycBackdrop.style.display = 'none';
+          // continue to the booking flow
+          try { window.location.href = bookAnchor.href; } catch(e){ window.location.assign(bookAnchor.href); }
+        };
+      }, { passive: false });
+    })();
 
     // ---------- rest of your existing logic (unchanged) ----------
 
@@ -593,18 +686,6 @@
         }
       });
     })();
-
-    function setIndicator(online){
-      if(online){
-        indicatorDot.classList.remove('indicator-offline');
-        indicatorDot.classList.add('indicator-online');
-        indicatorText.innerText = 'Online';
-      } else {
-        indicatorDot.classList.remove('indicator-online');
-        indicatorDot.classList.add('indicator-offline');
-        indicatorText.innerText = 'Offline';
-      }
-    }
 
     // Toggle handler: ONLY ALLOW when user role === 'client'
     async function handleSwitchToggle(e){
