@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Technician</title>
   <style>
-    /* Minimal changes: styles from your previous file kept, plus modal styles */
+    /* Minimal changes: styles from your previous file kept, plus modal styles and blinking dot */
     * { box-sizing: border-box; margin:0; padding:0; }
     html,body { height:100%; font-family: Georgia, "Times New Roman", Times, serif; -webkit-text-size-adjust: 100%; background:#fff; }
     :root { --header-h:110px; --accent-blue: #1154ff; --accent-blue-dark:#0738d6; --black: #000; --green:#28a745; }
@@ -42,7 +42,7 @@
     /* Hamburger */
     .hamburger-container { position:fixed; top:calc(var(--header-h) - 36px); right:12px; z-index:2000; }
     .hamburger { font-size:26px; padding:6px 10px; border-radius:8px; background:#fff; border:1px solid #000; cursor:pointer; }
-    .menu-dropdown { display:none; position:absolute; right:0; margin-top:8px; width:320px; background:#fff; border:1px solid #000; border-radius:10px; padding:12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+    .menu-dropdown { display:none; position:absolute; right:0; margin-top:8px; width:360px; background:#fff; border:1px solid #000; border-radius:10px; padding:12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
     .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
     .menu-dropdown .book-btn { display:block; margin-top:6px; background: linear-gradient(var(--accent-blue),var(--accent-blue-dark)); color:#fff; padding:10px 12px; text-align:center; border-radius:10px; text-decoration:none; font-weight:800; border:3px solid #000; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(0,0,0,0.06); }
 
@@ -52,6 +52,18 @@
     .kyc-pending { background:#f59e0b; color:#fff; } /* yellow/orange */
     .kyc-verified { background:#10b981; color:#fff; } /* green */
     .kyc-rejected { background:#ef4444; color:#fff; } /* red */
+
+    /* blinking status dot */
+    .kdot { width:12px; height:12px; border-radius:50%; display:inline-block; margin-left:8px; vertical-align:middle; box-shadow: 0 0 10px rgba(0,0,0,0.12); animation: kdot-blink 1s infinite; }
+    @keyframes kdot-blink {
+      0%   { opacity:1; transform: scale(1); }
+      50%  { opacity:0.25; transform: scale(0.85); }
+      100% { opacity:1; transform: scale(1); }
+    }
+    .kdot-unverified { background:#9aa0a6; box-shadow: 0 0 8px rgba(154,160,166,0.45); }
+    .kdot-pending   { background:#f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.45); }
+    .kdot-verified  { background:#10b981; box-shadow: 0 0 8px rgba(16,185,129,0.45); }
+    .kdot-rejected  { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.45); }
 
     /* toggle */
     .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
@@ -92,6 +104,7 @@
       .do { min-width:46%; padding:10px 8px; font-size:15px; height:44px; border-width:3px; border-radius:20px; }
       .to { min-width:44%; font-size:14px; height:44px; }
       .modal { padding:12px; }
+      .menu-dropdown { width:95vw; }
     }
   </style>
 </head>
@@ -105,10 +118,13 @@
     <div id="menuDropdown" class="menu-dropdown" role="menu" aria-hidden="true">
       <a class="menu-link" href="profile.html">Profile</a>
       <a class="menu-link" href="settings.html">Settings</a>
-      <!-- KYC link with dynamic badge -->
+      <!-- KYC link with dynamic badge and blinking dot -->
       <a class="menu-link" href="kyc.html" id="kycMenuLink" style="display:flex;align-items:center;justify-content:space-between;">
         <span style="flex:1">KYC</span>
-        <span id="kycBadge" class="kyc-badge kyc-unverified" aria-live="polite" title="KYC status">Unverified</span>
+        <span style="display:inline-flex;align-items:center;gap:6px">
+          <span id="kycBadge" class="kyc-badge kyc-unverified" aria-live="polite">Unverified</span>
+          <span id="kycDot" class="kdot kdot-unverified" aria-hidden="true" title="KYC status"></span>
+        </span>
       </a>
       <a id="logoutBtn" class="menu-link" href="#">Logout</a>
       <div class="status-toggle">
@@ -196,10 +212,11 @@
     const indicatorDot = document.getElementById('indicatorDot');
     const indicatorText = document.getElementById('indicatorText');
     const toastEl = document.getElementById('toast');
-    const logoutBtn = document.getElementById('logoutBtn');
 
     const kycBadge = document.getElementById('kycBadge');
+    const kycDot = document.getElementById('kycDot');
     const kycMenuLink = document.getElementById('kycMenuLink');
+    const logoutBtn = document.getElementById('logoutBtn');
 
     // modal
     const modalBackdrop = document.getElementById('mainModalBackdrop');
@@ -315,51 +332,49 @@
       document.getElementById('errClose').addEventListener('click', closeModal);
     }
 
-    // Nicely update KYC badge in hamburger menu
+    // Nicely update KYC badge & blinking dot in hamburger menu
     async function updateKycBadge(){
       try {
         const userId = getUserId();
         if(!userId){
-          // If no user, show unverified/hidden
-          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Not signed in'; currentKycStatus = 'unverified'; }
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Not signed in'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Not signed in'; }
+          currentKycStatus = 'unverified';
           return;
         }
         const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(userId));
         if(!resp.ok){
-          // keep existing badge but mark ash/unverified
-          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Unable to fetch status'; currentKycStatus = 'unverified'; }
+          if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Unable to fetch status'; }
+          if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Unable to fetch status'; }
+          currentKycStatus = 'unverified';
           return;
         }
         const j = await resp.json().catch(()=>null);
-        if(!j) { if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; currentKycStatus = 'unverified'; } return; }
-        // server returns { success:true, user, latest_request }
+        if(!j) { if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; } if(kycDot){ kycDot.className = 'kdot kdot-unverified'; } currentKycStatus = 'unverified'; return; }
         const latest = j.latest_request || null;
         const user = j.user || null;
-        // prefer latest.request.status if present
         let status = null;
         if(latest && latest.status) status = String(latest.status).toLowerCase();
         else if(user && user.kyc_status) status = String(user.kyc_status).toLowerCase();
 
-        // map various possible backend values to the four states
         let label = 'Unverified';
         let cls = 'kyc-badge kyc-unverified';
+        let dotCls = 'kdot kdot-unverified';
         let normalized = 'unverified';
         if(status){
-          if(status === 'pending') { label = 'Pending'; cls = 'kyc-badge kyc-pending'; normalized = 'pending'; }
-          else if(status === 'approved' || status === 'verified') { label = 'Verified'; cls = 'kyc-badge kyc-verified'; normalized = 'verified'; }
-          else if(status === 'declined' || status === 'rejected' || status === 'failed') { label = 'Rejected'; cls = 'kyc-badge kyc-rejected'; normalized = 'rejected'; }
-          else if(status === 'not_required' || status === 'not_submitted' || status === 'unverified' || status === 'none') { label = 'Unverified'; cls = 'kyc-badge kyc-unverified'; normalized = 'unverified'; }
-          else { /* unknown value */ label = status.charAt(0).toUpperCase() + status.slice(1); cls = 'kyc-badge kyc-unverified'; normalized = status; }
+          if(status === 'pending') { label = 'Pending'; cls = 'kyc-badge kyc-pending'; dotCls = 'kdot kdot-pending'; normalized = 'pending'; }
+          else if(status === 'approved' || status === 'verified') { label = 'Verified'; cls = 'kyc-badge kyc-verified'; dotCls = 'kdot kdot-verified'; normalized = 'verified'; }
+          else if(status === 'declined' || status === 'rejected' || status === 'failed') { label = 'Rejected'; cls = 'kyc-badge kyc-rejected'; dotCls = 'kdot kdot-rejected'; normalized = 'rejected'; }
+          else if(status === 'not_required' || status === 'not_submitted' || status === 'unverified' || status === 'none') { label = 'Unverified'; cls = 'kyc-badge kyc-unverified'; dotCls = 'kdot kdot-unverified'; normalized = 'unverified'; }
+          else { label = status.charAt(0).toUpperCase() + status.slice(1); cls = 'kyc-badge kyc-unverified'; dotCls = 'kdot kdot-unverified'; normalized = status; }
         }
 
         if(kycBadge){
           kycBadge.textContent = label;
           kycBadge.className = cls;
-          // add title tooltip with more info when admin note exists
           if(latest && latest.admin_note){
             kycBadge.title = 'Admin: ' + latest.admin_note;
           } else {
-            // if user has kyc_submitted_at, show it
             if(latest && latest.submitted_at){
               const dateStr = new Date(latest.submitted_at).toLocaleString();
               kycBadge.title = `KYC ${label} • submitted: ${dateStr}`;
@@ -370,11 +385,16 @@
             }
           }
         }
-        // update global
+        if(kycDot){
+          kycDot.className = dotCls;
+          if(latest && latest.admin_note) kycDot.title = 'Admin: ' + latest.admin_note;
+          else kycDot.title = 'KYC: ' + label;
+        }
         currentKycStatus = normalized;
       } catch(err){
         console.warn('updateKycBadge error', err);
         if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Error'; }
+        if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Error'; }
         currentKycStatus = 'unverified';
       }
     }
@@ -382,34 +402,30 @@
     // update on load and poll periodically
     (function initKycBadgePolling(){
       updateKycBadge();
-      // refresh every 15s (you can change)
       setInterval(updateKycBadge, 15000);
     })();
 
     // Intercept clicks on any link that goes to kyc.html
     function interceptKycLinks(){
-      // select all anchors that point to kyc.html
       const anchors = Array.from(document.querySelectorAll('a[href$="kyc.html"], a[href*="/kyc.html"]'));
       anchors.forEach(a => {
-        // remove previous handler if any
+        // remove duplicated handlers is complicated; add a safe guard by tracking an attribute
+        if(a.dataset.kycHandlerAttached) return;
+        a.dataset.kycHandlerAttached = '1';
         a.addEventListener('click', function (ev) {
           try {
-            // ensure we have the latest status (best-effort)
-            // if currentKycStatus is null (not loaded yet), try updating once synchronously (fire&forget)
             if(currentKycStatus === null){
-              updateKycBadge(); // async, but we'll fallback to allowing navigation
+              // try refresh but don't block
+              updateKycBadge();
             }
-            // If verified, block navigation and show modal
             if(currentKycStatus === 'verified'){
               ev.preventDefault();
               ev.stopPropagation();
               showInfoModal('Account already verified', 'Your account has already been verified. There is no need to open the KYC page.');
               return false;
             }
-            // not verified/pending/rejected => allow link to proceed
-            // (we don't prevent default)
+            // allow navigation otherwise
           } catch(e){
-            // on error, allow default behavior
             console.warn('kyc link handler error', e);
           }
         }, { passive: false });
@@ -421,7 +437,7 @@
       interceptKycLinks();
     });
 
-    // Re-run intercept after every badge update just in case anchors are re-rendered
+    // Re-run intercept after every badge update
     setInterval(interceptKycLinks, 5000);
 
     // ---------- rest of your existing job / modal code below (unchanged) ----------
@@ -527,7 +543,7 @@
         }
       });
 
-      // create expiry timer to auto-decline after 3 minutes (if desired)
+      // create expiry timer to auto-decline after 3 minutes
       pendingTimers[jobId] = { timeoutId: setTimeout(async ()=>{
         try {
           await fetch(API_BASE + '/api/job/' + encodeURIComponent(jobId) + '/respond', {
@@ -577,7 +593,8 @@
       Object.keys(pendingTimers).forEach(k => { try { clearTimeout(pendingTimers[k].timeoutId); } catch(e){} });
       for(const k in pendingTimers) delete pendingTimers[k];
     }
-// Toggle handler
+
+    // Toggle handler
     async function handleSwitchToggle(e){
       const checked = e.target.checked;
       const role = getUserRole();
