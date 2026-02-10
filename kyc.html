@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WireConnect — KYC</title>
   <style>
-    :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280}
+    :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280;--danger:#b91c1c}
     *{box-sizing:border-box}
     body{font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:#111}
     .wrap{max-width:720px;margin:18px auto;padding:14px}
@@ -24,20 +24,19 @@
     .thumb img, .thumb video{max-width:100%;max-height:100%;display:block}
     .thumb .label { font-size:12px; color:var(--muted); margin-top:6px; font-weight:700 }
     .thumb .remove{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px}
+    .status-box{margin-top:12px;padding:10px;border-radius:8px;background:#fff;border:1px solid #eef2f6}
+    .status-message{font-weight:700}
+    .admin-note{margin-top:8px;color:var(--danger);font-weight:700}
     .error{color:#b91c1c;font-weight:700;margin-top:8px}
     .hidden{display:none}
     footer{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
     @media (max-width:480px){ .thumb{width:96px;height:76px} .logo img{max-width:240px} }
-    /* hide native file inputs; we'll trigger them via labels/buttons */
     input[type="file"].native { display:none; }
-    /* modal */
     .modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:2000; }
     .modal{ background:#fff; padding:14px; border-radius:10px; width:320px; max-width:90%; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.18); }
     .modal .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
     .modal button{ padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
     .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
-
-    /* Debug panel */
     .debug-toggle { margin-top:12px; display:flex; gap:8px; align-items:center; }
     .debug-panel { margin-top:12px; background:#0b1220; color:#e6f0ff; padding:12px; border-radius:10px; font-family:monospace; font-size:13px; max-height:260px; overflow:auto; white-space:pre-wrap; display:none; }
     .debug-controls { display:flex;gap:8px; align-items:center; margin-top:8px; }
@@ -95,12 +94,16 @@
 
       <div id="validationErrors" class="error hidden" role="alert"></div>
 
+      <div id="statusBox" class="status-box hidden" aria-live="polite">
+        <div id="statusText" class="status-message"></div>
+        <div id="statusSub" class="muted"></div>
+        <div id="adminNote" class="admin-note hidden"></div>
+      </div>
+
       <footer>
         <button id="submitBtn" class="btn">Submit</button>
         <div class="muted">All docs go to admin</div>
       </footer>
-
-      <div id="status" class="muted" style="margin-top:8px"></div>
 
       <div class="debug-toggle">
         <button id="dbgToggleBtn" class="btn-outline">Server debug</button>
@@ -161,6 +164,11 @@
   const submitBtn = document.getElementById('submitBtn');
   const validationErrors = document.getElementById('validationErrors');
 
+  const statusBox = document.getElementById('statusBox');
+  const statusText = document.getElementById('statusText');
+  const statusSub = document.getElementById('statusSub');
+  const adminNoteEl = document.getElementById('adminNote');
+
   const choiceModal = document.getElementById('choiceModal');
   const cameraBtn = document.getElementById('cameraBtn');
   const filesBtn = document.getElementById('filesBtn');
@@ -173,64 +181,136 @@
   const dbgLast = document.getElementById('dbgLast');
 
   // state
-  let idFiles = { front: null, back: null }; // separate keys now
+  let idFiles = { front: null, back: null };
   let videoFiles = [];
   let currentTarget = null; // 'front' | 'back' | 'videos'
   const MAX_VIDEOS = 2;
   const MAX_VIDEO_SECONDS = 180; // 3 minutes
   let uploading = false;
 
-  // check KYC lock: disable submission if already pending or approved
-  function checkKycLock(){
-    const status = (me && me.kyc_status) ? String(me.kyc_status).toLowerCase() : null;
-    const locked = (status === 'pending' || status === 'approved' || status === 'approved' || status === 'approved_by_admin');
-    if(locked){
-      submitBtn.disabled = true;
-      submitBtn.style.opacity = 0.6;
-      // disable choose controls
-      [idFrontBtn, idBackBtn, videosBtn].forEach(b => { b.setAttribute('aria-disabled','true'); b.style.pointerEvents='none'; b.style.opacity=0.6; });
-      // show status message
-      document.getElementById('status').textContent = `KYC already submitted (status: ${status}). You cannot submit again unless the admin rejects/declines it.`;
-    } else {
-      document.getElementById('status').textContent = '';
+  // server values (updated by fetchServerKycStatus)
+  let serverUser = null;
+  let serverLatest = null;
+
+  // helper: normalize server-stored path/URL to usable src
+  function normalizeUrl(p){
+    if(!p) return null;
+    if(typeof p !== 'string') return null;
+    if(p.startsWith('http://') || p.startsWith('https://')) return p;
+    if(p.startsWith('/')) return API_BASE + p;
+    // fallback: if it's a filename, assume served under /uploads or it's already complete
+    if(p.indexOf('/') === -1) return API_BASE + '/uploads/kyc/' + p;
+    return API_BASE + '/' + p;
+  }
+
+  // fetch server status and latest request
+  async function fetchServerKycStatus(){
+    try {
+      const res = await fetch(API_BASE + '/api/kyc/status/' + me.id);
+      const j = await res.json().catch(()=>null);
+      if(!res.ok || !j || !j.success){
+        // keep serverUser as local me if nothing available
+        serverUser = j && j.user ? j.user : null;
+        serverLatest = j && j.latest_request ? j.latest_request : null;
+        renderServerStatus();
+        return;
+      }
+      serverUser = j.user || null;
+      serverLatest = j.latest_request || null;
+      renderServerStatus();
+    } catch(e){
+      console.error('fetchServerKycStatus error', e);
+      appendDebug('Error fetching KYC status: ' + (e.message || e));
     }
   }
 
-  // run lock check now
-  checkKycLock();
+  function renderServerStatus(){
+    // prefer the canonical serverUser.kyc_status, fallback to latest_request.status
+    const status = (serverUser && serverUser.kyc_status) ? String(serverUser.kyc_status).toLowerCase() : (serverLatest && serverLatest.status ? serverLatest.status : null);
 
-  // open/close choice modal
-  function openChoice(target){
-    // if locked, prevent opening
-    const status = (me && me.kyc_status) ? String(me.kyc_status).toLowerCase() : null;
-    if(status === 'pending' || status === 'approved' || status === 'approved_by_admin'){ return; }
-    currentTarget = target;
-    choiceModal.style.display = 'flex';
-  }
-  function closeChoice(){
-    choiceModal.style.display = 'none';
-  }
-  cameraBtn.addEventListener('click', ()=> handleChoiceMode('camera'));
-  filesBtn.addEventListener('click', ()=> handleChoiceMode('files'));
-  choiceCancel.addEventListener('click', ()=> { closeChoice(); currentTarget = null; });
+    if(status){
+      statusBox.classList.remove('hidden');
+      statusText.innerText = 'KYC status: ' + status;
+      statusSub.innerText = serverLatest && serverLatest.submitted_at ? 'Last submitted: ' + new Date(serverLatest.submitted_at).toLocaleString() : '';
+    } else {
+      statusBox.classList.add('hidden');
+      statusText.innerText = '';
+      statusSub.innerText = '';
+    }
 
-  function showModal(msg){ modalText.textContent = msg; overlay.style.display = 'flex'; }
-  function hideModal(){ overlay.style.display = 'none'; }
-  modalClose.addEventListener('click', hideModal);
+    // admin note
+    if(serverLatest && serverLatest.admin_note){
+      adminNoteEl.classList.remove('hidden');
+      adminNoteEl.innerText = 'Admin note: ' + serverLatest.admin_note;
+    } else {
+      adminNoteEl.classList.add('hidden');
+      adminNoteEl.innerText = '';
+    }
 
-  function showValidation(msg){
-    validationErrors.textContent = msg;
-    validationErrors.classList.remove('hidden');
-  }
-  function clearValidation(){
-    validationErrors.textContent = '';
-    validationErrors.classList.add('hidden');
+    // show previous submission previews (read-only) if present
+    renderPreviouslySubmitted();
+
+    // lock/unlock submission using server status: lock if pending or approved
+    const lockedStatuses = ['pending', 'approved', 'approved_by_admin'];
+    const locked = status && lockedStatuses.includes(status);
+    setSubmissionLocked(locked);
   }
 
-  // previews
+  function renderPreviouslySubmitted(){
+    // remove any existing "previous" wrappers first
+    const existingPrev = document.getElementById('previousSubmissionWrap');
+    if(existingPrev) existingPrev.remove();
+
+    if(!serverLatest) return;
+
+    const wrap = document.createElement('div');
+    wrap.id = 'previousSubmissionWrap';
+    wrap.style.marginTop = '10px';
+
+    if(Array.isArray(serverLatest.id_images) && serverLatest.id_images.length){
+      const title = document.createElement('div'); title.style.fontWeight = 700; title.style.marginTop = '10px'; title.innerText = 'Previously submitted ID images';
+      wrap.appendChild(title);
+      const row = document.createElement('div'); row.className = 'file-row';
+      serverLatest.id_images.forEach(p => {
+        const url = normalizeUrl(p);
+        const box = document.createElement('div'); box.className = 'thumb';
+        const img = document.createElement('img'); img.src = url; img.alt = 'previous id';
+        img.onerror = ()=>{ img.style.opacity = 0.6; img.alt='(unavailable)'; };
+        box.appendChild(img);
+        row.appendChild(box);
+      });
+      wrap.appendChild(row);
+    }
+
+    if(serverLatest.work_video){
+      const title2 = document.createElement('div'); title2.style.fontWeight = 700; title2.style.marginTop = '10px'; title2.innerText = 'Previously submitted video';
+      wrap.appendChild(title2);
+      const row2 = document.createElement('div'); row2.className = 'file-row';
+      const url = normalizeUrl(serverLatest.work_video);
+      const box = document.createElement('div'); box.className = 'thumb';
+      const v = document.createElement('video'); v.controls = true; v.src = url; v.style.maxWidth = '320px';
+      v.onerror = ()=>{ v.style.opacity = 0.6; };
+      box.appendChild(v);
+      row2.appendChild(box);
+      wrap.appendChild(row2);
+    }
+
+    // insert after id_preview area
+    idPreview.parentNode.insertBefore(wrap, idPreview.nextSibling);
+  }
+
+  function setSubmissionLocked(locked){
+    submitBtn.disabled = !!locked || uploading;
+    submitBtn.style.opacity = (locked || uploading) ? 0.6 : 1;
+    [idFrontBtn, idBackBtn, videosBtn].forEach(b => {
+      if(locked){ b.setAttribute('aria-disabled','true'); b.style.pointerEvents='none'; b.style.opacity=0.6; }
+      else { b.removeAttribute('aria-disabled'); b.style.pointerEvents='auto'; b.style.opacity=1; }
+    });
+  }
+
+  // previews (client-chosen files)
   function renderIdPreview(){
     idPreview.innerHTML = '';
-    // ensure fixed placement: front then back
     const order = [
       { key: 'front', file: idFiles.front, label: 'Front' },
       { key: 'back',  file: idFiles.back,  label: 'Back' }
@@ -272,7 +352,7 @@
     });
   }
 
-  // native change handlers (native inputs supply the File objects)
+  // native change handlers
   idFrontNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
@@ -298,7 +378,7 @@
     // validate durations
     const problems = await validateVideoDurations(videoFiles);
     if(problems.length){
-      showValidation(problems.join('\n'));
+      showValidation(problems.join('\\n'));
       // remove offending videos
       videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
     }
@@ -317,6 +397,17 @@
   });
 
   // handle user selection in modal: either 'camera' or 'files'
+  function openChoice(target){
+    currentTarget = target;
+    choiceModal.style.display = 'flex';
+  }
+  function closeChoice(){
+    choiceModal.style.display = 'none';
+  }
+  cameraBtn.addEventListener('click', ()=> handleChoiceMode('camera'));
+  filesBtn.addEventListener('click', ()=> handleChoiceMode('files'));
+  choiceCancel.addEventListener('click', ()=> { closeChoice(); currentTarget = null; });
+
   function handleChoiceMode(mode){
     closeChoice();
     clearValidation();
@@ -356,7 +447,17 @@
     return Promise.all(checks).then(results => results.filter(Boolean));
   }
 
-  // Debug UI toggle
+  // validation helpers
+  function showValidation(msg){
+    validationErrors.textContent = msg;
+    validationErrors.classList.remove('hidden');
+  }
+  function clearValidation(){
+    validationErrors.textContent = '';
+    validationErrors.classList.add('hidden');
+  }
+
+  // debug UI toggle
   dbgToggleBtn.addEventListener('click', ()=>{
     if(debugPanel.style.display === 'block'){
       debugPanel.style.display = 'none';
@@ -377,10 +478,12 @@
     if(uploading) return;
     clearValidation();
 
-    // if locked by KYC status, prevent submission
-    const curStatus = (me && me.kyc_status) ? String(me.kyc_status).toLowerCase() : null;
-    if(curStatus === 'pending' || curStatus === 'approved' || curStatus === 'approved_by_admin'){
+    // refresh server status before submit
+    await fetchServerKycStatus();
+    const currentStatus = (serverUser && serverUser.kyc_status) ? String(serverUser.kyc_status).toLowerCase() : (serverLatest && serverLatest.status ? serverLatest.status : null);
+    if(currentStatus && ['pending','approved','approved_by_admin'].includes(currentStatus)){
       showValidation('KYC already submitted — you cannot submit again unless admin rejects/declines it.');
+      setSubmissionLocked(true);
       return;
     }
 
@@ -396,36 +499,26 @@
     if(videoFiles.length > MAX_VIDEOS){ showValidation('Max 2 videos allowed'); return; }
 
     const durationProblems = await validateVideoDurations(videoFiles);
-    if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
+    if(durationProblems.length){ showValidation(durationProblems.join('\\n')); return; }
 
-    // Build FormData: canonical way — append image Files as repeated 'id_images' and videos as repeated 'work_videos'
+    // Build FormData: append image Files as repeated 'id_images' and videos as repeated 'work_videos'
     const form = new FormData();
-    // primary scalar fields
     form.append('userId', me.id);
-    // keep user_id for compatibility if the backend expects it
-    form.append('user_id', me.id);
+    form.append('user_id', me.id); // compatibility
     form.append('id_type', idType);
     form.append('id_name', idName);
     form.append('id_number', idNumber);
 
-    // Append ID images as repeated 'id_images' fields (File objects)
     const idImageList = [];
     if(idFiles.front) idImageList.push(idFiles.front);
     if(idFiles.back) idImageList.push(idFiles.back);
+    idImageList.forEach((file) => { if(file instanceof File) form.append('id_images', file, file.name); });
 
-    idImageList.forEach((file) => {
-      if(file instanceof File) form.append('id_images', file, file.name);
-    });
+    videoFiles.forEach((f) => { if(f instanceof File) form.append('work_videos', f, f.name); });
 
-    // Append videos as repeated 'work_videos' fields
-    videoFiles.forEach((f) => {
-      if(f instanceof File) form.append('work_videos', f, f.name);
-    });
-
-    // marker
     form.append('_multipart', '1');
 
-    // Debug: print summary
+    // Debug: print summary of formdata
     const entries = [];
     for(const pair of form.entries()){
       const key = pair[0];
@@ -436,16 +529,14 @@
         entries.push(`${key}: ${String(val)}`);
       }
     }
-    appendDebug(`Sending KYC POST ${API_BASE + '/api/kyc/submit'}\nFormData summary:\n${entries.join('\n')}`);
+    appendDebug(`Sending KYC POST ${API_BASE + '/api/kyc/submit'}\nFormData summary:\n${entries.join('\\n')}`);
 
     // prevent double submits
     uploading = true;
-    submitBtn.disabled = true;
-    submitBtn.style.opacity = 0.7;
-
-    // show UI feedback
+    setSubmissionLocked(true);
     showModal('Uploading — please wait...');
-    try{
+
+    try {
       const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
       const rawText = await resp.text().catch(()=>null);
       let parsed = null;
@@ -454,47 +545,58 @@
       appendDebug(`<= HTTP ${resp.status} ${resp.statusText}\nResponse text: ${rawText || '(empty)'}\nParsed JSON:\n${JSON.stringify(parsed,null,2)}`);
 
       if(resp.ok && parsed && parsed.success){
-        // update local copy so page shows locked state next time
+        // update local me and persist
         me.kyc_status = 'pending';
         try{ localStorage.setItem('wc_user', JSON.stringify(me)); }catch(e){}
-
+        // refresh server state & UI
+        await fetchServerKycStatus();
+        // show confirmation then go back to previous page
         showModal('Submitted — awaiting review');
-
-        // hide modal then go back to previous page (history.back). If no referrer, fallback to dashboard.html
         setTimeout(()=> {
           hideModal();
-          // use history if possible to return to previous page
+          // go back to previous page (preferred)
           try {
-            if (window.history.length > 1) {
-              window.history.back();
-            } else {
-              window.location.href = 'dashboard.html';
-            }
-          } catch(ex) {
-            window.location.href = 'dashboard.html';
+            if (window.history.length > 1) window.history.back();
+            else if(document.referrer) window.location.href = document.referrer;
+            else window.location.href = '/';
+          } catch(e){
+            window.location.href = '/';
           }
-        }, 1000);
+        }, 900);
       } else {
         const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
         hideModal();
         showValidation('Submission failed: ' + msg);
         appendDebug('Submission failed detail: ' + msg);
+        // fetch status again to ensure UI is in sync
+        await fetchServerKycStatus();
       }
-    }catch(err){
+    } catch(err){
       hideModal();
       showValidation('Network error while submitting. Try again.');
       appendDebug('Network ERROR: ' + String(err.stack||err));
       console.error(err);
+      await fetchServerKycStatus();
     } finally {
       uploading = false;
-      submitBtn.disabled = false;
-      submitBtn.style.opacity = 1;
-      // re-run lock check to reflect any change from local copy
-      checkKycLock();
+      setSubmissionLocked(false);
     }
   });
 
-  // save geo quietly
+  // modal helpers
+  function showModal(msg){ const el = document.getElementById('overlay'); if(el){ document.getElementById('modalText').textContent = msg; el.style.display = 'flex'; } }
+  function hideModal(){ const el = document.getElementById('overlay'); if(el) el.style.display = 'none'; }
+  modalClose.addEventListener('click', hideModal);
+
+  // init
+  (async function init(){
+    // prefills
+    idNameEl.value = me && me.fullname ? me.fullname : '';
+    // ask server for the authoritative KYC status & latest request
+    await fetchServerKycStatus();
+  })();
+
+  // save geo quietly (kept)
   (function trySaveGeo(){
     try{
       if(navigator.geolocation){
