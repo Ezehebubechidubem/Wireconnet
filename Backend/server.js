@@ -904,8 +904,8 @@ app.post(
 
         // prepare paths (store filesystem paths). Keep shape as array to match original expectation.
         // Use `file.path` so DB receives the uploaded file path (you can change to file.filename if preferred)
-        const imagePaths = idFiles.map(f => f.path);
-        const workVideoPath = videoFiles.length ? videoFiles[0].path : null; // original used singular work_video
+        const imagePaths = idFiles.map(f => f.path); // Cloudinary URL
+const workVideoPath = videoFiles.length ? videoFiles[0].path : null;
 
         const ins = await client.query(
           `INSERT INTO kyc_requests (user_id, id_type, id_number, id_images, work_video, notes, status)
