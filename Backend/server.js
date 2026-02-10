@@ -1,6 +1,6 @@
 // server.js
 // Requirements:
-// npm i express cors bcryptjs pg dotenv
+// npm i express cors bcryptjs pg dotenv multer multer-storage-cloudinary cloudinary
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -19,16 +19,17 @@ const pool = new Pool({
 // open CORS
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' })); // allow some room for base64 if demo
-//multi upload
+
+// multi upload (we'll support both disk and cloudinary; choose at runtime)
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// ensure upload dir exists
+// ---------- LOCAL DISK STORAGE (kept as fallback) ----------
 const UPLOAD_DIR = path.join(__dirname, 'uploads', 'kyc');
 try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch (e) { /* ignore */ }
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, UPLOAD_DIR);
   },
@@ -39,14 +40,15 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({
-  storage,
+const uploadDisk = multer({
+  storage: diskStorage,
   limits: {
     // adjust as needed
     fileSize: 50 * 1024 * 1024 // 50MB per file
   }
 });
-// DB init & migrations (idempotent)
+
+// ------------------ DB init & migrations (idempotent) ------------------
 // Create core tables if missing, and run safe ALTERs to add missing columns for older DBs.
 const initSql = `
 CREATE TABLE IF NOT EXISTS users (
@@ -265,30 +267,46 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
     clientConn.release();
   }
 }
-//cloudinary config
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const multer = require('multer');
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+// ------------------ CLOUDINARY CONFIG (optional) ------------------
+// We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
+let uploadCloud = null;
+try {
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    const cloudinary = require('cloudinary').v2;
+    const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    const isVideo = file.mimetype.startsWith('video/');
-    return {
-      folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
-      resource_type: isVideo ? 'video' : 'image',
-      public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`
-    };
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+
+    const cloudStorage = new CloudinaryStorage({
+      cloudinary,
+      params: async (req, file) => {
+        const isVideo = file.mimetype && file.mimetype.startsWith && file.mimetype.startsWith('video/');
+        return {
+          folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
+          resource_type: isVideo ? 'video' : 'image',
+          public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`
+        };
+      }
+    });
+
+    uploadCloud = multer({ storage: cloudStorage, limits: { fileSize: 100 * 1024 * 1024 } }); // 100MB per file for cloud
+    console.log('Cloudinary configured: using Cloudinary for uploads.');
+  } else {
+    console.log('Cloudinary not configured: using local disk uploads as fallback.');
   }
-});
+} catch (err) {
+  console.error('Cloudinary setup error (continuing with disk uploads):', err);
+  uploadCloud = null;
+}
 
-const upload = multer({ storage });
+// Choose the active upload middleware (cloud if available, else disk)
+const upload = uploadCloud || uploadDisk;
+
 // ------------------ End helpers ------------------
 
 //Testing password
@@ -426,10 +444,8 @@ app.post('/api/login', async (req, res) => {
       };
 
       // ---------- STAFF FLOW ----------
-      // Treat users with role 'staff' specially and return a redirect based on staff role.
-      // You can customize ROLE_ROUTES to match your admin UI routes for different staff roles.
       if (roleRaw === 'staff') {
-        const BASE = process.env.ADMIN_UI_BASE || 'https://your-admin-ui.example.com'; // update if needed
+        const BASE = process.env.ADMIN_UI_BASE || 'https://your-admin-ui.example.com';
         const ROLE_ROUTES = {
           'customer-support': `${BASE}/support`,
           'customer support': `${BASE}/support`,
@@ -445,7 +461,6 @@ app.post('/api/login', async (req, res) => {
           'notification': `${BASE}/notifications`
         };
         const normalizedRole = (user.specializations && user.specializations[0]) ? String(user.specializations[0]).toLowerCase() : (user.staff_role || '');
-        // try to derive redirect from stored role (fallback to generic staff page)
         const redirect = ROLE_ROUTES[normalizedRole] || ROLE_ROUTES[(user.role || '').toLowerCase()] || `${BASE}/staff`;
 
         return res.json({
@@ -458,13 +473,10 @@ app.post('/api/login', async (req, res) => {
       }
 
       // ---------- TECH / CLIENT (regular users) ----------
-      // Keep existing behavior: return user object and role (worker/client/etc.)
-      // If you want to normalize role names, do it here
       if (roleRaw === 'worker' || roleRaw === 'technician') {
         return res.json({ success: true, message: 'Login successful', role: 'worker', user: safeUser });
       }
 
-      // default: client/other user
       return res.json({ success: true, message: 'Login successful', role: roleRaw || 'client', user: safeUser });
 
     } finally {
@@ -477,6 +489,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 // ---------- Admin helper endpoints (overview & logs) ----------
+
 /*
   GET /api/admin/metrics
   GET /api/admin/users
@@ -663,7 +676,7 @@ app.post('/api/tech/status', async (req,res) => {
     const { techId, online, lat, lng } = req.body;
     if(!techId) return res.status(400).json({ success:false, message:'techId required' });
     // coerce numeric lat/lng when provided
-    const nlat = (lat === null || lat === undefined) ? null : Number(lat);
+const nlat = (lat === null || lat === undefined) ? null : Number(lat);
     const nlng = (lng === null || lng === undefined) ? null : Number(lng);
     await pool.query(`UPDATE users SET online=$1, lat=$2, lng=$3 WHERE id=$4`, [!!online, Number.isFinite(nlat) ? nlat : null, Number.isFinite(nlng) ? nlng : null, techId]);
     return res.json({ success:true, message:'Status updated' });
@@ -874,6 +887,7 @@ app.post('/api/profile/update', async (req,res)=>{
 });
 
 // Submit KYC (multipart file-aware)
+// This route uses the unified `upload` middleware which points to Cloudinary if configured, else disk storage.
 app.post(
   '/api/kyc/submit',
   upload.fields([
@@ -901,11 +915,14 @@ app.post(
       try {
         const usr = (await client.query(`SELECT id FROM users WHERE id=$1`, [userId])).rows[0];
         if (!usr) return res.status(404).json({ success: false, message: 'User not found' });
+// prepare paths (store filesystem paths or cloud URLs). Keep shape as array to match original expectation.
+        // For disk: multer sets file.path. For cloudinary storage, multer-storage-cloudinary sets file.path (or file.path/url).
+        const imagePaths = idFiles.map(f => {
+          // robustly pick a usable URL/path from the file object
+          return (f.path || f.secure_url || f.url || f.filename || null);
+        }).filter(Boolean);
 
-        // prepare paths (store filesystem paths). Keep shape as array to match original expectation.
-        // Use `file.path` so DB receives the uploaded file path (you can change to file.filename if preferred)
-        const imagePaths = idFiles.map(f => f.path); // Cloudinary URL
-const workVideoPath = videoFiles.length ? videoFiles[0].path : null;
+        const workVideoPath = videoFiles.length ? (videoFiles[0].path || videoFiles[0].secure_url || videoFiles[0].url || videoFiles[0].filename || null) : null;
 
         const ins = await client.query(
           `INSERT INTO kyc_requests (user_id, id_type, id_number, id_images, work_video, notes, status)
