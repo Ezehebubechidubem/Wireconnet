@@ -265,7 +265,30 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
     clientConn.release();
   }
 }
+//cloudinary config
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    const isVideo = file.mimetype.startsWith('video/');
+    return {
+      folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
+      resource_type: isVideo ? 'video' : 'image',
+      public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`
+    };
+  }
+});
+
+const upload = multer({ storage });
 // ------------------ End helpers ------------------
 
 //Testing password
