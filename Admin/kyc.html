@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — Admin KYC</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --accent:#0b5cff; --muted:#6b7280; --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg); margin:0; color:#111;
+    }
+    .wrap{max-width:1100px;margin:18px auto;padding:18px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+    header img{height:48px;border-radius:8px}
+    header h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:8px;align-items:center;margin-left:auto}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
+    .filters{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+    .select{padding:8px;border-radius:8px;border:1px solid #e6e9ef;background:#fff}
+    .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+    .btn-ghost{background:#fff;border:1px solid #e6e9ef;padding:8px 10px;border-radius:8px;cursor:pointer}
+    .list{margin-top:12px}
+    .item{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:10px;border:1px solid #eef2f6;background:#fff;margin-bottom:10px}
+    .meta{min-width:220px}
+    .meta .title{font-weight:800}
+    .meta .sub{color:var(--muted);font-size:13px;margin-top:6px}
+    .actions{margin-left:auto;display:flex;flex-direction:column;gap:8px}
+    .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .thumb{width:140px;height:100px;overflow:hidden;border-radius:8px;border:1px solid #e6eef9;display:flex;align-items:center;justify-content:center;background:#fafafa;padding:6px}
+    .thumb img{max-width:100%;max-height:100%}
+    .thumb video{max-width:100%;max-height:100%}
+    .modal-backdrop{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:2000}
+    .modal{background:#fff;padding:16px;border-radius:10px;width:880px;max-width:96%;max-height:86%;overflow:auto}
+    .modal .row{display:flex;gap:12px}
+    .modal .left{flex:1}
+    .modal .right{width:320px}
+    .label{font-weight:700;margin-bottom:6px}
+    textarea{width:100%;min-height:100px;padding:8px;border-radius:8px;border:1px solid #e6e9ef}
+    footer{margin-top:12px;display:flex;justify-content:flex-end;gap:8px}
+    .muted{color:var(--muted)}
+    .pill{background:#eef3ff;color:var(--accent);padding:6px 8px;border-radius:999px;font-weight:700}
+    @media (max-width:760px){ .meta{min-width:140px} .thumb{width:96px;height:72px} .modal{width:95%} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <!-- logo -->
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+      <h1>Admin — KYC Review</h1>
+      <div class="controls">
+        <div class="pill" id="adminName">Admin</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <h2 style="margin:0;font-size:16px">KYC Requests</h2>
+        <div class="muted" style="margin-left:8px">Review and approve or reject submissions</div>
+      </div>
+
+      <div class="filters">
+        <select id="statusFilter" class="select">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="declined">Rejected</option>
+        </select>
+
+        <input id="q" class="select" placeholder="Search by user ID, phone or request ID" style="min-width:260px" />
+
+        <button class="btn" id="btnRefresh">Refresh</button>
+        <button class="btn-ghost" id="btnClear">Clear</button>
+      </div>
+
+      <div id="listWrap" class="list"></div>
+    </div>
+  </div>
+
+  <!-- modal -->
+  <div class="modal-backdrop" id="modal">
+    <div class="modal card" role="dialog" aria-modal="true">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="font-weight:800" id="modalTitle">Request</div>
+        <div style="color:var(--muted)" id="modalStatus"></div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div class="left">
+          <div><span class="label">User</span><div id="mUser" class="muted"></div></div>
+
+          <div style="margin-top:8px"><span class="label">ID type / number</span><div id="mId" class="muted"></div></div>
+
+          <div style="margin-top:8px"><span class="label">Uploaded images</span>
+            <div id="mThumbs" class="thumbs"></div>
+          </div>
+
+          <div style="margin-top:8px"><span class="label">Work video</span>
+            <div id="mVideo" class="thumbs"></div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div><span class="label">Request ID</span><div id="mReq" class="muted"></div></div>
+          <div style="margin-top:10px"><span class="label">Submitted</span><div id="mWhen" class="muted"></div></div>
+
+          <div style="margin-top:12px">
+            <span class="label">Admin note (optional)</span>
+            <textarea id="adminNote" placeholder="If rejecting, explain why (e.g. images are unclear, ID mismatch)"></textarea>
+          </div>
+
+          <footer>
+            <button class="btn-ghost" id="btnClose">Close</button>
+            <button class="btn" id="btnApprove">Approve</button>
+            <button class="btn" id="btnReject" style="background:var(--danger);">Reject</button>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(async function(){
+  const API_BASE = (location.hostname.includes('localhost') ? 'http://localhost:10000' : 'https://wireconnet-1.onrender.com');
+
+  // display admin name if available
+  const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
+  if(me && me.fullname) document.getElementById('adminName').innerText = me.fullname;
+
+  // DOM
+  const listWrap = document.getElementById('listWrap');
+  const statusFilter = document.getElementById('statusFilter');
+  const q = document.getElementById('q');
+  const btnRefresh = document.getElementById('btnRefresh');
+  const btnClear = document.getElementById('btnClear');
+
+  const modal = document.getElementById('modal');
+  const btnClose = document.getElementById('btnClose');
+  const btnApprove = document.getElementById('btnApprove');
+  const btnReject = document.getElementById('btnReject');
+  const adminNote = document.getElementById('adminNote');
+
+  let requests = [];
+  let active = null;
+
+  // fetch pending KYC requests (backend route exists: /api/kyc/pending)
+  async function fetchRequests(){
+    try{
+      const res = await fetch(API_BASE + '/api/kyc/pending');
+      const json = await res.json().catch(()=>null);
+      if(!json || !json.success) return [];
+      return json.requests || [];
+    }catch(e){
+      console.error('fetchRequests', e);
+      return [];
+    }
+  }
+
+  function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function capitalize(s){ if(!s) return ''; return s[0].toUpperCase()+s.slice(1); }
+
+  function renderList(items){
+    if(!items.length){ listWrap.innerHTML = '<div style="padding:18px;color:var(--muted)">No KYC requests</div>'; return; }
+    listWrap.innerHTML = items.map(it=>{
+      const id = it.id;
+      const user = escapeHtml(it.username || it.email || it.user_id || 'Unknown');
+      const status = (it.status || 'pending').toLowerCase();
+      const when = it.submitted_at ? new Date(it.submitted_at).toLocaleString() : '';
+      const imgCount = (it.id_images && it.id_images.length) ? it.id_images.length : 0;
+      return (`
+      <div class="item">
+        <div class="meta">
+          <div class="title">${user} <span style="font-weight:600;color:var(--muted);font-size:13px">#${id}</span></div>
+          <div class="sub">${escapeHtml(it.id_type || '')} • ${escapeHtml(it.id_number || '')}</div>
+          <div class="sub" style="margin-top:8px">Uploaded: ${when}</div>
+          <div class="sub" style="margin-top:6px">Images: ${imgCount}</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <div class="pill">${capitalize(status)}</div>
+          <div class="actions">
+            <button class="btn" onclick="window.__adminOpen(${id})">Open</button>
+          </div>
+        </div>
+      </div>
+      `);
+    }).join('');
+  }
+
+  // open modal for request id
+  window.__adminOpen = function(reqId){
+    const r = requests.find(x=>x.id === reqId) || null;
+    if(!r) return alert('Request not found');
+    active = r;
+    document.getElementById('modalTitle').innerText = 'KYC Request #' + r.id;
+    document.getElementById('modalStatus').innerText = capitalize(r.status || 'pending');
+    document.getElementById('mUser').innerText = (r.fullname || r.username || r.email || r.user_id || 'Unknown');
+    document.getElementById('mId').innerText = (r.id_type || '') + ' / ' + (r.id_number || '');
+    document.getElementById('mReq').innerText = r.id;
+    document.getElementById('mWhen').innerText = r.submitted_at ? new Date(r.submitted_at).toLocaleString() : '';
+    adminNote.value = r.admin_note || '';
+
+    // thumbs (images)
+    const thumbs = document.getElementById('mThumbs'); thumbs.innerHTML = '';
+    if(Array.isArray(r.id_images) && r.id_images.length){
+      r.id_images.forEach(url => {
+        const div = document.createElement('div'); div.className='thumb';
+        const img = document.createElement('img'); img.src = normalizeUrl(url); img.alt='ID image';
+        img.onerror = ()=>{ img.style.opacity=0.6; img.alt='(unavailable)'; };
+        div.appendChild(img);
+        thumbs.appendChild(div);
+      });
+    } else {
+      thumbs.innerHTML = '<div class="muted">No images available</div>';
+    }
+
+    const vwrap = document.getElementById('mVideo'); vwrap.innerHTML='';
+    if(r.work_video){
+      const div = document.createElement('div'); div.className='thumb';
+      const v = document.createElement('video'); v.controls=true; v.src = normalizeUrl(r.work_video); v.style.maxHeight='240px';
+      div.appendChild(v); vwrap.appendChild(div);
+    } else {
+      vwrap.innerHTML = '<div class="muted">No video</div>';
+    }
+
+    modal.style.display = 'flex';
+  };
+
+  btnClose.addEventListener('click', ()=>{ modal.style.display='none'; active=null; });
+
+  // decision: approve or decline
+  async function decide(decision){
+    if(!active) return;
+    const note = (adminNote.value || '').trim() || null;
+    if(decision === 'decline' && !note){
+      if(!confirm('You are rejecting without providing a reason. Continue?')) return;
+    }
+
+    const payload = { adminId: me ? me.id : null, decision: decision === 'approve' ? 'approve' : 'decline', adminNote: note };
+    try{
+      const resp = await fetch(API_BASE + '/api/kyc/' + active.id + '/decision', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const j = await resp.json().catch(()=>null);
+      if(resp.ok && j && j.success){
+        alert('Action successful');
+        modal.style.display='none';
+        await load();
+      } else {
+        alert('Failed: ' + (j && j.message ? j.message : resp.status));
+      }
+    }catch(e){
+      console.error('decide', e);
+      alert('Network error');
+    }
+  }
+
+  btnApprove.addEventListener('click', ()=> decide('approve'));
+  btnReject.addEventListener('click', ()=> decide('decline'));
+
+  btnRefresh.addEventListener('click', load);
+  btnClear.addEventListener('click', ()=>{ statusFilter.value=''; q.value=''; load(); });
+
+  // ensure a returned path is absolute or joined to API_BASE
+  function normalizeUrl(p){
+    if(!p) return p;
+    if(p.startsWith('http')) return p;
+    if(p.startsWith('/')) return API_BASE + p;
+    return API_BASE + '/' + p;
+  }
+
+  async function load(){
+    const items = await fetchRequests();
+    requests = (items || []).map(it => {
+      const copy = Object.assign({}, it);
+      if(Array.isArray(copy.id_images)) copy.id_images = copy.id_images.map(p => normalizeUrl(p));
+      if(copy.work_video) copy.work_video = normalizeUrl(copy.work_video);
+      return copy;
+    });
+
+    // local filters
+    const filter = (statusFilter.value || '').toLowerCase();
+    const qv = (q.value || '').toLowerCase().trim();
+    let out = requests.slice();
+    if(filter) out = out.filter(x => (x.status||'').toLowerCase() === filter);
+    if(qv) out = out.filter(x => {
+      const check = String(x.user_id||x.username||x.email||x.id||'').toLowerCase();
+      return check.includes(qv);
+    });
+
+    renderList(out);
+  }
+
+  // initial load
+  await load();
+})();
+</script>
+</body>
+</html>
