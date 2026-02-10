@@ -907,14 +907,39 @@ app.post(
   }
 );
 
-// Get user's KYC status
-app.get('/api/kyc/status/:userId', async (req,res)=>{
-  try{
+// Get user's KYC status + latest KYC request (includes admin_note)
+app.get('/api/kyc/status/:userId', async (req, res) => {
+  try {
     const userId = req.params.userId;
-    const r = await pool.query(`SELECT kyc_status, kyc_documents, kyc_submitted_at FROM users WHERE id=$1`, [userId]);
-    if(!r.rows.length) return res.status(404).json({ success:false, message:'User not found' });
-    return res.json({ success:true, status: r.rows[0] });
-  }catch(e){ console.error('/api/kyc/status/:userId', e); return res.status(500).json({ success:false, message:'Server error' }); }
+    // fetch user row
+    const userRes = await pool.query(
+      `SELECT id, fullname, username, email, kyc_status, kyc_documents, kyc_submitted_at
+       FROM users WHERE id = $1`, [userId]
+    );
+    if (!userRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const user = userRes.rows[0];
+
+    // fetch latest kyc_requests record for this user (if any)
+    const reqRes = await pool.query(
+      `SELECT id, id_type, id_number, id_images, work_video, notes, status, admin_note, submitted_at, decided_at
+       FROM kyc_requests
+       WHERE user_id = $1
+       ORDER BY submitted_at DESC
+       LIMIT 1`, [userId]
+    );
+    const latest = reqRes.rows && reqRes.rows.length ? reqRes.rows[0] : null;
+
+    return res.json({
+      success: true,
+      user,
+      latest_request: latest
+    });
+  } catch (e) {
+    console.error('/api/kyc/status/:userId', e);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
 // Admin: list pending KYC requests
