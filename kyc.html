@@ -37,9 +37,7 @@
     .modal .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
     .modal button{ padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
     .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
-    .debug-toggle { margin-top:12px; display:flex; gap:8px; align-items:center; }
-    .debug-panel { margin-top:12px; background:#0b1220; color:#e6f0ff; padding:12px; border-radius:10px; font-family:monospace; font-size:13px; max-height:260px; overflow:auto; white-space:pre-wrap; display:none; }
-    .debug-controls { display:flex;gap:8px; align-items:center; margin-top:8px; }
+    /* debug removed */
     .pill { background:#e6eef9; color:#0b1220; padding:6px 8px; border-radius:999px; font-weight:700; font-size:12px }
   </style>
 </head>
@@ -105,7 +103,7 @@
         <div class="muted">All docs go to admin</div>
       </footer>
 
- 
+
 
   <!-- modal to select camera or files -->
   <div class="modal-backdrop" id="choiceModal">
@@ -167,10 +165,6 @@
 
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
-  const dbgToggleBtn = document.getElementById('dbgToggleBtn');
-  const debugPanel = document.getElementById('debugPanel');
-  const dbgLast = document.getElementById('dbgLast');
-
   // state
   let idFiles = { front: null, back: null };
   let videoFiles = [];
@@ -200,7 +194,6 @@
       const res = await fetch(API_BASE + '/api/kyc/status/' + me.id);
       const j = await res.json().catch(()=>null);
       if(!res.ok || !j || !j.success){
-        // keep serverUser as local me if nothing available
         serverUser = j && j.user ? j.user : null;
         serverLatest = j && j.latest_request ? j.latest_request : null;
         renderServerStatus();
@@ -210,8 +203,8 @@
       serverLatest = j.latest_request || null;
       renderServerStatus();
     } catch(e){
+      // non-fatal; show console error for dev awareness
       console.error('fetchServerKycStatus error', e);
-      appendDebug('Error fetching KYC status: ' + (e.message || e));
     }
   }
 
@@ -369,7 +362,7 @@
     // validate durations
     const problems = await validateVideoDurations(videoFiles);
     if(problems.length){
-      showValidation(problems.join('\\n'));
+      showValidation(problems.join('\n'));
       // remove offending videos
       videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
     }
@@ -448,22 +441,6 @@
     validationErrors.classList.add('hidden');
   }
 
-  // debug UI toggle
-  dbgToggleBtn.addEventListener('click', ()=>{
-    if(debugPanel.style.display === 'block'){
-      debugPanel.style.display = 'none';
-    } else {
-      debugPanel.style.display = 'block';
-      dbgLast.innerText = 'Opened: ' + (new Date()).toLocaleTimeString();
-    }
-  });
-
-  function appendDebug(msg){
-    const time = new Date().toISOString();
-    debugPanel.textContent = `--- ${time} ---\n` + String(msg) + `\n\n` + debugPanel.textContent;
-    dbgLast.innerText = 'Last: ' + (new Date()).toLocaleTimeString();
-  }
-
   // submit
   submitBtn.addEventListener('click', async ()=>{
     if(uploading) return;
@@ -490,7 +467,7 @@
     if(videoFiles.length > MAX_VIDEOS){ showValidation('Max 2 videos allowed'); return; }
 
     const durationProblems = await validateVideoDurations(videoFiles);
-    if(durationProblems.length){ showValidation(durationProblems.join('\\n')); return; }
+    if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
     // Build FormData: append image Files as repeated 'id_images' and videos as repeated 'work_videos'
     const form = new FormData();
@@ -509,19 +486,6 @@
 
     form.append('_multipart', '1');
 
-    // Debug: print summary of formdata
-    const entries = [];
-    for(const pair of form.entries()){
-      const key = pair[0];
-      const val = pair[1];
-      if(val instanceof File){
-        entries.push(`${key}: File(${val.name}, ${val.type}, ${Math.round(val.size/1024)}KB)`);
-      } else {
-        entries.push(`${key}: ${String(val)}`);
-      }
-    }
-    appendDebug(`Sending KYC POST ${API_BASE + '/api/kyc/submit'}\nFormData summary:\n${entries.join('\\n')}`);
-
     // prevent double submits
     uploading = true;
     setSubmissionLocked(true);
@@ -533,8 +497,6 @@
       let parsed = null;
       try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; }
 
-      appendDebug(`<= HTTP ${resp.status} ${resp.statusText}\nResponse text: ${rawText || '(empty)'}\nParsed JSON:\n${JSON.stringify(parsed,null,2)}`);
-
       if(resp.ok && parsed && parsed.success){
         // update local me and persist
         me.kyc_status = 'pending';
@@ -545,7 +507,6 @@
         showModal('Submitted — awaiting review');
         setTimeout(()=> {
           hideModal();
-          // go back to previous page (preferred)
           try {
             if (window.history.length > 1) window.history.back();
             else if(document.referrer) window.location.href = document.referrer;
@@ -558,15 +519,13 @@
         const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
         hideModal();
         showValidation('Submission failed: ' + msg);
-        appendDebug('Submission failed detail: ' + msg);
         // fetch status again to ensure UI is in sync
         await fetchServerKycStatus();
       }
     } catch(err){
       hideModal();
       showValidation('Network error while submitting. Try again.');
-      appendDebug('Network ERROR: ' + String(err.stack||err));
-      console.error(err);
+      console.error('Network ERROR:', err);
       await fetchServerKycStatus();
     } finally {
       uploading = false;
