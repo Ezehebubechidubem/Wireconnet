@@ -178,6 +178,7 @@
   let currentTarget = null; // 'front' | 'back' | 'videos'
   const MAX_VIDEOS = 2;
   const MAX_VIDEO_SECONDS = 180; // 3 minutes
+  let uploading = false;
 
   // open/close choice modal
   function openChoice(target){
@@ -351,6 +352,7 @@
 
   // submit
   submitBtn.addEventListener('click', async ()=>{
+    if(uploading) return;
     clearValidation();
 
     const idName = (idNameEl.value || '').trim();
@@ -367,7 +369,7 @@
     const durationProblems = await validateVideoDurations(videoFiles);
     if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
-    // Build FormData: IMPORTANT - append front and back as separate keys
+    // Build FormData: IMPORTANT - append images as repeated 'id_images' entries and videos as repeated 'work_videos'
     const form = new FormData();
     // primary fields the backend expects
     form.append('userId', me.id);
@@ -376,27 +378,19 @@
     form.append('id_name', idName);
     form.append('id_number', idNumber);
 
-    // === NEW: append front/back separately ===
-    if(idFiles.front) form.append('id_front', idFiles.front, idFiles.front.name || 'id_front.jpg');
-    if(idFiles.back)  form.append('id_back',  idFiles.back,  idFiles.back.name  || 'id_back.jpg');
+    // Append ID images as repeated 'id_images' fields (canonical way)
+    const idImageList = [];
+    if(idFiles.front) idImageList.push(idFiles.front);
+    if(idFiles.back) idImageList.push(idFiles.back);
 
-    // For backward compatibility with older backends that expect arrays,
-    // you *can* also append them as id_images/id_images[] — optional.
-    // If you prefer to remove the array-style fields entirely, delete the block below.
-    try {
-      form.append('id_images', idFiles.front, idFiles.front.name || 'id_front.jpg');
-      form.append('id_images', idFiles.back, idFiles.back.name || 'id_back.jpg');
+    idImageList.forEach((file) => {
+      // only append if a File object
+      if(file instanceof File) form.append('id_images', file, file.name);
+    });
 
-      form.append('id_images[]', idFiles.front, idFiles.front.name || 'id_front.jpg');
-      form.append('id_images[]', idFiles.back, idFiles.back.name || 'id_back.jpg');
-    } catch(e){
-      console.warn('append file failed', e);
-    }
-
-    // videos - append both keys as well
-    videoFiles.forEach(f => {
-      form.append('work_videos', f, f.name);
-      form.append('work_videos[]', f, f.name);
+    // Append videos as repeated 'work_videos' fields (canonical way)
+    videoFiles.forEach((f) => {
+      if(f instanceof File) form.append('work_videos', f, f.name);
     });
 
     // helpful marker (not required) but doesn't hurt
@@ -414,6 +408,11 @@
       }
     }
     appendDebug(`Sending KYC POST ${API_BASE + '/api/kyc/submit'}\nFormData summary:\n${entries.join('\n')}`);
+
+    // UI: prevent double submits
+    uploading = true;
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = 0.7;
 
     // show UI feedback
     showModal('Uploading — please wait...');
@@ -441,6 +440,10 @@
       showValidation('Network error while submitting. Try again.');
       appendDebug('Network ERROR: ' + String(err.stack||err));
       console.error(err);
+    } finally {
+      uploading = false;
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = 1;
     }
   });
 
