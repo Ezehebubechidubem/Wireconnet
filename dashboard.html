@@ -54,7 +54,9 @@
     /* paragraph text responsive */
     .fit { padding: 12px 16px; font-size: clamp(15px, 3.5vw, 20px); line-height: 1.6; color:#111; }
 
-    /* BUTTONS: neat, identical borders and size */
+    /* BUTTONS: neat, identical borders and size
+       ----- ONLY BUTTON STYLES UPDATED BELOW -----
+    */
     .audits {
       display: flex;
       justify-content: center;
@@ -66,7 +68,7 @@
 
     .audit p, .audits p, .auditss p { margin: 0; width: auto; display:flex; align-items:center; justify-content:center; }
 
-    .audit{
+.audit{
       display: flex;
       justify-content: center;
       align-items: center;
@@ -77,44 +79,47 @@
 
     .audit p{ margin: 0; width: auto; display:flex; align-items:center; justify-content:center; }
 
-    .too{ display:inline-flex;
+ .too{ display:inline-flex;
       align-items:center;
       justify-content:center;
       text-decoration:none;
       border-radius: 30px;
-      background: linear-gradient(#1154ff,#0738d6);
+      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
       color:#ffffff;
       padding:20px 10px;
       height: 10px;
       min-width: 180px;
-      border: 4px solid #000;
+      border: 4px solid #000;           /* bold black border like screenshot */
       font-weight:800;
       font-size: 18px;
       line-height:1;
       text-align:center;
       white-space: normal;
       word-break: break-word;
+      /* subtle inner shadow to mimic the "pressed" look */
       box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
     }
 
+    /* NEW BUTTON STYLE: looks like your screenshot */
     .do{
       display:inline-flex;
       align-items:center;
       justify-content:center;
       text-decoration:none;
       border-radius: 30px;
-      background: linear-gradient(#1154ff,#0738d6);
+      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
       color:#ffffff;
       padding:40px 40px;
       height: 45px;
       min-width: 500px;
-      border: 4px solid #000;
+      border: 4px solid #000;           /* bold black border like screenshot */
       font-weight:800;
       font-size: 18px;
       line-height:1;
       text-align:center;
       white-space: normal;
       word-break: break-word;
+      /* subtle inner shadow to mimic the "pressed" look */
       box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
     }
      .to {
@@ -123,31 +128,37 @@
       justify-content:center;
       text-decoration:none;
       border-radius: 30px;
-      background: linear-gradient(#1154ff,#0738d6);
+      background: linear-gradient(#1154ff,#0738d6); /* strong blue gradient */
       color:#ffffff;
       padding:10px 10px;
       height: 45px;
       min-width: 180px;
-      border: 4px solid #000;
+      border: 4px solid #000;           /* bold black border like screenshot */
       font-weight:800;
       font-size: 18px;
       line-height:1;
       text-align:center;
       white-space: normal;
       word-break: break-word;
+      /* subtle inner shadow to mimic the "pressed" look */
       box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15), 0 6px 0 rgba(0,0,0,0.08);
     }
-    .doo{color:blue; text-decoration:none; font-weight:bold;}
-
+.doo{color:blue;
+  text-decoration:none;
+  font-weight:bold;
+}
+    /* small responsive tweaks for tiny phones */
     @media (max-width:480px){
       .do, .to { min-width: 46%; height:48px; font-size:15px; border-width:3px; border-radius:20px; padding:2px 56px; }
       .brief { padding: 12px; }
       .fit { padding: 10px 12px; }
     }
 
+    /* leaderboard small buttons: keep the same look but smaller height */
     .auditss { display:flex; justify-content:center; gap:14px; padding: 18px 10px; }
     .auditss .to { min-width: 140px; height:44px; font-size:15px; }
 
+    /* match small menu book button to same look */
     .menu-dropdown .book-btn {
       display:block;
       margin-top:6px;
@@ -162,6 +173,7 @@
       box-shadow: inset 0 -4px 0 rgba(0,0,0,0.12), 0 4px 0 rgba(0,0,0,0.06);
     }
 
+    /* keep regular menu links visible but not changed */
     .menu-dropdown a.menu-link { display:block; padding:8px; color:#000; font-weight:700; text-decoration:none; border-radius:6px; }
 
     /* KYC badge styles (added) */
@@ -197,15 +209,19 @@
     .kdot-verified   { background:#10b981; box-shadow: 0 0 8px rgba(16,185,129,0.45); }
     .kdot-rejected   { background:#ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.45); }
 
+    /* keep existing button classes for Learn More, etc. */
     .image { background: rgba(220,220,220,1); padding: 10px 12px; margin: 8px 12px; border-radius:8px; }
     .images, .imagecap { display:flex; justify-content:center; padding: 12px 0; }
     .bond { padding:10px; }
 
+    /* aside */
     aside { padding: 10px 14px 28px 14px; }
 
+    /* chat bubble */
     .AI { position: fixed; right: 12px; bottom: 12px; z-index: 1200; }
     .AI img { width:64px; height:auto; border-radius:6px; display:block; }
 
+    /* hamburger menu */
     .hamburger-container {
       position: fixed; top: calc(var(--header-h) - 36px); right: 12px; z-index: 2000;
     }
@@ -217,6 +233,7 @@
       background:#fff; border:1px solid #000; border-radius:10px; padding:10px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
     }
 
+    /* toggle switch styles (kept) */
     .status-toggle { display:flex; justify-content:space-between; align-items:center; margin-top:8px; gap:8px; }
     .status-note { font-size:12px; color:#444; margin-top:6px; }
     .switch { position:relative; width:54px; height:30px; display:inline-block; }
@@ -226,34 +243,17 @@
     input:checked + .slider { background:#28a745; }
     input:checked + .slider:before { transform: translateX(24px); }
 
+    /* online indicator */
     .online-indicator { display:inline-flex; align-items:center; gap:8px; font-weight:700; color:#333; }
     .indicator-dot { width:14px; height:14px; border-radius:50%; background:gray; display:inline-block; }
     .indicator-online { background:#28a745; box-shadow:0 0 8px rgba(40,167,69,.25); }
     .indicator-offline { background:gray; }
 
+    /* toast */
     .toast { position: fixed; top: 12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.85); color:#fff; padding:8px 12px; border-radius:8px; display:none; z-index:4000; }
 
+    /* ensure images can't overflow horizontally */
     img { max-width:100%; height:auto; display:block; }
-
-    /* disabled look for Book button (overlaying anchor) */
-    .disabled-btn {
-      opacity: 0.45;
-      pointer-events: none;
-      filter: grayscale(10%);
-    }
-
-    /* Modal for KYC prompt */
-    .kyc-modal-backdrop {
-      position: fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.45); z-index:6000;
-    }
-    .kyc-modal {
-      width:92%; max-width:420px; background:#fff; border-radius:12px; padding:18px; box-shadow:0 20px 60px rgba(2,6,23,0.4);
-    }
-    .kyc-modal h3 { margin:0 0 8px; font-size:18px; }
-    .kyc-modal .muted { color:#374151; font-size:14px; margin-bottom:8px; }
-    .kyc-modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-    .kyc-modal .btn { background: #1154ff; color:#fff; padding:10px 12px; border-radius:8px; border:0; font-weight:800; cursor:pointer; }
-    .kyc-modal .btn.secondary { background:#fff; color:#111; border:1px solid #e6eef9; }
   </style>
 </head>
 <body data-user-id="">
@@ -278,9 +278,10 @@
         </span>
       </a>
 
+      <!-- LOGOUT added above Book Job as requested -->
       <a id="logoutBtn" class="menu-link" href="#">Logout</a>
 
-      <a id="bookJobBtn" class="book-btn" href="book.html">Book Job</a>
+      <a class="book-btn" href="book.html">Book Job</a>
 
       <div class="status-toggle">
         <span>Status:</span>
@@ -313,12 +314,12 @@
     </section>
 
     <div class="audit">
-      <p><a id="bookAJobPrimary" class="do" href="book.html">Book A Job</a></p>
+      <p><a class="do" href="book.html">Book A Job</a></p>
       <p><a class="do" href="#">View All Jobs</a></p>
     </div>
 
     <div class="audits">
-      <p><a class="too" href="kyc.html">Do Kyc</a></p>
+      <p><a class="too" href="#">Do Kyc</a></p>
       <p><a class="too" href="#">Customer Services</a></p>
     </div>
 
@@ -358,21 +359,6 @@
     <aside class="AI"><a href="#"><img src="https://i.postimg.cc/66GgyB9s/chat-traditional-1.jpg" alt="chat"></a></aside>
   </main>
 
-  <!-- KYC required modal -->
-  <div id="kycModal" class="kyc-modal-backdrop" aria-hidden="true">
-    <div class="kyc-modal" role="dialog" aria-modal="true" aria-labelledby="kycModalTitle">
-      <h3 id="kycModalTitle">KYC required to book a job</h3>
-      <div class="muted">We saw that your account is not verified. For security and trust reasons, you need to complete KYC before you can book jobs. Would you like to verify now?</div>
-      <div style="margin-top:8px;">
-        <strong>Tip:</strong> Upload clear images of your ID and a short work video for faster approval.
-      </div>
-      <div class="actions" style="margin-top:12px;">
-        <button id="kycModalCancel" class="btn secondary">Cancel</button>
-        <button id="kycModalDo" class="btn">Do KYC now</button>
-      </div>
-    </div>
-  </div>
-
   <div class="toast" id="toast"></div>
 
   <script>
@@ -392,15 +378,6 @@
     const kycBadge = document.getElementById('kycBadge');
     const kycDot = document.getElementById('kycDot');
     const kycMenuLink = document.getElementById('kycMenuLink');
-
-    // Book buttons (there are two places on page: menu and main CTA)
-    const bookJobMenuBtn = document.getElementById('bookJobBtn'); // in menu
-    const bookAJobPrimary = document.getElementById('bookAJobPrimary'); // main CTA
-
-    // Modal controls
-    const kycModal = document.getElementById('kycModal');
-    const kycModalDo = document.getElementById('kycModalDo');
-    const kycModalCancel = document.getElementById('kycModalCancel');
 
     // small helper: show toast
     function showToast(msg, ms = 3000){
@@ -484,17 +461,17 @@
     }
 
     // ---------- KYC badge logic ----------
-    let currentKycStatus = null; // 'verified'|'pending'|'rejected'|'unverified'
+    // currentKycStatus: 'verified'|'pending'|'rejected'|'unverified'|null
+    let currentKycStatus = null;
 
     async function updateKycBadge(){
       try {
         const userId = getUserId();
         if(!userId){
-          // not signed in: show Unverified style
+          // not signed in: show Unverified (ash) and tooltip
           if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Not signed in'; }
           if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Not signed in'; }
           currentKycStatus = 'unverified';
-          updateBookButton();
           return;
         }
 
@@ -504,7 +481,6 @@
           if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Unable to fetch status'; }
           if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Unable to fetch status'; }
           currentKycStatus = 'unverified';
-          updateBookButton();
           return;
         }
 
@@ -513,7 +489,6 @@
           if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; }
           if(kycDot){ kycDot.className = 'kdot kdot-unverified'; }
           currentKycStatus = 'unverified';
-          updateBookButton();
           return;
         }
 
@@ -538,6 +513,7 @@
         if(kycBadge){
           kycBadge.textContent = label;
           kycBadge.className = badgeClass;
+          // if admin note present, set tooltip to it so user can hover
           if(latest && latest.admin_note){
             kycBadge.title = 'Admin: ' + latest.admin_note;
           } else if(latest && latest.submitted_at){
@@ -554,28 +530,11 @@
           else kycDot.title = 'KYC: ' + label;
         }
         currentKycStatus = normalized;
-        updateBookButton();
       } catch(err){
         console.warn('updateKycBadge error', err);
         if(kycBadge){ kycBadge.textContent = 'Unverified'; kycBadge.className = 'kyc-badge kyc-unverified'; kycBadge.title = 'Error'; }
         if(kycDot){ kycDot.className = 'kdot kdot-unverified'; kycDot.title = 'Error'; }
         currentKycStatus = 'unverified';
-        updateBookButton();
-      }
-    }
-
-    // Enable Book only when status is 'verified'
-    function updateBookButton(){
-      const verified = (currentKycStatus === 'verified');
-      // menu button
-      if(bookJobMenuBtn){
-        if(verified){ bookJobMenuBtn.classList.remove('disabled-btn'); bookJobMenuBtn.removeAttribute('aria-disabled'); }
-        else { bookJobMenuBtn.classList.add('disabled-btn'); bookJobMenuBtn.setAttribute('aria-disabled','true'); }
-      }
-      // primary CTA
-      if(bookAJobPrimary){
-        if(verified){ bookAJobPrimary.classList.remove('disabled-btn'); bookAJobPrimary.removeAttribute('aria-disabled'); }
-        else { bookAJobPrimary.classList.add('disabled-btn'); bookAJobPrimary.setAttribute('aria-disabled','true'); }
       }
     }
 
@@ -585,45 +544,7 @@
       setInterval(updateKycBadge, 15000); // refresh every 15s
     })();
 
-    // Intercept Book clicks to show modal when not verified
-    function interceptBookClicks(){
-      // menu button
-      if(bookJobMenuBtn){
-        bookJobMenuBtn.addEventListener('click', (ev) => {
-          const verified = (currentKycStatus === 'verified');
-          if(!verified){ ev.preventDefault(); ev.stopPropagation(); showKycModal(); return false; }
-          // else allow default navigation
-        }, { passive: false });
-      }
-      // primary CTA
-      if(bookAJobPrimary){
-        bookAJobPrimary.addEventListener('click', (ev) => {
-          const verified = (currentKycStatus === 'verified');
-          if(!verified){ ev.preventDefault(); ev.stopPropagation(); showKycModal(); return false; }
-        }, { passive: false });
-      }
-    }
-
-    function showKycModal(){
-      if(!kycModal) return;
-      kycModal.style.display = 'flex';
-      kycModal.setAttribute('aria-hidden','false');
-    }
-    function hideKycModal(){
-      if(!kycModal) return;
-      kycModal.style.display = 'none';
-      kycModal.setAttribute('aria-hidden','true');
-    }
-
-    // Modal button handlers
-    if(kycModalCancel) kycModalCancel.addEventListener('click', ()=> { hideKycModal(); });
-    if(kycModalDo) kycModalDo.addEventListener('click', ()=> {
-      hideKycModal();
-      // Go to kyc page
-      window.location.href = 'kyc.html';
-    });
-
-    // intercept kyc.html links to avoid opening when already verified (keeps current behavior)
+    // intercept clicks to kyc.html: if verified, block and show message
     function interceptKycLinks(){
       const anchors = Array.from(document.querySelectorAll('a[href$="kyc.html"], a[href*="/kyc.html"]'));
       anchors.forEach(a => {
@@ -631,7 +552,7 @@
         a.dataset.kycHandlerAttached = '1';
         a.addEventListener('click', function(ev){
           try {
-            if(currentKycStatus === null) { updateKycBadge(); }
+            if(currentKycStatus === null) { /* try to update but do not block */ updateKycBadge(); }
             if(currentKycStatus === 'verified'){
               ev.preventDefault(); ev.stopPropagation();
               showToast('Account already verified — no need to open KYC page.', 4000);
@@ -645,9 +566,7 @@
       });
     }
 
-    // Setup book click intercepts after DOM ready
     document.addEventListener('DOMContentLoaded', () => {
-      interceptBookClicks();
       interceptKycLinks();
       // re-run intercept periodically to catch dynamically added links
       setInterval(interceptKycLinks, 3000);
@@ -674,6 +593,18 @@
         }
       });
     })();
+
+    function setIndicator(online){
+      if(online){
+        indicatorDot.classList.remove('indicator-offline');
+        indicatorDot.classList.add('indicator-online');
+        indicatorText.innerText = 'Online';
+      } else {
+        indicatorDot.classList.remove('indicator-online');
+        indicatorDot.classList.add('indicator-offline');
+        indicatorText.innerText = 'Offline';
+      }
+    }
 
     // Toggle handler: ONLY ALLOW when user role === 'client'
     async function handleSwitchToggle(e){
@@ -742,11 +673,13 @@
       const ss = document.getElementById('statusSwitch');
 
       if(!isClient){
+        // leave UI unchanged visually but ensure switch is unchecked and indicator offline
         setIndicator(false);
         if(ss) ss.checked = false;
         return;
       }
 
+      // for client, restore last known if any
       const known = readLastKnownOnline(userId);
       if(known === null){
         setIndicator(false);
@@ -757,27 +690,37 @@
       }
     })();
 
-    // LOGOUT
+    // LOGOUT: clear session-related keys and redirect to login.html
     logoutBtn && logoutBtn.addEventListener('click', function (ev) {
       ev.preventDefault();
       try {
         const u = getLocalUser();
         if(u && u.id) {
+          // remove any per-user online flag
           localStorage.removeItem('techOnline_' + u.id);
         }
       } catch(e){}
+      // clear common session keys used by your pages
       localStorage.removeItem('wc_user');
       localStorage.removeItem('wc_token');
       localStorage.removeItem('userId');
       localStorage.removeItem('userRole');
+      // also remove generic online flag
       localStorage.removeItem('wc_online');
+      // navigate to login
       window.location.href = 'login.html';
     });
 
-    // close kyc modal on escape / click outside
-    document.addEventListener('keydown', (e)=> { if(e.key === 'Escape') hideKycModal(); });
-    document.addEventListener('click', (e)=> { if(e.target === kycModal) hideKycModal(); });
-
+    // close menu on ESC (unchanged)
+    document.addEventListener('keydown', (e)=> {
+      if(e.key === 'Escape') {
+        const menu = document.getElementById('menuDropdown');
+        const btn = document.getElementById('hamburgerBtn');
+        if(menu) menu.style.display = 'none';
+        if(btn) btn.setAttribute('aria-expanded', false);
+        if(menu) menu.setAttribute('aria-hidden', true);
+      }
+    });
   </script>
 </body>
 </html>
