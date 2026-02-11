@@ -9,7 +9,7 @@
     *{box-sizing:border-box}
     body{font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:#111}
     .wrap{max-width:720px;margin:18px auto;padding:14px}
-    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06); position:relative;}
     .logo{display:flex;align-items:center;justify-content:center;margin-bottom:8px}
     .logo img{width:100%;max-width:320px;height:auto;display:block}
     label{display:block;margin-top:12px;font-weight:700;color:#111;font-size:15px}
@@ -37,7 +37,16 @@
     .modal .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
     .modal button{ padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
     .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
-    /* debug removed */
+    /* debug panel styles */
+    .debug-toggle { position:absolute; top:12px; right:12px; display:flex; gap:8px; align-items:center; z-index:1200; }
+    .debug-toggle button { padding:6px 8px; border-radius:8px; border:1px solid #e6eef9; background:#fff; cursor:pointer; font-weight:700; font-size:13px; }
+    .debug-panel { margin-top:12px; background:#0b1220; color:#e6f0ff; padding:12px; border-radius:10px; font-family:monospace; font-size:13px; max-height:260px; overflow:auto; white-space:pre-wrap; display:none; }
+    .debug-controls { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .debug-controls button { padding:6px 8px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
+    .debug-clear { background:#ef4444; color:#fff; }
+    .debug-copy { background:#10b981; color:#fff; }
+    .debug-visible { display:block !important; }
+    /* end debug */
     .pill { background:#e6eef9; color:#0b1220; padding:6px 8px; border-radius:999px; font-weight:700; font-size:12px }
   </style>
 </head>
@@ -48,6 +57,19 @@
         <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
       </div>
 
+      <!-- Debug toggle (top-right) -->
+      <div class="debug-toggle" aria-hidden="false">
+        <button id="dbgToggleBtn" type="button">Debug</button>
+      </div>
+
+      <!-- Debug panel (hidden by default) -->
+      <div id="debugPanel" class="debug-panel" aria-live="polite" role="log" aria-hidden="true"></div>
+      <div id="debugControls" class="debug-controls" style="display:none;">
+        <button id="dbgClear" class="debug-clear">Clear</button>
+        <button id="dbgCopy" class="debug-copy">Copy</button>
+      </div>
+
+      <!-- existing form -->
       <!-- ID type -->
       <label for="id_type">ID type</label>
       <select id="id_type" class="input" aria-label="ID type">
@@ -110,8 +132,8 @@
         <button id="submitBtn" class="btn">Submit</button>
         <div class="muted">All docs go to admin</div>
       </footer>
-
-
+    </div>
+  </div>
 
   <!-- modal to select camera or files -->
   <div class="modal-backdrop" id="choiceModal">
@@ -175,6 +197,13 @@
 
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
+  // debug elements
+  const dbgToggleBtn = document.getElementById('dbgToggleBtn');
+  const debugPanel = document.getElementById('debugPanel');
+  const debugControls = document.getElementById('debugControls');
+  const dbgClear = document.getElementById('dbgClear');
+  const dbgCopy  = document.getElementById('dbgCopy');
+
   // state
   let idFiles = { front: null, back: null, selfie: null };
   let videoFiles = [];
@@ -198,11 +227,65 @@
     return API_BASE + '/' + p;
   }
 
+  // ----------------- debug helpers -----------------
+  function timestamp(){
+    return (new Date()).toISOString();
+  }
+  function appendDebug(msg){
+    try {
+      const out = `[${timestamp()}] ${String(msg)}\n\n`;
+      // prepend newest to top for quick glance
+      debugPanel.textContent = out + debugPanel.textContent;
+      // make panel visible automatically when logs appear
+      if(debugPanel.style.display !== 'block'){
+        // do not force open; leave the button to toggle. But highlight that a new log exists by brief flash
+        debugPanel.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.08)';
+        setTimeout(()=> debugPanel.style.boxShadow = '', 900);
+      }
+    } catch(e){ console.warn('appendDebug error', e); }
+  }
+  dbgToggleBtn && dbgToggleBtn.addEventListener('click', ()=>{
+    if(!debugPanel) return;
+    const isVisible = debugPanel.style.display === 'block';
+    if(isVisible){
+      debugPanel.style.display = 'none';
+      debugPanel.setAttribute('aria-hidden','true');
+      debugControls.style.display = 'none';
+      dbgToggleBtn.textContent = 'Debug';
+    } else {
+      debugPanel.style.display = 'block';
+      debugPanel.setAttribute('aria-hidden','false');
+      debugControls.style.display = 'flex';
+      dbgToggleBtn.textContent = 'Hide Debug';
+    }
+  });
+  // dynamic Clear and Copy buttons (created when panel shown)
+  // note: safe guards if elements are not present
+  if(dbgClear) dbgClear.addEventListener('click', ()=> { debugPanel.textContent = ''; appendDebug('Debug cleared by user'); });
+  if(dbgCopy) dbgCopy.addEventListener('click', async ()=> {
+    try {
+      await navigator.clipboard.writeText(debugPanel.textContent || '');
+      appendDebug('Debug copied to clipboard');
+    } catch(e){
+      appendDebug('Copy failed: ' + (e && e.message ? e.message : String(e)));
+    }
+  });
+  // Make sure debugControls exist (some clients may not show them) - if missing, we create them dynamically
+  (function ensureDebugControls(){
+    if(!debugControls || !dbgClear || !dbgCopy){
+      // try to wire up the visible buttons if they were created later; nothing to do — we've already wired if present
+    }
+  })();
+  // ----------------- end debug helpers -----------------
+
   // fetch server status and latest request
   async function fetchServerKycStatus(){
     try {
-      const res = await fetch(API_BASE + '/api/kyc/status/' + me.id);
+      const url = API_BASE + '/api/kyc/status/' + me.id;
+      appendDebug(`Fetching KYC status GET ${url}`);
+      const res = await fetch(url);
       const j = await res.json().catch(()=>null);
+      appendDebug(`Response: HTTP ${res.status} — body: ${j ? JSON.stringify(j) : '(non-json or empty)'}`);
       if(!res.ok || !j || !j.success){
         serverUser = j && j.user ? j.user : null;
         serverLatest = j && j.latest_request ? j.latest_request : null;
@@ -215,6 +298,7 @@
     } catch(e){
       // non-fatal; show console error for dev awareness
       console.error('fetchServerKycStatus error', e);
+      appendDebug('fetchServerKycStatus error: ' + (e && e.stack ? e.stack : e));
     }
   }
 
@@ -302,7 +386,7 @@
     });
   }
 
-  // previews (client-chosen files)
+ // previews (client-chosen files)
   function renderIdPreview(){
     idPreview.innerHTML = '';
     const order = [
@@ -461,6 +545,7 @@
   function showValidation(msg){
     validationErrors.textContent = msg;
     validationErrors.classList.remove('hidden');
+    appendDebug('Validation: ' + msg);
   }
   function clearValidation(){
     validationErrors.textContent = '';
@@ -519,6 +604,23 @@
 
     form.append('_multipart', '1');
 
+    // Debug: produce FormData summary
+    try {
+      const entries = [];
+      for(const pair of form.entries()){
+        const key = pair[0];
+        const val = pair[1];
+        if(val instanceof File){
+          entries.push(`${key}: File(${val.name}, ${val.type}, ${Math.round(val.size/1024)}KB)`);
+        } else {
+          entries.push(`${key}: ${String(val)}`);
+        }
+      }
+      appendDebug(`Submitting KYC POST ${API_BASE + '/api/kyc/submit'}\nFormData summary:\n${entries.join('\n')}`);
+    } catch(e){
+      appendDebug('Error summarizing FormData: ' + (e && e.stack ? e.stack : e));
+    }
+
     // prevent double submits
     uploading = true;
     setSubmissionLocked(true);
@@ -527,8 +629,9 @@
     try {
       const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
       const rawText = await resp.text().catch(()=>null);
+      appendDebug(`KYC submit response: HTTP ${resp.status}\nRaw: ${rawText || '(empty)'}`);
       let parsed = null;
-      try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; }
+      try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; appendDebug('Response JSON parse failed: ' + (e && e.message ? e.message : e)); }
 
       if(resp.ok && parsed && parsed.success){
         // update local me and persist
@@ -552,12 +655,14 @@
         const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
         hideModal();
         showValidation('Submission failed: ' + msg);
+        appendDebug('Submission failed detail: ' + msg + (parsed ? (' • parsed: ' + JSON.stringify(parsed)) : ''));
         // fetch status again to ensure UI is in sync
         await fetchServerKycStatus();
       }
     } catch(err){
       hideModal();
       showValidation('Network error while submitting. Try again.');
+      appendDebug('Network ERROR while submitting: ' + (err && err.stack ? err.stack : String(err)));
       console.error('Network ERROR:', err);
       await fetchServerKycStatus();
     } finally {
@@ -577,6 +682,7 @@
     idNameEl.value = me && me.fullname ? me.fullname : '';
     // ask server for the authoritative KYC status & latest request
     await fetchServerKycStatus();
+    appendDebug('KYC page initialized for user: ' + (me && (me.id || me.email || me.username) ? (me.id || me.email || me.username) : '(unknown)'));
   })();
 
   // save geo quietly (kept)
