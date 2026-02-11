@@ -139,21 +139,22 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS kyc_requests (
-  id SERIAL PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  id_type TEXT,
-  id_number TEXT,
-  id_images TEXT[],
-  work_video TEXT,
-  selfie TEXT,            -- <- added selfie column
-  notes TEXT,
-  status TEXT DEFAULT 'pending',
-  admin_note TEXT,
-  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  decided_at TIMESTAMP WITH TIME ZONE
-);
-`;
+CREATE TABLE IF NOT EXISTS kyc_requests (  
+  id SERIAL PRIMARY KEY,  
+  user_id TEXT NOT NULL REFERENCES users(id),  
+  id_type TEXT,  
+  id_number TEXT,  
+  id_images TEXT[],  
+  work_video TEXT,  
+  selfie TEXT,            -- <- added selfie column  
+  notes TEXT,  
+  status TEXT DEFAULT 'pending',  
+  admin_note TEXT,  
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),  
+  decided_at TIMESTAMP WITH TIME ZONE  
+);  
+`;  
+
 
 // Additional safe ALTERs to add columns that may be missing in older DBs
 const alterUsersSql = `
