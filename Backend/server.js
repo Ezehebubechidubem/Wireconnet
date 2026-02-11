@@ -931,9 +931,7 @@ app.post(
 
         const selfiePath = selfieFile ? (selfieFile.path || selfieFile.secure_url || selfieFile.url || selfieFile.filename || null) : null;
 
-        // push selfie into id_images array as well for backwards compatibility (optional)
-        if (selfiePath) {
-          imagePaths.push(selfiePath);
+        
         }
 
         const ins = await client.query(
