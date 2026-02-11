@@ -146,7 +146,6 @@ CREATE TABLE IF NOT EXISTS kyc_requests (
   id_number TEXT,  
   id_images TEXT[],  
   work_video TEXT,  
-  selfie TEXT,            -- <- added selfie column  
   notes TEXT,  
   status TEXT DEFAULT 'pending',  
   admin_note TEXT,  
