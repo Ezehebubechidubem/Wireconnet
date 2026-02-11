@@ -78,6 +78,14 @@
         <small>Camera or files</small>
       </label>
 
+      <!-- selfie / user photo -->
+      <label for="selfie_btn">Selfie (your photo)</label>
+      <input id="selfie" class="native" type="file" accept="image/*" capture="user">
+      <label id="selfie_btn" class="choose-btn" data-target="selfie" tabindex="0">
+        <span>Take / upload selfie</span>
+        <small>Front camera or files</small>
+      </label>
+
       <div id="id_preview" class="file-row" aria-live="polite"></div>
 
       <!-- videos -->
@@ -141,10 +149,12 @@
 
   const idFrontNative = document.getElementById('id_front');
   const idBackNative = document.getElementById('id_back');
+  const selfieNative = document.getElementById('selfie');
   const videosNative = document.getElementById('videos_input');
 
   const idFrontBtn = document.getElementById('id_front_btn');
   const idBackBtn  = document.getElementById('id_back_btn');
+  const selfieBtn  = document.getElementById('selfie_btn');
   const videosBtn  = document.getElementById('videos_input_btn');
 
   const idPreview = document.getElementById('id_preview');
@@ -166,9 +176,9 @@
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
   // state
-  let idFiles = { front: null, back: null };
+  let idFiles = { front: null, back: null, selfie: null };
   let videoFiles = [];
-  let currentTarget = null; // 'front' | 'back' | 'videos'
+  let currentTarget = null; // 'front' | 'back' | 'selfie' | 'videos'
   const MAX_VIDEOS = 2;
   const MAX_VIDEO_SECONDS = 180; // 3 minutes
   let uploading = false;
@@ -286,7 +296,7 @@
   function setSubmissionLocked(locked){
     submitBtn.disabled = !!locked || uploading;
     submitBtn.style.opacity = (locked || uploading) ? 0.6 : 1;
-    [idFrontBtn, idBackBtn, videosBtn].forEach(b => {
+    [idFrontBtn, idBackBtn, selfieBtn, videosBtn].forEach(b => {
       if(locked){ b.setAttribute('aria-disabled','true'); b.style.pointerEvents='none'; b.style.opacity=0.6; }
       else { b.removeAttribute('aria-disabled'); b.style.pointerEvents='auto'; b.style.opacity=1; }
     });
@@ -297,7 +307,8 @@
     idPreview.innerHTML = '';
     const order = [
       { key: 'front', file: idFiles.front, label: 'Front' },
-      { key: 'back',  file: idFiles.back,  label: 'Back' }
+      { key: 'back',  file: idFiles.back,  label: 'Back' },
+      { key: 'selfie', file: idFiles.selfie, label: 'Selfie' }
     ];
     order.forEach((item) => {
       if(!item.file) return;
@@ -310,7 +321,8 @@
       rm.addEventListener('click', ()=> {
         URL.revokeObjectURL(img.src);
         if(item.key === 'front'){ idFiles.front = null; idFrontNative.value = ''; }
-        else { idFiles.back = null; idBackNative.value = ''; }
+        else if(item.key === 'back'){ idFiles.back = null; idBackNative.value = ''; }
+        else if(item.key === 'selfie'){ idFiles.selfie = null; selfieNative.value = ''; }
         renderIdPreview();
       });
       box.appendChild(rm);
@@ -351,6 +363,13 @@
     else { idFiles.back = null; idBackNative.value=''; renderIdPreview(); }
   });
 
+  selfieNative.addEventListener('change', (e)=>{
+    clearValidation();
+    const f = e.target.files && e.target.files[0];
+    if(f && f.type.startsWith('image/')) { idFiles.selfie = f; renderIdPreview(); }
+    else { idFiles.selfie = null; selfieNative.value=''; renderIdPreview(); }
+  });
+
   videosNative.addEventListener('change', async (e)=>{
     clearValidation();
     const files = Array.from(e.target.files || []);
@@ -373,13 +392,13 @@
   // visible buttons open the modal
   idFrontBtn.addEventListener('click', ()=> openChoice('front'));
   idBackBtn.addEventListener('click', ()=> openChoice('back'));
+  selfieBtn.addEventListener('click', ()=> openChoice('selfie'));
   videosBtn.addEventListener('click', ()=> openChoice('videos'));
 
   // keyboard support
-  [idFrontBtn, idBackBtn, videosBtn].forEach(btn=>{
+  [idFrontBtn, idBackBtn, selfieBtn, videosBtn].forEach(btn=>{
     btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
   });
-
   // handle user selection in modal: either 'camera' or 'files'
   function openChoice(target){
     currentTarget = target;
@@ -397,10 +416,17 @@
     clearValidation();
     if(!currentTarget) return;
 
-    if(currentTarget === 'front' || currentTarget === 'back'){
-      const native = (currentTarget === 'front') ? idFrontNative : idBackNative;
-      if(mode === 'camera') native.setAttribute('capture','environment');
-      else native.removeAttribute('capture');
+    if(currentTarget === 'front' || currentTarget === 'back' || currentTarget === 'selfie'){
+      let native = idFrontNative;
+      if(currentTarget === 'back') native = idBackNative;
+      if(currentTarget === 'selfie') native = selfieNative;
+      if(mode === 'camera') {
+        // for selfie use front camera, for id use environment
+        if(currentTarget === 'selfie') native.setAttribute('capture','user');
+        else native.setAttribute('capture','environment');
+      } else {
+        native.removeAttribute('capture');
+      }
       native.click();
     } else if(currentTarget === 'videos'){
       if(mode === 'camera') videosNative.setAttribute('capture','camcorder');
@@ -463,6 +489,7 @@
     if(!idNumber){ showValidation('Enter ID number'); return; }
     if(!idFiles.front){ showValidation('Upload front picture of ID'); return; }
     if(!idFiles.back){ showValidation('Upload back picture of ID'); return; }
+    if(!idFiles.selfie){ showValidation('Upload a selfie (your photo)'); return; }
     if(videoFiles.length === 0){ showValidation('Upload at least one work video (required)'); return; }
     if(videoFiles.length > MAX_VIDEOS){ showValidation('Max 2 videos allowed'); return; }
 
@@ -480,7 +507,13 @@
     const idImageList = [];
     if(idFiles.front) idImageList.push(idFiles.front);
     if(idFiles.back) idImageList.push(idFiles.back);
+    if(idFiles.selfie) idImageList.push(idFiles.selfie);
+
+    // Append id_images entries (backwards compatible)
     idImageList.forEach((file) => { if(file instanceof File) form.append('id_images', file, file.name); });
+
+    // Also append selfie explicitly (some backends may expect a named selfie field)
+    if(idFiles.selfie instanceof File) form.append('selfie', idFiles.selfie, idFiles.selfie.name);
 
     videoFiles.forEach((f) => { if(f instanceof File) form.append('work_videos', f, f.name); });
 
