@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS users (
   profile_complete boolean DEFAULT false,
   account_details JSONB,
   kyc_documents TEXT[],
+  kyc_selfie TEXT,
   kyc_submitted_at TIMESTAMP WITH TIME ZONE,
   online boolean DEFAULT false,
   lat double precision,
