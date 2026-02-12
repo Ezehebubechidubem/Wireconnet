@@ -49,7 +49,16 @@ if (process.env.SENTRY_DSN) {
 /////////////////////////////////////////////////////////////////////
 // Security & rate limiting
 /////////////////////////////////////////////////////////////////////
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+}));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
