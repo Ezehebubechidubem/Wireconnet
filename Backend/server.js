@@ -887,54 +887,87 @@ app.post('/api/profile/update', async (req,res)=>{
   }catch(e){ console.error('/api/profile/update', e); return res.status(500).json({ success:false, message:'Server error' }); }
 });
 
-// Submit KYC (multipart file-aware)  
-// This route uses the unified `upload` middleware which points to Cloudinary if configured, else disk storage.  
-app.post(
-  '/api/kyc/submit',
+// debug-friendly KYC submit route (drop-in replacement)
+// NOTE: keep this only for debugging; remove detailed error+file dumps in production.
+app.post('/api/kyc/submit', (req, res) => {
+  // invoke multer middleware manually so we can catch multer errors
   upload.fields([
-    { name: 'id_images', maxCount: 6 },     // allow multiple id images
-    { name: 'selfie', maxCount: 1 },        // <-- added selfie
-    { name: 'work_videos', maxCount: 2 }    // allow up to 2 videos
-  ]),
-  async (req, res) => {
+    { name: 'id_images', maxCount: 6 },
+    { name: 'selfie', maxCount: 1 },
+    { name: 'work_videos', maxCount: 2 }
+  ])(req, res, async (multerErr) => {
+
+    // If multer produced an error, return it as JSON (makes frontend debugging easy)
+    if (multerErr) {
+      console.error('MULTER ERROR at /api/kyc/submit:', multerErr);
+      const out = {
+        success: false,
+        message: 'Upload error',
+        error: {
+          code: multerErr.code || null,
+          field: multerErr.field || null,
+          message: multerErr.message || String(multerErr),
+          stack: multerErr.stack ? String(multerErr.stack).split('\n').slice(0,8).join('\n') : null
+        }
+      };
+      return res.status(multerErr.code === 'LIMIT_UNEXPECTED_FILE' ? 400 : 400).json(out);
+    }
+
+    // Normal execution path (now multer succeeded and req.files exists)
     try {
-      // text fields are in req.body; files are in req.files
+      // Log incoming body and files for debugging
+      console.log('KYC submit: req.body =', Object.assign({}, req.body));
+      // Log summary of files (do not dump file buffers)
+      const fileSummary = {};
+      if (req.files) {
+        Object.keys(req.files).forEach(k => {
+          fileSummary[k] = req.files[k].map(f => ({
+            fieldname: f.fieldname,
+            originalname: f.originalname,
+            mimetype: f.mimetype,
+            size: f.size,
+            // path / url / filename may vary by storage; show what's present
+            path: f.path || f.secure_url || f.url || f.filename || null
+          }));
+        });
+      }
+      console.log('KYC submit: req.files summary =', JSON.stringify(fileSummary, null, 2));
+
+      // --- your existing logic, unchanged, but using req.body & req.files ---
       const { userId, id_type, id_number, notes } = req.body || {};
 
-      // files
       const idFiles = (req.files && req.files['id_images']) ? req.files['id_images'] : [];
       const selfieFiles = (req.files && req.files['selfie']) ? req.files['selfie'] : [];
       const videoFiles = (req.files && req.files['work_videos']) ? req.files['work_videos'] : [];
 
-      // validation (match original error message and logic)
+      // validation (same as before)
       if (!userId || !id_type || !id_number || !Array.isArray(idFiles) || idFiles.length === 0) {
+        console.warn('/api/kyc/submit validation fail', { userId, id_type, id_number, idImagesCount: idFiles.length });
         return res.status(400).json({
           success: false,
-          message: 'userId, id_type, id_number and at least one id_images required'
+          message: 'userId, id_type, id_number and at least one id_images required',
+          debug: {
+            userIdProvided: !!userId,
+            idTypeProvided: !!id_type,
+            idNumberProvided: !!id_number,
+            idImagesCount: idFiles.length
+          }
         });
       }
 
       const client = await pool.connect();
       try {
         const usr = (await client.query(`SELECT id FROM users WHERE id=$1`, [userId])).rows[0];
-        if (!usr) return res.status(404).json({ success: false, message: 'User not found' });
+        if (!usr) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
 
-        // prepare paths (store filesystem paths or cloud URLs). Keep shape as array to match original expectation.
-        // For disk: multer sets file.path. For cloudinary storage, multer-storage-cloudinary sets file.path or secure_url.
-        const imagePaths = idFiles.map(f => {
-          return (f.path || f.secure_url || f.url || f.filename || null);
-        }).filter(Boolean);
+        // derive usable paths/urls
+        const imagePaths = idFiles.map(f => (f.path || f.secure_url || f.url || f.filename || null)).filter(Boolean);
+        const selfiePath = selfieFiles.length ? (selfieFiles[0].path || selfieFiles[0].secure_url || selfieFiles[0].url || selfieFiles[0].filename || null) : null;
+        const workVideoPath = videoFiles.length ? (videoFiles[0].path || videoFiles[0].secure_url || videoFiles[0].url || videoFiles[0].filename || null) : null;
 
-        // selfie (single)
-        const selfiePath = selfieFiles.length
-          ? (selfieFiles[0].path || selfieFiles[0].secure_url || selfieFiles[0].url || selfieFiles[0].filename || null)
-          : null;
-
-        const workVideoPath = videoFiles.length
-          ? (videoFiles[0].path || videoFiles[0].secure_url || videoFiles[0].url || videoFiles[0].filename || null)
-          : null;
-
-        // Insert request including selfie
+        // insert into DB (unchanged)
         const ins = await client.query(
           `INSERT INTO kyc_requests (user_id, id_type, id_number, id_images, selfie, work_video, notes, status)
            VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id, submitted_at`,
@@ -942,28 +975,48 @@ app.post(
         );
         const reqId = ins.rows[0].id;
 
-        // Update user's summary fields (keep same behavior as before)
         await client.query(
           `UPDATE users SET kyc_status='pending', kyc_documents=$1, kyc_submitted_at=now() WHERE id=$2`,
           [imagePaths, userId]
         );
 
-        return res.json({ success: true, message: 'KYC submitted and pending review', requestId: reqId });
+        // Return success + helpful debug info (files summary) so frontend can show it
+        return res.json({
+          success: true,
+          message: 'KYC submitted and pending review',
+          requestId: reqId,
+          debug: {
+            files: fileSummary,
+            imagePaths,
+            selfiePath,
+            workVideoPath
+          }
+        });
+
       } finally {
         client.release();
       }
-    } catch (e) {
-      console.error('/api/kyc/submit', e);
 
-      // make common multer upload errors clearer
-      if (e && e.code === 'LIMIT_UNEXPECTED_FILE') {
-        return res.status(400).json({ success: false, message: 'Unexpected file field: ' + (e.field || '(unknown)') });
-      }
-
-      return res.status(500).json({ success: false, message: 'Server error' });
+    } catch (err) {
+      // server error — include stack for debugging
+      console.error('/api/kyc/submit SERVER ERROR:', err && err.stack ? err.stack : err);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error',
+        error: {
+          message: err && err.message ? err.message : String(err),
+          stack: err && err.stack ? String(err.stack).split('\n').slice(0,8).join('\n') : null
+        },
+        // Do NOT include req.files/content in production responses
+        debug: {
+          filesPresent: Object.keys(req.files || {}).reduce((acc, k) => { acc[k] = (req.files[k] || []).length; return acc; }, {}),
+          body: Object.assign({}, req.body)
+        }
+      });
     }
-  }
-);
+
+  });
+});
 // Get user's KYC status + latest KYC request (includes admin_note)
 app.get('/api/kyc/status/:userId', async (req, res) => {
   try {
