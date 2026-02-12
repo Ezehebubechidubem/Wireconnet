@@ -172,7 +172,10 @@ const alterJobsSql = `
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS workers_needed INTEGER DEFAULT 1;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_days INTEGER DEFAULT 1;
 `;
-
+//Ensure older DBs have new columns
+const alterKycSql = `
+ALTER TABLE kyc_requests ADD COLUMN IF NOT EXISTS selfie TEXT;
+`;
 // Ensure messages table exists (some versions referenced it)
 const createMessagesTableSql = `
 CREATE TABLE IF NOT EXISTS messages (
@@ -189,6 +192,7 @@ CREATE TABLE IF NOT EXISTS messages (
   try{
     await pool.query(initSql);
     await pool.query(alterUsersSql);
+    await pool.query(alterKycSql);
     await pool.query(alterJobsSql);
     await pool.query(createMessagesTableSql);
     console.log('DB ready and migrations applied.');
