@@ -4,6 +4,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 
@@ -116,7 +117,14 @@ CREATE TABLE IF NOT EXISTS disputes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-
+CREATE TABLE IF NOT EXISTS staff (
+  id TEXT PRIMARY KEY,
+  fullname TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
   client_id TEXT NOT NULL REFERENCES users(id),
