@@ -110,8 +110,8 @@ const REDIS_URL = process.env.REDIS_URL || (process.env.REDIS_HOST ? `redis://${
 if (REDIS_URL) {
   try {
     redis = new IORedis(REDIS_URL, {
-      maxRetriesPerRequest: 1,
-      enableReadyCheck: true,
+      maxRetriesPerRequest: null,
+    
       // add other ioredis options if needed (password, tls, etc)
     });
     // create BullMQ queue
