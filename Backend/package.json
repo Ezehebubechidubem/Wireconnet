@@ -23,7 +23,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "pg": "^8.11.5",
     "prom-client": "^15.1.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
