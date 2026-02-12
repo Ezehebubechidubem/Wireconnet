@@ -1124,6 +1124,78 @@ app.get('/api/job/:id/messages', async (req, res) => {
     return res.status(500).json({ success:false, message:'Server error' });
   }
 });
+// ---------------- STAFF ADMIN ROUTES ----------------
+/**
+ * Create staff (admin)
+ * Returns generated_password in response (show once to admin)
+ */
+app.post('/api/admin/staff/create', async (req, res) => {
+  try {
+    const { fullname, email, role } = req.body || {};
+    if (!fullname || !email || !role) {
+      return res.status(400).json({ success:false, message: 'fullname, email and role required' });
+    }
+
+    const lcEmail = String(email).trim().toLowerCase();
+
+    // check exists
+    const existing = await pool.query('SELECT id FROM staff WHERE email=$1', [lcEmail]);
+    if (existing.rows.length) {
+      return res.status(400).json({ success:false, message: 'Staff with that email already exists' });
+    }
+
+    // generate password & hash
+    const tempPassword = Math.random().toString(36).slice(-10);
+    const hash = await bcrypt.hash(tempPassword, 10);
+
+    const id = uuidv4();
+
+    await pool.query(
+      `INSERT INTO staff (id, fullname, email, role, password_hash)
+       VALUES ($1,$2,$3,$4,$5)`,
+      [id, fullname.trim(), lcEmail, role.trim(), hash]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Staff created',
+      generated_password: tempPassword,
+      staff: { id, fullname, email: lcEmail, role }
+    });
+
+  } catch (err) {
+    console.error('/api/admin/staff/create', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success:false, message: 'Server error' });
+  }
+});
+
+/**
+ * List staff
+ */
+app.get('/api/admin/staff/list', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id, fullname, email, role, created_at FROM staff ORDER BY created_at DESC');
+    return res.json({ success:true, staff: r.rows });
+  } catch (err) {
+    console.error('/api/admin/staff/list', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success:false, message: 'Server error' });
+  }
+});
+
+/**
+ * Remove staff
+ */
+app.delete('/api/admin/staff/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM staff WHERE id = $1', [id]);
+    return res.json({ success:true, message: 'Staff removed' });
+  } catch (err) {
+    console.error('/api/admin/staff/:id', err && err.stack ? err.stack : err);
+    return res.status(500).json({ success:false, message: 'Server error' });
+  }
+});
+
 
 app.post('/api/job/:id/message', async (req, res) => {
   try {
