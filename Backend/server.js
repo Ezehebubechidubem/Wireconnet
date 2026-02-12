@@ -469,7 +469,7 @@ try {
       }
     });
 
-    uploadCloud = multer({ storage: cloudStorage, limits: { fileSize: 100 * 1024 * 1024 } }); // 100MB per file for cloud
+    uploadCloud = multer({ storage: cloudStorage, limits: { fileSize: 30 * 1024 * 1024 } }); // 100MB per file for cloud
     console.log('Cloudinary configured: using Cloudinary for uploads.');
   } else {
     console.log('Cloudinary not configured: using local disk uploads as fallback.');
