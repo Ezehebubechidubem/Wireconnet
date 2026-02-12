@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS users (
   gender TEXT,
   specializations TEXT[],
   password_hash TEXT NOT NULL,
-  kyc_status TEXT DEFAULT 'not_required',
+  kyc_status TEXT DEFAULT 'Unverified',
   avatar_url TEXT,
   profile_complete boolean DEFAULT false,
   account_details JSONB,
