@@ -445,9 +445,16 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
 
 // ------------------ CLOUDINARY CONFIG (optional) ------------------
 // We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
+const crypto = require('crypto');
+
 let uploadCloud = null;
+
 try {
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ) {
     const cloudinary = require('cloudinary').v2;
     const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
@@ -460,19 +467,31 @@ try {
     const cloudStorage = new CloudinaryStorage({
       cloudinary,
       params: async (req, file) => {
-        const isVideo = file.mimetype && file.mimetype.startsWith && file.mimetype.startsWith('video/');
-        return {
-          folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
-          resource_type: isVideo ? 'video' : 'image',
-          type: 'private', // 👈 ADD THIS LINE
+        const isVideo =
+          file.mimetype &&
+          file.mimetype.startsWith &&
+          file.mimetype.startsWith('video/');
 
-      public_id: crypto.randomUUID() // 👈 safer than original filename
+        return {
+          folder: isVideo
+            ? 'wireconnect/kyc/videos'
+            : 'wireconnect/kyc/images',
+
+          resource_type: isVideo ? 'video' : 'image',
+
+          type: 'private', // ✅ ensures file is NOT publicly accessible
+
+          public_id: crypto.randomUUID() // ✅ unguessable file ID
         };
       }
     });
 
-    uploadCloud = multer({ storage: cloudStorage, limits: { fileSize: 30 * 1024 * 1024 } }); // 100MB per file for cloud
-    console.log('Cloudinary configured: using Cloudinary for uploads.');
+    uploadCloud = multer({
+      storage: cloudStorage,
+      limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit (safer than 100MB)
+    });
+
+    console.log('Cloudinary configured: using PRIVATE Cloudinary uploads.');
   } else {
     console.log('Cloudinary not configured: using local disk uploads as fallback.');
   }
@@ -480,7 +499,6 @@ try {
   console.error('Cloudinary setup error (continuing with disk uploads):', err);
   uploadCloud = null;
 }
-
 // Choose the active upload middleware (cloud if available, else disk)
 const upload = uploadCloud || uploadDisk;
 
