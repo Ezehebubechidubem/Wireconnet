@@ -949,6 +949,42 @@ app.get('/api/user/:id', async (req,res)=> {
   }
 });
 
+//admin private kyc view
+app.get('/admin/kyc/:userId', verifyAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      'SELECT kyc_document FROM users WHERE id=$1',
+      [userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const publicId = result.rows[0].kyc_document;
+
+    if (!publicId) {
+      return res.status(404).json({ message: 'No KYC uploaded' });
+    }
+
+    const cloudinary = require('cloudinary').v2;
+
+    const signedUrl = cloudinary.url(publicId, {
+      type: 'private',
+      sign_url: true,
+      expires_at: Math.floor(Date.now() / 1000) + 60 // expires in 60 seconds
+    });
+
+    return res.json({ url: signedUrl });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error generating signed URL' });
+  }
+});
+
 // Admin: approve/decline a KYC request
 app.post('/api/kyc/:reqId/decision', async (req,res)=>{
   try{
