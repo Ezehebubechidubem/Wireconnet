@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS articles (
   body TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
--- Add transaction and disputes tables (run once)
+
 CREATE TABLE IF NOT EXISTS transactions (
   id TEXT PRIMARY KEY,
   job_id TEXT REFERENCES jobs(id),
@@ -138,21 +138,21 @@ CREATE TABLE IF NOT EXISTS jobs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS kyc_requests (  
-  id SERIAL PRIMARY KEY,  
-  user_id TEXT NOT NULL REFERENCES users(id),  
-  id_type TEXT,  
-  id_number TEXT,  
-  id_images TEXT[],  
-  work_video TEXT,  
-  notes TEXT,  
-  status TEXT DEFAULT 'pending',  
-  admin_note TEXT,  
-  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),  
-  decided_at TIMESTAMP WITH TIME ZONE  
-);  
-`;  
-
+CREATE TABLE IF NOT EXISTS kyc_requests (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  id_type TEXT,
+  id_number TEXT,
+  id_images TEXT[],
+  selfie TEXT,                 -- ✅ ADDED HERE
+  work_video TEXT,
+  notes TEXT,
+  status TEXT DEFAULT 'pending',
+  admin_note TEXT,
+  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  decided_at TIMESTAMP WITH TIME ZONE
+);
+`;
 
 // Additional safe ALTERs to add columns that may be missing in older DBs
 const alterUsersSql = `
