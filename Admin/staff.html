@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WireConnect — Staff Management</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#fff;
+      --accent:#0b5cff;
+      --muted:#6b7280;
+      --success:#065f46;
+      --danger:#b91c1c;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);color:#111}
+    /* header with large logo that covers top */
+    header{position:fixed;top:0;left:0;right:0;height:120px;background:#fff;border-bottom:1px solid #e6e9ef;display:flex;align-items:center;justify-content:center;padding:10px 20px;z-index:1000}
+    header .logo{max-width:960px;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+    header .logo img{height:100%;width:auto;max-height:96px;object-fit:contain;display:block}
+    main{padding-top:132px;max-width:1100px;margin:0 auto;padding-left:16px;padding-right:16px}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:18px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.04)}
+    input,select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ef;margin-top:8px;font-size:14px}
+    label{display:block;margin-top:10px;font-weight:700}
+    .btn{background:var(--accent);color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+    .btn.secondary{background:#fff;color:#111;border:1px solid #e6e9ef}
+    .row{display:flex;gap:8px;margin-top:12px}
+    .small-muted{color:var(--muted);font-size:13px}
+    .table-wrap{overflow:auto;margin-top:10px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #f1f5f9;text-align:left;vertical-align:middle}
+    .result{margin-top:10px;padding:10px;border-radius:8px;background:#f1f8f5;border:1px solid #d1f0df;color:var(--success)}
+    .error{margin-top:10px;color:var(--danger);font-weight:700}
+    .pw-box{margin-top:10px;padding:12px;border-radius:10px;background:#fff;border:1px dashed #e6eef9;display:none}
+    .pw-val{font-weight:800;letter-spacing:1px;padding:6px 10px;background:#f3f7ff;border-radius:6px;display:inline-block}
+    .copy-btn{background:#065f46;color:#fff;padding:8px 10px;border-radius:6px;border:0;cursor:pointer;margin-left:8px}
+    .action-delete{background:#ff4d4f;color:#fff;padding:6px 8px;border-radius:6px;border:0;cursor:pointer}
+    @media (max-width:880px){
+      .grid{grid-template-columns:1fr}
+      header{height:88px}
+      header .logo img{max-height:72px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo" role="img" aria-label="WireConnect logo">
+      <!-- large logo - adjust src if you host elsewhere -->
+      <img src="https://i.postimg.cc/ZRSK3pJx/IMG-20260202-144108.png" alt="WireConnect logo">
+    </div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <!-- Create staff card -->
+      <div class="card" aria-labelledby="createStaffTitle">
+        <div id="createStaffTitle" style="display:none">Create Staff</div>
+
+        <label for="staffName">Full name</label>
+        <input id="staffName" placeholder="Staff full name" autocomplete="name" />
+
+        <label for="staffEmail">Email</label>
+        <input id="staffEmail" placeholder="staff@example.com" type="email" autocomplete="email" />
+
+        <label for="staffRole">Role</label>
+        <select id="staffRole">
+          <option value="Customer-support">Customer-support</option>
+          <option value="Transaction-review">Transaction-review</option>
+          <option value="Scaling">Scaling</option>
+          <option value="API manager">API manager</option>
+          <option value="Developer">Developer</option>
+          <option value="KYC">KYC</option>
+          <option value="Fraud">Fraud</option>
+          <option value="Log">Log</option>
+          <option value="Notification">Notification</option>
+          <option value="Super-admin">Super-admin</option>
+        </select>
+
+        <div class="row">
+          <button class="btn" id="createBtn">Create</button>
+          <button class="btn secondary" id="clearBtn">Clear</button>
+        </div>
+
+        <div id="messageArea" class="small-muted" aria-live="polite" style="margin-top:10px"></div>
+
+        <div id="passwordArea" class="pw-box" aria-live="polite">
+          <div style="margin-bottom:6px">Temporary password (showing once):</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div id="generatedPassword" class="pw-val"></div>
+            <button class="copy-btn" id="copyPwBtn">Copy</button>
+          </div>
+          <div style="margin-top:8px" class="small-muted">Share this securely. Staff must change password at first login.</div>
+        </div>
+      </div>
+
+      <!-- List staff card -->
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="small-muted">Existing staff</div>
+          <div><button id="refreshBtn" class="btn secondary">Refresh</button></div>
+        </div>
+
+        <div class="table-wrap">
+          <table aria-describedby="staffTableDesc">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Role</th><th style="width:120px">Action</th></tr>
+            </thead>
+            <tbody id="staffList">
+              <!-- rows injected here -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="listMsg" class="small-muted" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // relative api root so we avoid hard-coded port/host
+    const API_BASE = '/api';
+
+    // DOM
+    const staffName = document.getElementById('staffName');
+    const staffEmail = document.getElementById('staffEmail');
+    const staffRole = document.getElementById('staffRole');
+    const createBtn = document.getElementById('createBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const messageArea = document.getElementById('messageArea');
+    const passwordArea = document.getElementById('passwordArea');
+    const generatedPassword = document.getElementById('generatedPassword');
+    const copyPwBtn = document.getElementById('copyPwBtn');
+    const staffList = document.getElementById('staffList');
+    const listMsg = document.getElementById('listMsg');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    function showMessage(msg, isError=false){
+      messageArea.textContent = msg;
+      messageArea.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+    }
+
+    function showResultBox(pw){
+      generatedPassword.textContent = pw;
+      passwordArea.style.display = 'block';
+    }
+
+    function hideResultBox(){
+      generatedPassword.textContent = '';
+      passwordArea.style.display = 'none';
+    }
+
+    function clearForm(){
+      staffName.value = '';
+      staffEmail.value = '';
+      staffRole.selectedIndex = 0;
+      showMessage('');
+      hideResultBox();
+    }
+
+    function isValidEmail(e){
+      return /\S+@\S+\.\S+/.test(e);
+    }
+
+    async function fetchStaff(){
+      listMsg.textContent = 'Loading...';
+      try {
+        const res = await fetch(API_BASE + '/staff/list', { method: 'GET' });
+        const raw = await res.text();
+        let data = null;
+        try { data = JSON.parse(raw); } catch(e){ data = null; }
+
+        if(!res.ok){
+          listMsg.textContent = (data && data.message) ? data.message : 'Failed to load staff';
+          staffList.innerHTML = '';
+          return;
+        }
+
+        const arr = (data && data.staff) ? data.staff : [];
+        renderStaff(arr);
+        listMsg.textContent = arr.length ? '' : 'No staff yet';
+      } catch(err){
+        console.error('fetchStaff error', err);
+        listMsg.textContent = 'Unable to fetch staff';
+      }
+    }
+
+    function renderStaff(arr){
+      if(!Array.isArray(arr) || arr.length === 0){
+        staffList.innerHTML = '';
+        return;
+      }
+      const rows = arr.map(s => {
+        // Accept both object and array shapes returned by different backends
+        const id = s.id || s.id_text || s[0] || '';
+        const name = s.name || s.fullname || s.full_name || s[1] || '';
+        const email = s.email || s[2] || '';
+        const role = s.role || s[3] || s.role_name || '';
+        const safe = (str) => {
+          if(!str) return '';
+          return String(str).replace(/[&<>"'`=\/]/g, function(s){ return ({
+            '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
+          })[s]; });
+        };
+        return `<tr>
+          <td>${safe(name)}</td>
+          <td>${safe(email)}</td>
+          <td>${safe(role)}</td>
+          <td>
+            <button class="action-delete" data-id="${safe(id)}" aria-label="Remove staff">Remove</button>
+          </td>
+        </tr>`;
+      });
+      staffList.innerHTML = rows.join('');
+      // attach delete handlers
+      Array.from(document.querySelectorAll('.action-delete')).forEach(btn=>{
+        btn.addEventListener('click', ()=> {
+          const id = btn.getAttribute('data-id');
+          if(!id) return;
+          removeStaff(id);
+        });
+      });
+    }
+
+    async function createStaff(){
+      hideButtonsDuringRequest(true);
+      hideResultBox();
+      showMessage('Creating staff...');
+      const name = staffName.value.trim();
+      const email = staffEmail.value.trim();
+      const role = staffRole.value;
+
+      if(!name || !email){
+        showMessage('Name and email are required', true);
+        hideButtonsDuringRequest(false);
+        return;
+      }
+      if(!isValidEmail(email)){
+        showMessage('Enter a valid email', true);
+        hideButtonsDuringRequest(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE + '/staff/create', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ name, email, role })
+        });
+
+        const raw = await res.text();
+        let data = null;
+        try { data = JSON.parse(raw); } catch(e){ data = null; }
+
+        if(!res.ok){
+          const msg = data && data.message ? data.message : ('Server error (' + res.status + ')');
+          showMessage(msg, true);
+          hideButtonsDuringRequest(false);
+          return;
+        }
+
+        // expect backend to return generated password under common keys
+        const pw = data && (data.generated_password || data.password || data.generatedPassword || data.generatedPass);
+        if(pw){
+          // clear form inputs but keep password visible
+          staffName.value = '';
+          staffEmail.value = '';
+          showResultBox(pw);
+          showMessage('Staff created — copy the password and share securely.');
+          fetchStaff();
+          hideButtonsDuringRequest(false);
+          return;
+        }
+
+        // fallback when success but no password
+        if(data && (data.success || data.ok || data.status === 'success')){
+          showMessage('Staff created (no password returned).', false);
+          fetchStaff();
+          hideButtonsDuringRequest(false);
+          return;
+        }
+
+        // unexpected response
+        showMessage(data && data.message ? data.message : 'Unexpected server response', true);
+      } catch(err){
+        console.error('createStaff error', err);
+        showMessage('Error creating staff', true);
+      } finally {
+        hideButtonsDuringRequest(false);
+      }
+    }
+
+    async function removeStaff(id){
+      if(!confirm('Remove staff?')) return;
+      try {
+        const res = await fetch(API_BASE + '/staff/' + encodeURIComponent(id), { method: 'DELETE' });
+        const raw = await res.text();
+        let data = null;
+        try { data = JSON.parse(raw); } catch(e){ data = null; }
+
+        if(res.ok){
+          showMessage('Staff removed.');
+          fetchStaff();
+        } else {
+          showMessage(data && data.message ? data.message : 'Failed to remove', true);
+        }
+      } catch(err){
+        console.error('removeStaff error', err);
+        showMessage('Error removing staff', true);
+      }
+    }
+
+    // copy pw
+    copyPwBtn.addEventListener('click', ()=>{
+      const pw = generatedPassword.textContent || '';
+      if(!pw) return;
+      navigator.clipboard?.writeText(pw).then(()=> {
+        showMessage('Password copied to clipboard');
+      }, ()=> {
+        showMessage('Unable to copy — copy manually', true);
+      });
+    });
+
+    // attach UI handlers
+    createBtn.addEventListener('click', createStaff);
+    clearBtn.addEventListener('click', clearForm);
+    refreshBtn.addEventListener('click', fetchStaff);
+
+    function hideButtonsDuringRequest(disable){
+      createBtn.disabled = disable;
+      clearBtn.disabled = disable;
+      refreshBtn.disabled = disable;
+      createBtn.style.opacity = disable ? 0.6 : 1;
+      clearBtn.style.opacity = disable ? 0.6 : 1;
+      refreshBtn.style.opacity = disable ? 0.6 : 1;
+    }
+
+    // initial load
+    fetchStaff();
+  </script>
+</body>
+</html>
