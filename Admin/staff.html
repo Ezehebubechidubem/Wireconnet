@@ -119,8 +119,8 @@
   </main>
 
   <script>
-    // relative api root so we avoid hard-coded port/host
-    const API_BASE = '/api';
+    // FULL backend API root (no port). Change this if you deploy elsewhere.
+    const API_BASE = 'https://wireconnet-1.onrender.com/api';
 
     // DOM
     const staffName = document.getElementById('staffName');
@@ -192,7 +192,6 @@
         return;
       }
       const rows = arr.map(s => {
-        // Accept both object and array shapes returned by different backends
         const id = s.id || s.id_text || s[0] || '';
         const name = s.name || s.fullname || s.full_name || s[1] || '';
         const email = s.email || s[2] || '';
@@ -213,7 +212,6 @@
         </tr>`;
       });
       staffList.innerHTML = rows.join('');
-      // attach delete handlers
       Array.from(document.querySelectorAll('.action-delete')).forEach(btn=>{
         btn.addEventListener('click', ()=> {
           const id = btn.getAttribute('data-id');
@@ -260,10 +258,8 @@
           return;
         }
 
-        // expect backend to return generated password under common keys
         const pw = data && (data.generated_password || data.password || data.generatedPassword || data.generatedPass);
         if(pw){
-          // clear form inputs but keep password visible
           staffName.value = '';
           staffEmail.value = '';
           showResultBox(pw);
@@ -273,7 +269,6 @@
           return;
         }
 
-        // fallback when success but no password
         if(data && (data.success || data.ok || data.status === 'success')){
           showMessage('Staff created (no password returned).', false);
           fetchStaff();
@@ -281,7 +276,6 @@
           return;
         }
 
-        // unexpected response
         showMessage(data && data.message ? data.message : 'Unexpected server response', true);
       } catch(err){
         console.error('createStaff error', err);
