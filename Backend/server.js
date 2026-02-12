@@ -180,6 +180,14 @@ const alterJobsSql = `
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS workers_needed INTEGER DEFAULT 1;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_days INTEGER DEFAULT 1;
 `;
+//Ensure older DBs have the new colums
+const alterStaffSql = `
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS fullname TEXT;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS role TEXT;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+`;
 //Ensure older DBs have new columns
 const alterKycSql = `
 ALTER TABLE kyc_requests ADD COLUMN IF NOT EXISTS selfie TEXT;
