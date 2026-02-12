@@ -649,6 +649,312 @@ app.post('/api/login', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+// Poll assigned jobs for technician
+app.get('/api/assigned-jobs', async (req,res)=>{
+  try{
+    const techId = req.query.techId;
+    if(!techId) return res.status(400).json({ success:false, message:'techId required' });
+    const rows = (await pool.query(`SELECT j.* FROM jobs j WHERE j.assigned_tech_id = $1 AND j.status = 'pending_accept' ORDER BY j.assigned_at DESC`, [techId])).rows;
+    return res.json({ success:true, jobs: rows });
+  }catch(e){ console.error('/api/assigned-jobs', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Respond to job (accept/decline)
+app.post('/api/job/:id/respond', async (req,res)=>{
+  try{
+    const jobId = req.params.id;
+    const { techId, action } = req.body;
+    if(!techId || !action) return res.status(400).json({ success:false, message:'techId and action required' });
+    if(!['accept','decline'].includes(action)) return res.status(400).json({ success:false, message:'invalid action' });
+
+    const clientConn = await pool.connect();
+    try{
+      const q = await clientConn.query(`SELECT * FROM jobs WHERE id=$1`, [jobId]);
+      if(!q.rows.length) return res.status(404).json({ success:false, message:'Job not found' });
+      const job = q.rows[0];
+      if(job.assigned_tech_id !== techId) return res.status(403).json({ success:false, message:'Not assigned to this technician' });
+
+      if(action === 'accept'){
+        await clientConn.query(`UPDATE jobs SET status='accepted', expires_at=NULL WHERE id=$1`, [jobId]);
+        return res.json({ success:true, message:'Job accepted' });
+      } else {
+        await clientConn.query(`UPDATE jobs SET status='pending_assignment', assigned_tech_id=NULL, assigned_at=NULL, expires_at=NULL WHERE id=$1`, [jobId]);
+        const techRows = (await clientConn.query(`SELECT id, lat, lng FROM users WHERE role = 'worker' AND online = true AND state = $1`, [job.state])).rows;
+        let techsWithDist = techRows.map(t => ({ id: t.id, lat: t.lat, lng: t.lng, distance: distanceMeters(job.lat, job.lng, t.lat, t.lng) }));
+        techsWithDist = techsWithDist.filter(t => t.id !== techId);
+        techsWithDist.sort((a,b)=>a.distance - b.distance);
+        await attemptAssign(jobId, techsWithDist);
+        return res.json({ success:true, message:'Job declined; assigning next technician' });
+      }
+    } finally { clientConn.release(); }
+  }catch(e){ console.error('/api/job/:id/respond', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// Job status (client)
+app.get('/api/job/:id/status', async (req,res)=>{
+  try{
+    const jobId = req.params.id;
+    const r = await pool.query(`SELECT id,status,assigned_tech_id,assigned_at,expires_at, estimated_days, workers_needed FROM jobs WHERE id=$1`, [jobId]);
+    if(!r.rows.length) return res.status(404).json({ success:false, message:'Not found' });
+    return res.json({ success:true, job: r.rows[0] });
+  }catch(e){ console.error('/api/job/:id/status', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+// Full job detail (client or technician can call) -> includes client and tech profiles with lat/lng
+app.get('/api/job/:id', async (req,res)=>{
+  try{
+    const jobId = req.params.id;
+    const r = await pool.query(`SELECT * FROM jobs WHERE id=$1`, [jobId]);
+    if(!r.rows.length) return res.status(404).json({ success:false, message:'Not found' });
+    const job = r.rows[0];
+
+    // fetch client profile
+    const clientRow = (await pool.query(`SELECT id, fullname, username, phone, email, lat, lng, state, city FROM users WHERE id=$1`, [job.client_id])).rows[0] || null;
+    // fetch technician profile if assigned
+    let techRow = null;
+    if(job.assigned_tech_id){
+      techRow = (await pool.query(`SELECT id, fullname, username, phone, email, lat, lng, state, city FROM users WHERE id=$1`, [job.assigned_tech_id])).rows[0] || null;
+    }
+
+    return res.json({ success:true, job, client: clientRow, technician: techRow });
+  }catch(e){ console.error('/api/job/:id', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// ----------------- NEW: Profile & KYC endpoints -----------------
+
+// Profile update: avatar_url, fullname (optional), account_details { bank, account_number, account_name }
+app.post('/api/profile/update', async (req,res)=>{
+  try{
+    const { userId, avatarUrl, fullname, account } = req.body || {};
+    if(!userId) return res.status(400).json({ success:false, message:'userId required' });
+
+    const client = await pool.connect();
+    try{
+      // update fields provided
+      const row = (await client.query(`SELECT * FROM users WHERE id=$1`, [userId])).rows[0];
+      if(!row) return res.status(404).json({ success:false, message:'User not found' });
+
+      const newFull = fullname || row.fullname;
+      const newAvatar = avatarUrl || row.avatar_url;
+      const newAccount = account ? account : row.account_details;
+
+      // determine profile_complete: simple rule -> avatar + account_details present
+      const profileComplete = !!(newAvatar && newAccount && newAccount.bank && newAccount.account_number);
+
+      await client.query(`UPDATE users SET fullname=$1, avatar_url=$2, account_details=$3, profile_complete=$4 WHERE id=$5`,
+        [newFull, newAvatar, newAccount ? JSON.stringify(newAccount) : null, profileComplete, userId]);
+
+      const updated = (await client.query(`SELECT id,fullname,avatar_url,account_details,profile_complete FROM users WHERE id=$1`, [userId])).rows[0];
+      return res.json({ success:true, message:'Profile updated', user: updated });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/profile/update', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+// debug-friendly KYC submit route (drop-in replacement)
+// NOTE: keep this only for debugging; remove detailed error+file dumps in production.
+app.post('/api/kyc/submit', (req, res) => {
+  // invoke multer middleware manually so we can catch multer errors
+  upload.fields([
+    { name: 'id_images', maxCount: 6 },
+    { name: 'selfie', maxCount: 1 },
+    { name: 'work_videos', maxCount: 2 }
+  ])(req, res, async (multerErr) => {
+
+    // If multer produced an error, return it as JSON (makes frontend debugging easy)
+    if (multerErr) {
+      console.error('MULTER ERROR at /api/kyc/submit:', multerErr);
+      const out = {
+        success: false,
+        message: 'Upload error',
+        error: {
+          code: multerErr.code || null,
+          field: multerErr.field || null,
+          message: multerErr.message || String(multerErr),
+          stack: multerErr.stack ? String(multerErr.stack).split('\n').slice(0,8).join('\n') : null
+        }
+      };
+      return res.status(multerErr.code === 'LIMIT_UNEXPECTED_FILE' ? 400 : 400).json(out);
+    }
+
+    // Normal execution path (now multer succeeded and req.files exists)
+    try {
+      // Log incoming body and files for debugging
+      console.log('KYC submit: req.body =', Object.assign({}, req.body));
+      // Log summary of files (do not dump file buffers)
+      const fileSummary = {};
+      if (req.files) {
+        Object.keys(req.files).forEach(k => {
+          fileSummary[k] = req.files[k].map(f => ({
+            fieldname: f.fieldname,
+            originalname: f.originalname,
+            mimetype: f.mimetype,
+            size: f.size,
+            // path / url / filename may vary by storage; show what's present
+            path: f.path || f.secure_url || f.url || f.filename || null
+          }));
+        });
+      }
+      console.log('KYC submit: req.files summary =', JSON.stringify(fileSummary, null, 2));
+
+      // --- your existing logic, unchanged, but using req.body & req.files ---
+      const { userId, id_type, id_number, notes } = req.body || {};
+
+      const idFiles = (req.files && req.files['id_images']) ? req.files['id_images'] : [];
+      const selfieFiles = (req.files && req.files['selfie']) ? req.files['selfie'] : [];
+      const videoFiles = (req.files && req.files['work_videos']) ? req.files['work_videos'] : [];
+
+      // validation (same as before)
+      if (!userId || !id_type || !id_number || !Array.isArray(idFiles) || idFiles.length === 0) {
+        console.warn('/api/kyc/submit validation fail', { userId, id_type, id_number, idImagesCount: idFiles.length });
+        return res.status(400).json({
+          success: false,
+          message: 'userId, id_type, id_number and at least one id_images required',
+          debug: {
+            userIdProvided: !!userId,
+            idTypeProvided: !!id_type,
+            idNumberProvided: !!id_number,
+            idImagesCount: idFiles.length
+          }
+        });
+      }
+
+      const client = await pool.connect();
+      try {
+        const usr = (await client.query(`SELECT id FROM users WHERE id=$1`, [userId])).rows[0];
+        if (!usr) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // derive usable paths/urls
+        const imagePaths = idFiles.map(f => (f.path || f.secure_url || f.url || f.filename || null)).filter(Boolean);
+        const selfiePath = selfieFiles.length ? (selfieFiles[0].path || selfieFiles[0].secure_url || selfieFiles[0].url || selfieFiles[0].filename || null) : null;
+        const workVideoPath = videoFiles.length ? (videoFiles[0].path || videoFiles[0].secure_url || videoFiles[0].url || videoFiles[0].filename || null) : null;
+
+        // insert into DB (unchanged)
+        const ins = await client.query(
+          `INSERT INTO kyc_requests (user_id, id_type, id_number, id_images, selfie, work_video, notes, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id, submitted_at`,
+          [userId, id_type, id_number, imagePaths, selfiePath, workVideoPath || null, notes || null]
+        );
+        const reqId = ins.rows[0].id;
+
+        await client.query(
+          `UPDATE users SET kyc_status='pending', kyc_documents=$1, kyc_submitted_at=now() WHERE id=$2`,
+          [imagePaths, userId]
+        );
+
+        // Return success + helpful debug info (files summary) so frontend can show it
+        return res.json({
+          success: true,
+          message: 'KYC submitted and pending review',
+          requestId: reqId,
+          debug: {
+            files: fileSummary,
+            imagePaths,
+            selfiePath,
+            workVideoPath
+          }
+        });
+
+      } finally {
+        client.release();
+      }
+
+    } catch (err) {
+      // server error — include stack for debugging
+      console.error('/api/kyc/submit SERVER ERROR:', err && err.stack ? err.stack : err);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error',
+        error: {
+          message: err && err.message ? err.message : String(err),
+          stack: err && err.stack ? String(err.stack).split('\n').slice(0,8).join('\n') : null
+        },
+        // Do NOT include req.files/content in production responses
+        debug: {
+          filesPresent: Object.keys(req.files || {}).reduce((acc, k) => { acc[k] = (req.files[k] || []).length; return acc; }, {}),
+          body: Object.assign({}, req.body)
+        }
+      });
+    }
+
+  });
+});
+// Get user's KYC status + latest KYC request (includes admin_note)
+app.get('/api/kyc/status/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    // fetch user row
+    const userRes = await pool.query(
+      `SELECT id, fullname, username, email, kyc_status, kyc_documents, kyc_submitted_at
+       FROM users WHERE id = $1`, [userId]
+    );
+    if (!userRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const user = userRes.rows[0];
+
+    // fetch latest kyc_requests record for this user (if any)
+    const reqRes = await pool.query(
+      `SELECT id, id_type, id_number, id_images, work_video, notes, status, admin_note, submitted_at, decided_at
+       FROM kyc_requests
+       WHERE user_id = $1
+       ORDER BY submitted_at DESC
+       LIMIT 1`, [userId]
+    );
+    const latest = reqRes.rows && reqRes.rows.length ? reqRes.rows[0] : null;
+
+    return res.json({
+      success: true,
+      user,
+      latest_request: latest
+    });
+  } catch (e) {
+    console.error('/api/kyc/status/:userId', e);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Admin: list pending KYC requests
+app.get('/api/kyc/pending', async (req,res)=>{
+  try{
+    const rows = (await pool.query(`SELECT k.*, u.username, u.fullname, u.email FROM kyc_requests k JOIN users u ON u.id = k.user_id WHERE k.status = 'pending' ORDER BY k.submitted_at ASC`)).rows;
+    return res.json({ success:true, requests: rows });
+  }catch(e){ console.error('/api/kyc/pending', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
+app.get('/api/user/:id', async (req,res)=> {
+  try{
+    const id = req.params.id;
+    const r = await pool.query(`SELECT id, fullname, username, avatar_url, lat, lng, phone, email, state, city FROM users WHERE id=$1`, [id]);
+    if(!r.rows.length) return res.status(404).json({ success:false });
+    return res.json(Object.assign({ success:true }, { user: r.rows[0] }));
+  } catch(e){
+    console.error('/api/user/:id', e);
+    return res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
+// Admin: approve/decline a KYC request
+app.post('/api/kyc/:reqId/decision', async (req,res)=>{
+  try{
+    const reqId = req.params.reqId;
+    const { adminId, decision, adminNote } = req.body || {};
+    if(!adminId || !decision || !['approve','decline'].includes(decision)) return res.status(400).json({ success:false, message:'adminId and decision (approve|decline) required' });
+    const client = await pool.connect();
+    try{
+      const r = await client.query(`SELECT * FROM kyc_requests WHERE id=$1`, [reqId]);
+      if(!r.rows.length) return res.status(404).json({ success:false, message:'KYC request not found' });
+      const reqRow = r.rows[0];
+
+      const newStatus = decision === 'approve' ? 'approved' : 'declined';
+      await client.query(`UPDATE kyc_requests SET status=$1, admin_note=$2, decided_at=now() WHERE id=$3`, [newStatus, adminNote || null, reqId]);
+      await client.query(`UPDATE users SET kyc_status=$1 WHERE id=$2`, [decision === 'approve' ? 'approved' : 'declined', reqRow.user_id]);
+
+      return res.json({ success:true, message:`KYC ${newStatus}` });
+    } finally { client.release(); }
+  }catch(e){ console.error('/api/kyc/:reqId/decision', e); return res.status(500).json({ success:false, message:'Server error' }); }
+});
+
 // ---------- Admin helper endpoints (overview & logs) ----------
 
 /*
