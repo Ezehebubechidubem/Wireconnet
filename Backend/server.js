@@ -464,7 +464,9 @@ try {
         return {
           folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
           resource_type: isVideo ? 'video' : 'image',
-          public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`
+          type: 'private', // 👈 ADD THIS LINE
+
+      public_id: crypto.randomUUID() // 👈 safer than original filename
         };
       }
     });
