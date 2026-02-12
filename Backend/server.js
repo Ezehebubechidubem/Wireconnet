@@ -488,7 +488,7 @@ try {
 
     uploadCloud = multer({
       storage: cloudStorage,
-      limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit (safer than 100MB)
+      limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit (safer than 100MB)
     });
 
     console.log('Cloudinary configured: using PRIVATE Cloudinary uploads.');
