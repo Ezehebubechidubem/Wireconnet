@@ -499,8 +499,7 @@ try {
   console.error('Cloudinary setup error (continuing with disk uploads):', err);
   uploadCloud = null;
 }
-// Choose the active upload middleware (cloud if available, else disk)
-const upload = uploadCloud || uploadDisk;
+
 // Tokens
 const jwt = require('jsonwebtoken');
 
