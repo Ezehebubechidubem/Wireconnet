@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>WireConnect — KYC (with selfie + debug)</title>
+  <title>WireConnect — KYC</title>
   <style>
     :root{--bg:#f6f8fb;--card:#fff;--accent:#0b5cff;--muted:#6b7280;--danger:#b91c1c}
     *{box-sizing:border-box}
     body{font-family:Inter,Segoe UI,Roboto,Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:#111}
-    .wrap{max-width:820px;margin:18px auto;padding:14px}
+    .wrap{max-width:720px;margin:18px auto;padding:14px}
     .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06)}
     .logo{display:flex;align-items:center;justify-content:center;margin-bottom:8px}
     .logo img{width:100%;max-width:320px;height:auto;display:block}
@@ -33,19 +33,14 @@
     @media (max-width:480px){ .thumb{width:96px;height:76px} .logo img{max-width:240px} }
     input[type="file"].native { display:none; }
     .modal-backdrop{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:2000; }
-    .modal{ background:#fff; padding:14px; border-radius:10px; width:360px; max-width:90%; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.18); }
+    .modal{ background:#fff; padding:14px; border-radius:10px; width:320px; max-width:90%; text-align:center; box-shadow:0 12px 36px rgba(0,0,0,0.18); }
     .modal .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
     .modal button{ padding:8px 12px; border-radius:8px; border:0; cursor:pointer; font-weight:700; }
     .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
-    /* debug panel */
-    .debug-wrap { margin-top:14px; display:flex; gap:12px; align-items:flex-start; }
-    .debug-controls { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-    .debug-panel { background:#0b1220; color:#e6f0ff; padding:12px; border-radius:10px; font-family:monospace; font-size:13px; max-height:360px; overflow:auto; white-space:pre-wrap; width:100%; box-sizing:border-box; }
-    .debug-toggle { margin-left:auto; }
     .pill { background:#e6eef9; color:#0b1220; padding:6px 8px; border-radius:999px; font-weight:700; font-size:12px }
-    .preview-col { min-width:280px; }
-    .flex { display:flex; gap:12px; }
-    .flex .card-preview { flex:1; }
+
+    /* readonly look */
+    input[readonly] { background:#f3f4f6; color:#111; opacity:1; }
   </style>
 </head>
 <body>
@@ -63,9 +58,9 @@
         <option value="passport">Passport</option>
       </select>
 
-      <!-- ID name -->
+      <!-- ID name (read-only; comes from logged-in user) -->
       <label for="id_name">Name on ID</label>
-      <input id="id_name" class="input" type="text" placeholder="Name exactly as on the ID" />
+      <input id="id_name" class="input" type="text" placeholder="Name exactly as on the ID" readonly />
 
       <label for="id_number">ID number</label>
       <input id="id_number" class="input" type="text" placeholder="Enter ID number" />
@@ -117,56 +112,38 @@
         <button id="submitBtn" class="btn">Submit</button>
         <div class="muted">All docs go to admin</div>
       </footer>
+    </div>
+  </div>
 
-      <!-- modal to select camera or files -->
-      <div class="modal-backdrop" id="choiceModal">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="choiceTitle">
-          <div id="choiceTitle" style="font-weight:800">Choose upload method</div>
-          <div class="muted" style="margin-top:8px">Use camera to take a new photo/video or choose from your files</div>
-          <div class="actions">
-            <button id="cameraBtn" class="btn-outline">Use Camera</button>
-            <button id="filesBtn" class="btn">Upload from files</button>
-          </div>
-          <div style="margin-top:10px"><button id="choiceCancel" class="btn-outline">Cancel</button></div>
-        </div>
+  <!-- modal to select camera or files -->
+  <div class="modal-backdrop" id="choiceModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="choiceTitle">
+      <div id="choiceTitle" style="font-weight:800">Choose upload method</div>
+      <div class="muted" style="margin-top:8px">Use camera to take a new photo/video or choose from your files</div>
+      <div class="actions">
+        <button id="cameraBtn" class="btn-outline">Use Camera</button>
+        <button id="filesBtn" class="btn">Upload from files</button>
       </div>
+      <div style="margin-top:10px"><button id="choiceCancel" class="btn-outline">Cancel</button></div>
+    </div>
+  </div>
 
-      <!-- upload status modal -->
-      <div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000">
-        <div style="background:#fff;padding:16px;border-radius:10px;max-width:320px;text-align:center">
-          <div id="modalText">Processing...</div>
-          <div style="margin-top:10px"><button id="modalClose" class="btn" style="background:#eef3ff;color:var(--accent)">OK</button></div>
-        </div>
-      </div>
-
-      <!-- debug panel -->
-      <div class="debug-wrap">
-        <div style="flex:1">
-          <div class="debug-controls">
-            <div class="pill">DEBUG</div>
-            <button id="clearDebug" class="btn-outline" style="margin-left:8px">Clear</button>
-            <button id="copyDebug" class="btn-outline">Copy</button>
-            <label style="margin-left:auto; font-weight:700; color:var(--muted)">Auto-scroll</label>
-            <input id="autoScroll" type="checkbox" checked style="margin-left:6px" />
-          </div>
-          <div id="debugPanel" class="debug-panel" aria-live="polite"></div>
-        </div>
-      </div>
-
+  <!-- upload status modal -->
+  <div id="overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; z-index:2000">
+    <div style="background:#fff;padding:16px;border-radius:10px;max-width:320px;text-align:center">
+      <div id="modalText">Processing...</div>
+      <div style="margin-top:10px"><button id="modalClose" class="btn" style="background:#eef3ff;color:var(--accent)">OK</button></div>
     </div>
   </div>
 
 <script>
 (function(){
+  // NOTE: removed any localhost/port logic. Use production API base only.
   const API_BASE = 'https://wireconnet-1.onrender.com';
 
-  // read logged user from localStorage
+  // validate user logged in
   const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
-  if(!me){
-    alert('Please login');
-    window.location.href = 'login.html';
-    return;
-  }
+  if(!me){ alert('Please login'); window.location.href = 'login.html'; return; }
 
   // DOM
   const idTypeEl = document.getElementById('id_type');
@@ -201,12 +178,6 @@
 
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
-  // debug
-  const debugPanel = document.getElementById('debugPanel');
-  const clearDebugBtn = document.getElementById('clearDebug');
-  const copyDebugBtn = document.getElementById('copyDebug');
-  const autoScrollCheckbox = document.getElementById('autoScroll');
-
   // state
   let idFiles = { front: null, back: null, selfie: null };
   let videoFiles = [];
@@ -218,24 +189,6 @@
   // server values (updated by fetchServerKycStatus)
   let serverUser = null;
   let serverLatest = null;
-
-  // ---------- debug helpers ----------
-  function now(){ return new Date().toISOString(); }
-  function appendDebug(text){
-    const line = `[${now()}] ${text}`;
-    debugPanel.textContent = line + '\n\n' + debugPanel.textContent;
-    if(autoScrollCheckbox.checked) {
-      debugPanel.scrollTop = 0;
-    }
-    console.log(line);
-  }
-  clearDebugBtn.addEventListener('click', ()=> { debugPanel.textContent = ''; });
-  copyDebugBtn.addEventListener('click', async ()=> {
-    try {
-      await navigator.clipboard.writeText(debugPanel.textContent || '');
-      appendDebug('Copied debug log to clipboard');
-    } catch(e){ appendDebug('Failed to copy debug: ' + String(e)); }
-  });
 
   // helper: normalize server-stored path/URL to usable src
   function normalizeUrl(p){
@@ -250,35 +203,20 @@
   // fetch server status and latest request
   async function fetchServerKycStatus(){
     try {
-      appendDebug('Fetching KYC status ' + API_BASE + '/api/kyc/status/' + me.id);
-      const resp = await fetch(API_BASE + '/api/kyc/status/' + encodeURIComponent(me.id));
-      const raw = await resp.text().catch(()=>null);
-      appendDebug('KYC status response: HTTP ' + resp.status + ' — raw: ' + (raw || '(empty)'));
-      let parsed = null;
-      try { parsed = raw ? JSON.parse(raw) : null; } catch(e){ parsed = null; appendDebug('KYC status parse error: ' + e); }
-      if(resp.ok && parsed && parsed.success){
-        serverUser = parsed.user || null;
-        serverLatest = parsed.latest_request || null;
-        appendDebug('KYC status parsed OK: user.kyc_status=' + (serverUser && serverUser.kyc_status));
-      } else {
-        // handle non-ok
-        appendDebug('KYC status fetch returned non-ok or invalid JSON');
-        serverUser = parsed && parsed.user ? parsed.user : null;
-        serverLatest = parsed && parsed.latest_request ? parsed.latest_request : null;
-      }
+      const res = await fetch(API_BASE + '/api/kyc/status/' + me.id);
+      const j = await res.json().catch(()=>null);
+      serverUser = j && j.user ? j.user : null;
+      serverLatest = j && j.latest_request ? j.latest_request : null;
       renderServerStatus();
-      return { raw, parsed, status: resp.status };
     } catch(e){
-      appendDebug('Error fetching KYC status: ' + String(e));
-      console.error(e);
-      serverUser = null; serverLatest = null;
-      renderServerStatus();
-      return { error: e };
+      // non-fatal; console for developer
+      console.error('fetchServerKycStatus error', e);
     }
   }
 
   function renderServerStatus(){
     const status = (serverUser && serverUser.kyc_status) ? String(serverUser.kyc_status).toLowerCase() : (serverLatest && serverLatest.status ? serverLatest.status : null);
+
     if(status){
       statusBox.classList.remove('hidden');
       statusText.innerText = 'KYC status: ' + status;
@@ -288,6 +226,7 @@
       statusText.innerText = '';
       statusSub.innerText = '';
     }
+
     if(serverLatest && serverLatest.admin_note){
       adminNoteEl.classList.remove('hidden');
       adminNoteEl.innerText = 'Admin note: ' + serverLatest.admin_note;
@@ -295,7 +234,10 @@
       adminNoteEl.classList.add('hidden');
       adminNoteEl.innerText = '';
     }
+
     renderPreviouslySubmitted();
+
+    // lock/unlock submission using server status: lock if pending or approved
     const lockedStatuses = ['pending', 'approved', 'approved_by_admin'];
     const locked = status && lockedStatuses.includes(status);
     setSubmissionLocked(locked);
@@ -304,7 +246,9 @@
   function renderPreviouslySubmitted(){
     const existingPrev = document.getElementById('previousSubmissionWrap');
     if(existingPrev) existingPrev.remove();
+
     if(!serverLatest) return;
+
     const wrap = document.createElement('div');
     wrap.id = 'previousSubmissionWrap';
     wrap.style.marginTop = '10px';
@@ -323,17 +267,7 @@
       });
       wrap.appendChild(row);
     }
-    if(serverLatest.selfie){
-      const title = document.createElement('div'); title.style.fontWeight = 700; title.style.marginTop = '10px'; title.innerText = 'Previously submitted selfie';
-      wrap.appendChild(title);
-      const row = document.createElement('div'); row.className = 'file-row';
-      const box = document.createElement('div'); box.className = 'thumb';
-      const img = document.createElement('img'); img.src = normalizeUrl(serverLatest.selfie); img.alt = 'previous selfie';
-      img.onerror = ()=>{ img.style.opacity = 0.6; img.alt='(unavailable)'; };
-      box.appendChild(img);
-      row.appendChild(box);
-      wrap.appendChild(row);
-    }
+
     if(serverLatest.work_video){
       const title2 = document.createElement('div'); title2.style.fontWeight = 700; title2.style.marginTop = '10px'; title2.innerText = 'Previously submitted video';
       wrap.appendChild(title2);
@@ -359,7 +293,7 @@
     });
   }
 
-  // previews
+  // previews (client-chosen files)
   function renderIdPreview(){
     idPreview.innerHTML = '';
     const order = [
@@ -386,6 +320,7 @@
       idPreview.appendChild(box);
     });
   }
+
   function renderVideoPreview(){
     videosPreview.innerHTML = '';
     videoFiles.forEach((file, idx) => {
@@ -408,21 +343,24 @@
   idFrontNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
-    if(f && f.type.startsWith('image/')) { idFiles.front = f; renderIdPreview(); appendDebug('Selected front ID file: ' + f.name + ' (' + Math.round(f.size/1024) + 'KB)'); }
+    if(f && f.type.startsWith('image/')) { idFiles.front = f; renderIdPreview(); }
     else { idFiles.front = null; idFrontNative.value=''; renderIdPreview(); }
   });
+
   idBackNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
-    if(f && f.type.startsWith('image/')) { idFiles.back = f; renderIdPreview(); appendDebug('Selected back ID file: ' + f.name + ' (' + Math.round(f.size/1024) + 'KB)'); }
+    if(f && f.type.startsWith('image/')) { idFiles.back = f; renderIdPreview(); }
     else { idFiles.back = null; idBackNative.value=''; renderIdPreview(); }
   });
+
   selfieNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
-    if(f && f.type.startsWith('image/')) { idFiles.selfie = f; renderIdPreview(); appendDebug('Selected selfie file: ' + f.name + ' (' + Math.round(f.size/1024) + 'KB)'); }
+    if(f && f.type.startsWith('image/')) { idFiles.selfie = f; renderIdPreview(); }
     else { idFiles.selfie = null; selfieNative.value=''; renderIdPreview(); }
   });
+
   videosNative.addEventListener('change', async (e)=>{
     clearValidation();
     const files = Array.from(e.target.files || []);
@@ -430,28 +368,30 @@
       if(videoFiles.length >= MAX_VIDEOS) break;
       if(!f.type.startsWith('video/')) continue;
       videoFiles.push(f);
-      appendDebug('Selected video: ' + f.name + ' (' + Math.round(f.size/1024) + 'KB)');
     }
+    // validate durations
     const problems = await validateVideoDurations(videoFiles);
     if(problems.length){
-      showValidation(problems.join('\\n'));
+      showValidation(problems.join('\n'));
+      // remove offending videos
       videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
-      appendDebug('Video duration problems: ' + problems.join('; '));
     }
     videosNative.value = '';
     renderVideoPreview();
   });
 
-  // visible buttons open the modal
+  // buttons open the modal
   idFrontBtn.addEventListener('click', ()=> openChoice('front'));
   idBackBtn.addEventListener('click', ()=> openChoice('back'));
   selfieBtn.addEventListener('click', ()=> openChoice('selfie'));
   videosBtn.addEventListener('click', ()=> openChoice('videos'));
 
+  // keyboard support
   [idFrontBtn, idBackBtn, selfieBtn, videosBtn].forEach(btn=>{
     btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
   });
 
+  // modal choice logic
   function openChoice(target){
     currentTarget = target;
     choiceModal.style.display = 'flex';
@@ -467,11 +407,13 @@
     closeChoice();
     clearValidation();
     if(!currentTarget) return;
+
     if(currentTarget === 'front' || currentTarget === 'back' || currentTarget === 'selfie'){
       let native = idFrontNative;
       if(currentTarget === 'back') native = idBackNative;
       if(currentTarget === 'selfie') native = selfieNative;
       if(mode === 'camera') {
+        // for selfie use front camera, for id use environment
         if(currentTarget === 'selfie') native.setAttribute('capture','user');
         else native.setAttribute('capture','environment');
       } else {
@@ -483,10 +425,11 @@
       else videosNative.removeAttribute('capture');
       videosNative.click();
     }
+
     currentTarget = null;
   }
 
-  // validate video durations
+  // validate video durations (client-side)
   function validateVideoDurations(files){
     const checks = files.map(f => new Promise((resolve) => {
       const url = URL.createObjectURL(f);
@@ -510,14 +453,13 @@
   function showValidation(msg){
     validationErrors.textContent = msg;
     validationErrors.classList.remove('hidden');
-    appendDebug('Validation: ' + msg);
   }
   function clearValidation(){
     validationErrors.textContent = '';
     validationErrors.classList.add('hidden');
   }
 
-  // submit handler
+  // submit
   submitBtn.addEventListener('click', async ()=>{
     if(uploading) return;
     clearValidation();
@@ -535,6 +477,7 @@
     const idNumber = (idNumberEl.value || '').trim();
     const idType = (idTypeEl.value || 'unknown');
 
+    // validations
     if(!idName){ showValidation('Enter name on ID'); return; }
     if(!idNumber){ showValidation('Enter ID number'); return; }
     if(!idFiles.front){ showValidation('Upload front picture of ID'); return; }
@@ -544,9 +487,9 @@
     if(videoFiles.length > MAX_VIDEOS){ showValidation('Max 2 videos allowed'); return; }
 
     const durationProblems = await validateVideoDurations(videoFiles);
-    if(durationProblems.length){ showValidation(durationProblems.join('\\n')); return; }
+    if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
-    // Build FormData
+    // Build FormData: append image Files as repeated 'id_images', selfie, and videos as repeated 'work_videos'
     const form = new FormData();
     form.append('userId', me.id);
     form.append('user_id', me.id); // compatibility
@@ -557,52 +500,36 @@
     const idImageList = [];
     if(idFiles.front) idImageList.push(idFiles.front);
     if(idFiles.back) idImageList.push(idFiles.back);
-    if(idFiles.selfie) idImageList.push(idFiles.selfie); // we'll also append selfie separately
+    if(idFiles.selfie) idImageList.push(idFiles.selfie);
 
-    // Append id_images entries
+    // Append id_images entries (backwards compatible)
     idImageList.forEach((file) => { if(file instanceof File) form.append('id_images', file, file.name); });
 
-    // Append selfie as its own field (backend expects 'selfie' optionally)
+    // Also append selfie explicitly (some backends expect a named selfie field)
     if(idFiles.selfie instanceof File) form.append('selfie', idFiles.selfie, idFiles.selfie.name);
 
     videoFiles.forEach((f) => { if(f instanceof File) form.append('work_videos', f, f.name); });
 
     form.append('_multipart', '1');
 
-    // debug: show summary of formdata entries (file names & sizes)
-    const entries = [];
-    for(const pair of form.entries()){
-      const key = pair[0];
-      const val = pair[1];
-      if(val instanceof File){
-        entries.push(`${key}: File(${val.name}, ${val.type}, ${Math.round(val.size/1024)}KB)`);
-      } else {
-        entries.push(`${key}: ${String(val)}`);
-      }
-    }
-    appendDebug('Submitting KYC POST ' + API_BASE + '/api/kyc/submit');
-    appendDebug('FormData summary:\\n' + entries.join('\\n'));
-
     // prevent double submits
     uploading = true;
     setSubmissionLocked(true);
     showModal('Uploading — please wait...');
 
-    let fetchResp = null;
-    let rawText = null;
-    let parsed = null;
-
     try {
       const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
-      fetchResp = resp;
-      rawText = await resp.text().catch(()=>null);
-      appendDebug('KYC submit response: HTTP ' + resp.status + '\\nRaw: ' + (rawText || '(empty)'));
-      try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; appendDebug('Parse error: ' + e); }
+      const rawText = await resp.text().catch(()=>null);
+      let parsed = null;
+      try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; }
 
       if(resp.ok && parsed && parsed.success){
+        // update local me and persist
         me.kyc_status = 'pending';
         try{ localStorage.setItem('wc_user', JSON.stringify(me)); }catch(e){}
+        // refresh server state & UI
         await fetchServerKycStatus();
+        // show confirmation then go back to previous page
         showModal('Submitted — awaiting review');
         setTimeout(()=> {
           hideModal();
@@ -618,13 +545,12 @@
         const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
         hideModal();
         showValidation('Submission failed: ' + msg);
-        appendDebug('Submission failed detail: ' + msg + (parsed ? (' • parsed: ' + JSON.stringify(parsed)) : ''));
+        // refresh server data to keep UI consistent
         await fetchServerKycStatus();
       }
     } catch(err){
       hideModal();
       showValidation('Network error while submitting. Try again.');
-      appendDebug('Network ERROR: ' + String(err));
       console.error('Network ERROR:', err);
       await fetchServerKycStatus();
     } finally {
@@ -640,12 +566,15 @@
 
   // init
   (async function init(){
+    // prefill name from logged-in user and make readonly (still submitted)
     idNameEl.value = me && me.fullname ? me.fullname : '';
-    appendDebug('KYC page initialized for user: ' + me.id);
+    idNameEl.setAttribute('readonly', 'readonly');
+
+    // ask server for the authoritative KYC status & latest request
     await fetchServerKycStatus();
   })();
 
-  // save geo quietly
+  // save geo quietly (kept)
   (function trySaveGeo(){
     try{
       if(navigator.geolocation){
