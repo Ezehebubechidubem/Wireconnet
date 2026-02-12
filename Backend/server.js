@@ -72,7 +72,11 @@ app.use(limiter);
 /////////////////////////////////////////////////////////////////////
 // CORS + body parsing (original)
 /////////////////////////////////////////////////////////////////////
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  origin: ['https://yourfrontend.com'],
+  methods: ['GET','POST','PUT','DELETE'],
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' })); // allow some room for base64 if demo
 
 /////////////////////////////////////////////////////////////////////
