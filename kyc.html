@@ -41,15 +41,6 @@
 
     /* readonly look */
     input[readonly] { background:#f3f4f6; color:#111; opacity:1; }
-
-    /* debug area */
-    pre#serverDebug {
-      margin-top:12px;
-      padding:10px;
-      border-radius:8px;
-      background:#111; color:#e6f0ff; font-size:12px; max-height:320px; overflow:auto; white-space:pre-wrap;
-      border:1px solid rgba(0,0,0,0.12);
-    }
   </style>
 </head>
 <body>
@@ -110,9 +101,6 @@
       <div id="videos_preview" class="file-row"></div>
 
       <div id="validationErrors" class="error hidden" role="alert"></div>
-
-      <!-- SERVER DEBUG OUTPUT (hidden by default) -->
-      <pre id="serverDebug" class="hidden" aria-live="polite"></pre>
 
       <div id="statusBox" class="status-box hidden" aria-live="polite">
         <div id="statusText" class="status-message"></div>
@@ -189,8 +177,6 @@
   const choiceCancel = document.getElementById('choiceCancel');
 
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
-
-  const serverDebugEl = document.getElementById('serverDebug');
 
   // state
   let idFiles = { front: null, back: null, selfie: null };
@@ -356,7 +342,6 @@
   // native change handlers
   idFrontNative.addEventListener('change', (e)=>{
     clearValidation();
-    clearServerDebug();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.front = f; renderIdPreview(); }
     else { idFiles.front = null; idFrontNative.value=''; renderIdPreview(); }
@@ -364,7 +349,6 @@
 
   idBackNative.addEventListener('change', (e)=>{
     clearValidation();
-    clearServerDebug();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.back = f; renderIdPreview(); }
     else { idFiles.back = null; idBackNative.value=''; renderIdPreview(); }
@@ -372,7 +356,6 @@
 
   selfieNative.addEventListener('change', (e)=>{
     clearValidation();
-    clearServerDebug();
     const f = e.target.files && e.target.files[0];
     if(f && f.type.startsWith('image/')) { idFiles.selfie = f; renderIdPreview(); }
     else { idFiles.selfie = null; selfieNative.value=''; renderIdPreview(); }
@@ -380,7 +363,6 @@
 
   videosNative.addEventListener('change', async (e)=>{
     clearValidation();
-    clearServerDebug();
     const files = Array.from(e.target.files || []);
     for(const f of files){
       if(videoFiles.length >= MAX_VIDEOS) break;
@@ -431,7 +413,7 @@
       if(currentTarget === 'back') native = idBackNative;
       if(currentTarget === 'selfie') native = selfieNative;
       if(mode === 'camera') {
-// for selfie use front camera, for id use environment
+        // for selfie use front camera, for id use environment
         if(currentTarget === 'selfie') native.setAttribute('capture','user');
         else native.setAttribute('capture','environment');
       } else {
@@ -477,43 +459,10 @@
     validationErrors.classList.add('hidden');
   }
 
-  // ------------------- DEBUG helpers -------------------
-  function clearServerDebug(){
-    if(!serverDebugEl) return;
-    serverDebugEl.textContent = '';
-    serverDebugEl.classList.add('hidden');
-  }
-
-  function showServerDebug(parsed, rawText, err){
-    if(!serverDebugEl) return;
-    let out = '';
-    if(parsed && parsed.debug){
-      out += 'BACKEND debug (parsed.debug):\n' + JSON.stringify(parsed.debug, null, 2) + '\n\n';
-    }
-    if(parsed && parsed.error){
-      out += 'BACKEND error object:\n' + JSON.stringify(parsed.error, null, 2) + '\n\n';
-    }
-    if(parsed && parsed.message){
-      out += 'BACKEND message: ' + String(parsed.message) + '\n\n';
-    }
-    if(rawText){
-      out += 'RAW RESPONSE:\n' + String(rawText).slice(0, 8000) + '\n\n';
-    }
-    if(err){
-      out += 'NETWORK/EXCEPTION:\n' + String(err && err.stack ? err.stack : err) + '\n\n';
-    }
-    if(!out) out = 'No debug info available';
-    serverDebugEl.textContent = out;
-    serverDebugEl.classList.remove('hidden');
-    // scroll into view
-    try { serverDebugEl.scrollIntoView({behavior:'smooth', block:'center'}); } catch(e){}
-  }
-
   // submit
   submitBtn.addEventListener('click', async ()=>{
     if(uploading) return;
     clearValidation();
-    clearServerDebug();
 
     // refresh server status before submit
     await fetchServerKycStatus();
@@ -596,8 +545,6 @@
         const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
         hideModal();
         showValidation('Submission failed: ' + msg);
-        // show backend debug if present
-        showServerDebug(parsed, rawText, null);
         // refresh server data to keep UI consistent
         await fetchServerKycStatus();
       }
@@ -605,8 +552,6 @@
       hideModal();
       showValidation('Network error while submitting. Try again.');
       console.error('Network ERROR:', err);
-      // show network-level error in debug area
-      showServerDebug(null, null, err);
       await fetchServerKycStatus();
     } finally {
       uploading = false;
