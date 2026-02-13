@@ -19,7 +19,6 @@ const { Queue, Worker } = require('bullmq');
 // Original imports
 /////////////////////////////////////////////////////////////////////
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
