@@ -73,7 +73,7 @@ app.use(limiter);
 // CORS + body parsing (original)
 /////////////////////////////////////////////////////////////////////
 app.use(cors({
-  origin: ['https://yourfrontend.com'],
+  origin: ['https://ezehebubechidubem.github.io'],
   methods: ['GET','POST','PUT','DELETE'],
   credentials: true
 }));
