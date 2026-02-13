@@ -445,41 +445,74 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
 
 
 
-// ------------------ CLOUDINARY CONFIG (optional) ------------------
-// We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
+// ------------------ CLOUDINARY CONFIG (safe public fallback + diagnostics) ------------------
+const crypto = require('crypto'); // already used elsewhere, safe to require again
 let uploadCloud = null;
+
 try {
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ) {
     const cloudinary = require('cloudinary').v2;
     const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
+    // ensure secure delivery
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true
     });
 
+    // Build CloudinaryStorage with safe options
     const cloudStorage = new CloudinaryStorage({
       cloudinary,
       params: async (req, file) => {
+        // Use 'auto' so Cloudinary handles image vs video
         const isVideo = file.mimetype && file.mimetype.startsWith && file.mimetype.startsWith('video/');
         return {
           folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
-          resource_type: isVideo ? 'video' : 'image',
+          // resource_type 'auto' avoids wrong resource_type errors
+          resource_type: 'auto',
+          // For now keep public (same behaviour as before)
+          // If later you want private, change to: type: 'private'
+          // type: 'private',
           public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`
         };
       }
     });
 
-    uploadCloud = multer({ storage: cloudStorage, limits: { fileSize: 100 * 1024 * 1024 } }); // 100MB per file for cloud
-    console.log('Cloudinary configured: using Cloudinary for uploads.');
+    // Create multer instance with Cloudinary storage
+    uploadCloud = multer({
+      storage: cloudStorage,
+      limits: { fileSize: 100 * 1024 * 1024 } // 100MB per file (same as before)
+    });
+
+    // Light API test to validate credentials (non-blocking)
+    cloudinary.api.resources({ max_results: 1 })
+      .then((r) => {
+        console.log('Cloudinary credentials OK — resources test succeeded.');
+      })
+      .catch((err) => {
+        // This will show up in Render logs -> helpful to debug credential / network issues
+        console.error('Cloudinary API test failed — check CLOUDINARY env vars and network access.', err && err.message ? err.message : err);
+        // if the test fails we still keep uploadCloud set so multer will attempt uploads,
+        // but we now have a clear log message to act on.
+      });
+
+    console.log('Cloudinary configured: using Cloudinary for uploads (public).');
   } else {
     console.log('Cloudinary not configured: using local disk uploads as fallback.');
   }
 } catch (err) {
-  console.error('Cloudinary setup error (continuing with disk uploads):', err);
+  console.error('Cloudinary setup error (continuing with disk uploads):', err && err.stack ? err.stack : err);
   uploadCloud = null;
 }
+
+// Ensure upload is defined for your routes (this must exist once, below the cloud/disk defs)
+const upload = uploadCloud || uploadDisk;
 // ------------------ End helpers ------------------
 
 //Testing password
