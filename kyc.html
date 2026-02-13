@@ -39,6 +39,11 @@
     .btn-outline{ background:#fff; border:1px solid #e6eef9; color:#111 }
     .pill { background:#e6eef9; color:#0b1220; padding:6px 8px; border-radius:999px; font-weight:700; font-size:12px }
 
+    /* debug console */
+    #debugPanel{font-family:monospace;background:#0b1220;color:#e6eef9;padding:12px;border-radius:8px;margin-top:12px;display:none}
+    #debugPanel pre{white-space:pre-wrap;word-break:break-word;color:#d1f0ff;max-height:340px;overflow:auto}
+    #debugControls{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .btn-ghost{background:#fff;border:1px solid #e6e9ef;padding:8px 10px;border-radius:8px;cursor:pointer}
     /* readonly look */
     input[readonly] { background:#f3f4f6; color:#111; opacity:1; }
   </style>
@@ -110,8 +115,25 @@
 
       <footer>
         <button id="submitBtn" class="btn">Submit</button>
-        <div class="muted">All docs go to admin</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="muted">All docs go to admin</div>
+          <button id="toggleDebug" class="btn-ghost" title="Show debug console">Toggle debug</button>
+        </div>
       </footer>
+
+      <!-- Debug panel -->
+      <div id="debugPanel" role="region" aria-label="Debug console">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Debug Console</div>
+          <div id="debugControls">
+            <button id="clearDebug" class="btn-ghost">Clear</button>
+            <button id="copyDebug" class="btn-ghost">Copy</button>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:13px;color:#bfe8ff">Last request / response & server error details</div>
+        <pre id="debugText">No debug logs yet.</pre>
+      </div>
+
     </div>
   </div>
 
@@ -138,14 +160,79 @@
 
 <script>
 (function(){
-  // NOTE: removed any localhost/port logic. Use production API base only.
   const API_BASE = 'https://wireconnet-1.onrender.com';
 
-  // validate user logged in
+  // debug UI elements
+  const debugPanel = document.getElementById('debugPanel');
+  const debugText = document.getElementById('debugText');
+  const toggleDebug = document.getElementById('toggleDebug');
+  const clearDebug = document.getElementById('clearDebug');
+  const copyDebug = document.getElementById('copyDebug');
+
+  function pretty(obj){
+    try { return JSON.stringify(obj, null, 2); } catch(e){ return String(obj); }
+  }
+
+  function pushDebug(title, payload){
+    const ts = new Date().toISOString();
+    const block = `--- ${title} (${ts}) ---\n${pretty(payload)}\n\n`;
+    if(debugText.textContent === 'No debug logs yet.') debugText.textContent = block;
+    else debugText.textContent = block + debugText.textContent;
+  }
+
+  toggleDebug.addEventListener('click', ()=> {
+    debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+  });
+  clearDebug.addEventListener('click', ()=> debugText.textContent = 'No debug logs yet.');
+  copyDebug.addEventListener('click', ()=> {
+    navigator.clipboard?.writeText(debugText.textContent || '').then(()=> alert('Debug copied'), ()=> alert('Unable to copy'));
+  });
+
+  // Basic auth token auto-detection (if you use any)
+  function getAuthHeader(){
+    // check common keys in localStorage
+    const maybe = localStorage.getItem('wc_token') || localStorage.getItem('token') || localStorage.getItem('auth_token') || null;
+    if(maybe) return { Authorization: 'Bearer ' + maybe };
+    return {};
+  }
+
+  // debugFetch wrapper: captures request, duration, response text, parsed JSON if possible
+  async function debugFetch(path, opts = {}){
+    const url = path.startsWith('http') ? path : API_BASE + path;
+    const headers = Object.assign({}, opts.headers || {}, getAuthHeader());
+    const init = Object.assign({}, opts, { headers });
+
+    const start = Date.now();
+    let respText = null;
+    try {
+      const res = await fetch(url, init);
+      try { respText = await res.text(); } catch(e){ respText = '[response.text() error]'; }
+      let parsed = null;
+      try { parsed = respText ? JSON.parse(respText) : null; } catch(e){ parsed = null; }
+      const duration = Date.now() - start;
+
+      // Build debug object
+      const dbg = {
+        request: { url, method: init.method || 'GET', headers: init.headers, body: init.body ? (init.body instanceof FormData ? '[FormData]' : init.body) : null },
+        response: { status: res.status, statusText: res.statusText, headers: (function(){ const o = {}; res.headers.forEach((v,k)=>o[k]=v); return o; })(), text: respText, json: parsed },
+        duration_ms: duration
+      };
+
+      pushDebug((res.ok ? 'HTTP OK' : 'HTTP ERROR') + ' ' + res.status + ' ' + (init.method || 'GET'), dbg);
+
+      return { ok: res.ok, status: res.status, statusText: res.statusText, text: respText, json: parsed, headers: dbg.response.headers, duration };
+    } catch(err){
+      const duration = Date.now() - start;
+      const dbg = { request: { url, method: init.method || 'GET', headers: init.headers }, error: String(err), duration_ms: duration };
+      pushDebug('NETWORK ERROR', dbg);
+      return { ok:false, error: err, text: null, json: null, status: 0, duration };
+    }
+  }
+
+  // DOM refs & state (kept from your original)
   const me = JSON.parse(localStorage.getItem('wc_user') || 'null');
   if(!me){ alert('Please login'); window.location.href = 'login.html'; return; }
 
-  // DOM
   const idTypeEl = document.getElementById('id_type');
   const idNameEl = document.getElementById('id_name');
   const idNumberEl = document.getElementById('id_number');
@@ -178,19 +265,16 @@
 
   const overlay = document.getElementById('overlay'), modalText = document.getElementById('modalText'), modalClose = document.getElementById('modalClose');
 
-  // state
   let idFiles = { front: null, back: null, selfie: null };
   let videoFiles = [];
-  let currentTarget = null; // 'front' | 'back' | 'selfie' | 'videos'
+  let currentTarget = null;
   const MAX_VIDEOS = 2;
-  const MAX_VIDEO_SECONDS = 180; // 3 minutes
+  const MAX_VIDEO_SECONDS = 180;
   let uploading = false;
 
-  // server values (updated by fetchServerKycStatus)
   let serverUser = null;
   let serverLatest = null;
 
-  // helper: normalize server-stored path/URL to usable src
   function normalizeUrl(p){
     if(!p) return null;
     if(typeof p !== 'string') return null;
@@ -200,23 +284,28 @@
     return API_BASE + '/' + p;
   }
 
-  // fetch server status and latest request
   async function fetchServerKycStatus(){
     try {
-      const res = await fetch(API_BASE + '/api/kyc/status/' + me.id);
-      const j = await res.json().catch(()=>null);
-      serverUser = j && j.user ? j.user : null;
-      serverLatest = j && j.latest_request ? j.latest_request : null;
+      const r = await debugFetch('/api/kyc/status/' + me.id, { method: 'GET' });
+      if(!r.ok){
+        // show basic friendly error and reveal debug console
+        setSubmissionLocked(false);
+        showValidation(`Unable to fetch KYC status: HTTP ${r.status}`);
+        debugPanel.style.display = 'block';
+        return;
+      }
+      serverUser = (r.json && r.json.user) ? r.json.user : (r.json && r.json.user ? r.json.user : null);
+      serverLatest = (r.json && r.json.latest_request) ? r.json.latest_request : null;
       renderServerStatus();
     } catch(e){
-      // non-fatal; console for developer
       console.error('fetchServerKycStatus error', e);
+      showValidation('Network error getting KYC status');
+      debugPanel.style.display = 'block';
     }
   }
 
   function renderServerStatus(){
     const status = (serverUser && serverUser.kyc_status) ? String(serverUser.kyc_status).toLowerCase() : (serverLatest && serverLatest.status ? serverLatest.status : null);
-
     if(status){
       statusBox.classList.remove('hidden');
       statusText.innerText = 'KYC status: ' + status;
@@ -226,7 +315,6 @@
       statusText.innerText = '';
       statusSub.innerText = '';
     }
-
     if(serverLatest && serverLatest.admin_note){
       adminNoteEl.classList.remove('hidden');
       adminNoteEl.innerText = 'Admin note: ' + serverLatest.admin_note;
@@ -234,10 +322,7 @@
       adminNoteEl.classList.add('hidden');
       adminNoteEl.innerText = '';
     }
-
     renderPreviouslySubmitted();
-
-    // lock/unlock submission using server status: lock if pending or approved
     const lockedStatuses = ['pending', 'approved', 'approved_by_admin'];
     const locked = status && lockedStatuses.includes(status);
     setSubmissionLocked(locked);
@@ -280,7 +365,6 @@
       row2.appendChild(box);
       wrap.appendChild(row2);
     }
-
     idPreview.parentNode.insertBefore(wrap, idPreview.nextSibling);
   }
 
@@ -293,7 +377,6 @@
     });
   }
 
-  // previews (client-chosen files)
   function renderIdPreview(){
     idPreview.innerHTML = '';
     const order = [
@@ -339,7 +422,6 @@
     });
   }
 
-  // native change handlers
   idFrontNative.addEventListener('change', (e)=>{
     clearValidation();
     const f = e.target.files && e.target.files[0];
@@ -369,29 +451,24 @@
       if(!f.type.startsWith('video/')) continue;
       videoFiles.push(f);
     }
-    // validate durations
     const problems = await validateVideoDurations(videoFiles);
     if(problems.length){
       showValidation(problems.join('\n'));
-      // remove offending videos
       videoFiles = videoFiles.filter(v => !problems.some(p => p.includes(v.name)));
     }
     videosNative.value = '';
     renderVideoPreview();
   });
 
-  // buttons open the modal
   idFrontBtn.addEventListener('click', ()=> openChoice('front'));
   idBackBtn.addEventListener('click', ()=> openChoice('back'));
   selfieBtn.addEventListener('click', ()=> openChoice('selfie'));
   videosBtn.addEventListener('click', ()=> openChoice('videos'));
 
-  // keyboard support
   [idFrontBtn, idBackBtn, selfieBtn, videosBtn].forEach(btn=>{
     btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
   });
 
-  // modal choice logic
   function openChoice(target){
     currentTarget = target;
     choiceModal.style.display = 'flex';
@@ -413,7 +490,6 @@
       if(currentTarget === 'back') native = idBackNative;
       if(currentTarget === 'selfie') native = selfieNative;
       if(mode === 'camera') {
-        // for selfie use front camera, for id use environment
         if(currentTarget === 'selfie') native.setAttribute('capture','user');
         else native.setAttribute('capture','environment');
       } else {
@@ -429,7 +505,6 @@
     currentTarget = null;
   }
 
-  // validate video durations (client-side)
   function validateVideoDurations(files){
     const checks = files.map(f => new Promise((resolve) => {
       const url = URL.createObjectURL(f);
@@ -449,7 +524,6 @@
     return Promise.all(checks).then(results => results.filter(Boolean));
   }
 
-  // validation helpers
   function showValidation(msg){
     validationErrors.textContent = msg;
     validationErrors.classList.remove('hidden');
@@ -459,12 +533,10 @@
     validationErrors.classList.add('hidden');
   }
 
-  // submit
   submitBtn.addEventListener('click', async ()=>{
     if(uploading) return;
     clearValidation();
 
-    // refresh server status before submit
     await fetchServerKycStatus();
     const currentStatus = (serverUser && serverUser.kyc_status) ? String(serverUser.kyc_status).toLowerCase() : (serverLatest && serverLatest.status ? serverLatest.status : null);
     if(currentStatus && ['pending','approved','approved_by_admin'].includes(currentStatus)){
@@ -477,7 +549,6 @@
     const idNumber = (idNumberEl.value || '').trim();
     const idType = (idTypeEl.value || 'unknown');
 
-    // validations
     if(!idName){ showValidation('Enter name on ID'); return; }
     if(!idNumber){ showValidation('Enter ID number'); return; }
     if(!idFiles.front){ showValidation('Upload front picture of ID'); return; }
@@ -489,10 +560,9 @@
     const durationProblems = await validateVideoDurations(videoFiles);
     if(durationProblems.length){ showValidation(durationProblems.join('\n')); return; }
 
-    // Build FormData: append image Files as repeated 'id_images', selfie, and videos as repeated 'work_videos'
     const form = new FormData();
     form.append('userId', me.id);
-    form.append('user_id', me.id); // compatibility
+    form.append('user_id', me.id);
     form.append('id_type', idType);
     form.append('id_name', idName);
     form.append('id_number', idNumber);
@@ -502,34 +572,22 @@
     if(idFiles.back) idImageList.push(idFiles.back);
     if(idFiles.selfie) idImageList.push(idFiles.selfie);
 
-    // Append id_images entries (backwards compatible)
     idImageList.forEach((file) => { if(file instanceof File) form.append('id_images', file, file.name); });
-
-    // Also append selfie explicitly (some backends expect a named selfie field)
     if(idFiles.selfie instanceof File) form.append('selfie', idFiles.selfie, idFiles.selfie.name);
-
     videoFiles.forEach((f) => { if(f instanceof File) form.append('work_videos', f, f.name); });
 
     form.append('_multipart', '1');
 
-    // prevent double submits
     uploading = true;
     setSubmissionLocked(true);
     showModal('Uploading — please wait...');
 
     try {
-      const resp = await fetch(API_BASE + '/api/kyc/submit', { method: 'POST', body: form });
-      const rawText = await resp.text().catch(()=>null);
-      let parsed = null;
-      try{ parsed = rawText ? JSON.parse(rawText) : null; } catch(e){ parsed = null; }
-
-      if(resp.ok && parsed && parsed.success){
-        // update local me and persist
+      const r = await debugFetch('/api/kyc/submit', { method:'POST', body: form });
+      if(r.ok && r.json && r.json.success){
         me.kyc_status = 'pending';
         try{ localStorage.setItem('wc_user', JSON.stringify(me)); }catch(e){}
-        // refresh server state & UI
         await fetchServerKycStatus();
-        // show confirmation then go back to previous page
         showModal('Submitted — awaiting review');
         setTimeout(()=> {
           hideModal();
@@ -541,40 +599,37 @@
             window.location.href = '/';
           }
         }, 900);
-      } else {
-        const msg = (parsed && parsed.message) ? parsed.message : (`HTTP ${resp.status}`);
-        hideModal();
-        showValidation('Submission failed: ' + msg);
-        // refresh server data to keep UI consistent
-        await fetchServerKycStatus();
+        return;
       }
+
+      // if not ok: show friendly message and reveal debug info
+      const serverMsg = (r.json && (r.json.message || r.json.error)) ? (r.json.message || r.json.error) : (r.text || `HTTP ${r.status}`);
+      hideModal();
+      showValidation('Submission failed: ' + serverMsg);
+      debugPanel.style.display = 'block';
+      // also push an explicit debug entry summarizing the failure
+      pushDebug('KYC SUBMIT FAILED', { summary: serverMsg, response: r });
     } catch(err){
       hideModal();
-      showValidation('Network error while submitting. Try again.');
-      console.error('Network ERROR:', err);
-      await fetchServerKycStatus();
+      showValidation('Network error while submitting. See debug console.');
+      debugPanel.style.display = 'block';
+      pushDebug('KYC SUBMIT EXCEPTION', { error: String(err) });
     } finally {
       uploading = false;
       setSubmissionLocked(false);
     }
   });
 
-  // modal helpers
   function showModal(msg){ const el = document.getElementById('overlay'); if(el){ document.getElementById('modalText').textContent = msg; el.style.display = 'flex'; } }
   function hideModal(){ const el = document.getElementById('overlay'); if(el) el.style.display = 'none'; }
   modalClose.addEventListener('click', hideModal);
 
-  // init
   (async function init(){
-    // prefill name from logged-in user and make readonly (still submitted)
     idNameEl.value = me && me.fullname ? me.fullname : '';
     idNameEl.setAttribute('readonly', 'readonly');
-
-    // ask server for the authoritative KYC status & latest request
     await fetchServerKycStatus();
   })();
 
-  // save geo quietly (kept)
   (function trySaveGeo(){
     try{
       if(navigator.geolocation){
