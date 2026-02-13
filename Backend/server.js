@@ -447,14 +447,11 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
 // We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
 const crypto = require('crypto');
 
+// ------------------ CLOUDINARY CONFIG (optional) ------------------
+// We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
 let uploadCloud = null;
-
 try {
-  if (
-    process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET
-  ) {
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
     const cloudinary = require('cloudinary').v2;
     const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
@@ -467,31 +464,17 @@ try {
     const cloudStorage = new CloudinaryStorage({
       cloudinary,
       params: async (req, file) => {
-        const isVideo =
-          file.mimetype &&
-          file.mimetype.startsWith &&
-          file.mimetype.startsWith('video/');
-
+        const isVideo = file.mimetype && file.mimetype.startsWith && file.mimetype.startsWith('video/');
         return {
-          folder: isVideo
-            ? 'wireconnect/kyc/videos'
-            : 'wireconnect/kyc/images',
-
+          folder: isVideo ? 'wireconnect/kyc/videos' : 'wireconnect/kyc/images',
           resource_type: isVideo ? 'video' : 'image',
-
-          type: 'private', // ✅ ensures file is NOT publicly accessible
-
-          public_id: crypto.randomUUID() // ✅ unguessable file ID
+          public_id: `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`
         };
       }
     });
 
-    uploadCloud = multer({
-      storage: cloudStorage,
-      limits: { fileSize: 30 * 1024 * 1024 } // 30MB limit (safer than 100MB)
-    });
-
-    console.log('Cloudinary configured: using PRIVATE Cloudinary uploads.');
+    uploadCloud = multer({ storage: cloudStorage, limits: { fileSize: 100 * 1024 * 1024 } }); // 100MB per file for cloud
+    console.log('Cloudinary configured: using Cloudinary for uploads.');
   } else {
     console.log('Cloudinary not configured: using local disk uploads as fallback.');
   }
@@ -499,42 +482,6 @@ try {
   console.error('Cloudinary setup error (continuing with disk uploads):', err);
   uploadCloud = null;
 }
-
-// Tokens
-const jwt = require('jsonwebtoken');
-
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    req.user = decoded; // 🔥 This is the important part
-
-    next();
-  } catch (err) {
-    return res.status(403).json({ message: 'Invalid or expired token' });
-  }
-}
-//verify admin
-function verifyAdmin(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Access denied' });
-  }
-
-  next();
-}
-
 // ------------------ End helpers ------------------
 
 //Testing password
