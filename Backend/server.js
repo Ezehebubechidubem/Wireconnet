@@ -443,9 +443,7 @@ async function attemptAssign(jobId, techs, attemptIndex = 0){
   }
 }
 
-// ------------------ CLOUDINARY CONFIG (optional) ------------------
-// We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
-const crypto = require('crypto');
+
 
 // ------------------ CLOUDINARY CONFIG (optional) ------------------
 // We'll configure Cloudinary storage and create uploadCloud. If Cloudinary env vars are not set, we will keep uploadDisk as the active uploader.
