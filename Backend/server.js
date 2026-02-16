@@ -172,7 +172,7 @@ if (REDIS_URL) {
 // Postgres pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized:false } : false
+  ssl: { rejectUnauthorized: false }
 });
 
 // multi upload (we'll support both disk and cloudinary; choose at runtime)
