@@ -230,7 +230,26 @@ CREATE TABLE IF NOT EXISTS users (
   lng double precision,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-
+CREATE TABLE IF NOT EXISTS jobs (
+  id TEXT PRIMARY KEY,
+  client_id TEXT NOT NULL REFERENCES users(id),
+  role_required TEXT NOT NULL DEFAULT 'technician',
+  state TEXT NOT NULL,
+  city TEXT,
+  address TEXT,
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
+  job_type TEXT,
+  description TEXT,
+  price NUMERIC,
+  status TEXT NOT NULL DEFAULT 'created',
+  assigned_tech_id TEXT REFERENCES users(id),
+  assigned_at TIMESTAMP WITH TIME ZONE,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  workers_needed INTEGER DEFAULT 1,
+  estimated_days INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS announcements (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
@@ -279,26 +298,7 @@ CREATE TABLE IF NOT EXISTS staff (
   password_hash TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-CREATE TABLE IF NOT EXISTS jobs (
-  id TEXT PRIMARY KEY,
-  client_id TEXT NOT NULL REFERENCES users(id),
-  role_required TEXT NOT NULL DEFAULT 'technician',
-  state TEXT NOT NULL,
-  city TEXT,
-  address TEXT,
-  lat DOUBLE PRECISION,
-  lng DOUBLE PRECISION,
-  job_type TEXT,
-  description TEXT,
-  price NUMERIC,
-  status TEXT NOT NULL DEFAULT 'created',
-  assigned_tech_id TEXT REFERENCES users(id),
-  assigned_at TIMESTAMP WITH TIME ZONE,
-  expires_at TIMESTAMP WITH TIME ZONE,
-  workers_needed INTEGER DEFAULT 1,
-  estimated_days INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+
 
 CREATE TABLE IF NOT EXISTS kyc_requests (
   id SERIAL PRIMARY KEY,
